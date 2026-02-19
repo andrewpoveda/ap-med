@@ -41,7 +41,7 @@ export default function Home() {
       {/* About Section */}
       <section>
         <p className="text-lg leading-relaxed text-black dark:text-neutral-300 mb-6">
-          I'm a passionate premed student and founder of AP: MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. You can learn more about my work on{" "}
+          I&apos;m a passionate premed student and founder of AP: MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. You can learn more about my work on{" "}
           <a
             href="https://linkedin.com/in/andrew-poveda"
             target="_blank"
