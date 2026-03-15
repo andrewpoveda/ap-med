@@ -12,7 +12,8 @@ export default function Navigation() {
   const navItems = [
     { href: "/", label: "about" },
     { href: "/projects", label: "projects" },
-    { href: "/blog", label: "blog" }
+    { href: "/blog", label: "blog" },
+    { href: "/mentors", label: "mentors" }
   ];
 
   return (
