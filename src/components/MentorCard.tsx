@@ -9,29 +9,29 @@ type Mentor = {
 
 export default function MentorCard({ mentor }: { mentor: Mentor }) {
   return (
-    <div className="border border-neutral-300 dark:border-neutral-700 rounded-lg p-4 space-y-2">
-      <h2 className="text-xl font-semibold text-black dark:text-white">
+    <div className="border border-neutral-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm hover:shadow-md transition bg-white dark:bg-neutral-900">
+      <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
         {mentor.name}
       </h2>
 
-      <p className="text-black dark:text-neutral-300">{mentor.role}</p>
+      <p className="text-neutral-700 dark:text-neutral-300">{mentor.role}</p>
 
-      <p className="text-sm text-black dark:text-neutral-400">
+      <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
         Specialty: {mentor.specialty}
       </p>
 
-      <div className="flex flex-wrap gap-2 pt-2">
+      <div className="flex flex-wrap gap-2 pt-3">
         {mentor.identity.map((tag) => (
           <span
             key={tag}
-            className="px-2 py-1 text-xs rounded bg-neutral-200 dark:bg-neutral-700 text-black dark:text-white"
+            className="px-2 py-1 text-xs rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white"
           >
             {tag}
           </span>
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 pt-2">
+      <div className="flex flex-wrap gap-2 pt-3">
         {mentor.openTo.map((item) => (
           <span
             key={item}
@@ -48,7 +48,7 @@ export default function MentorCard({ mentor }: { mentor: Mentor }) {
         )}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 px-3 py-2 text-sm rounded bg-[var(--global-theme-color)] text-white hover:opacity-90 inline-block"
+        className="mt-4 inline-block px-3 py-2 text-sm rounded bg-[var(--global-theme-color)] text-white hover:opacity-90"
       >
         Request Mentorship
       </a>
