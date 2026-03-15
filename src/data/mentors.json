@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Dr. Fidencio Saldaña",
+    "role": "Dean of Students, Harvard Medical School",
+    "identity": ["Latino", "First-gen"],
+    "specialty": "Cardiology",
+    "openTo": ["General guidance", "Identity mentorship"],
+    "maxMentees": 3
+  },
+  {
+    "name": "Dr. Devin Barzallo",
+    "role": "Dermatology Resident",
+    "identity": ["Latino", "First-gen"],
+    "specialty": "Dermatology",
+    "openTo": ["PS review", "Mock interviews", "General guidance"],
+    "maxMentees": 2
+  },
+  {
+    "name": "Michael Lesgart",
+    "role": "Medical Student at the Lewis Katz School of Medicine at Temple University",
+    "identity": ["Latino", "First-gen"],
+    "specialty": "Urology",
+    "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
+    "maxMentees": 2
+  }
+]
