@@ -7,6 +7,7 @@ type Mentor = {
   specialty: string;
   openTo: string[];
   maxMentees: number;
+  episode?: string;
 };
 
 import { track } from '@vercel/analytics';
@@ -57,6 +58,16 @@ export default function MentorCard({ mentor }: { mentor: Mentor }) {
       >
         Request Mentorship
       </a>
+      {mentor.episode && (
+  <a
+    href={mentor.episode}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="mt-2 inline-block px-3 py-2 text-sm rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-white hover:opacity-90"
+  >
+    Listen to Episode
+  </a>
+)}
     </div>
   );
 }

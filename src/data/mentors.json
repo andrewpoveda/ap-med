@@ -13,16 +13,18 @@
     "identity": ["Latino", "First-gen"],
     "specialty": "Dermatology",
     "openTo": ["PS review", "Mock interviews", "General guidance"],
-    "maxMentees": 2
+    "maxMentees": 2,
+    "episode": "https://open.spotify.com/episode/7klpRJG7BFRHaeWluKoxYd?si=bb62a31390a54b03"
   },
   {
     "name": "Dr. David Velásquez",
-  "role": "Internal Medicine Resident, Brigham and Women's Hospital",
-  "identity": ["Latino", "First-Gen", "Low-Income"],
-  "specialty": "Internal Medicine",
-  "openTo": ["PS Review", "Mock Interviews", "Application Advice"],
-  "maxMentees": 2
-},
+    "role": "Internal Medicine Resident, Brigham and Women's Hospital",
+    "identity": ["Latino", "First-Gen", "Low-Income"],
+    "specialty": "Internal Medicine",
+    "openTo": ["PS Review", "Mock Interviews", "Application Advice"],
+    "maxMentees": 2,
+    "episode": "https://open.spotify.com/episode/1NuYCntf9kSKPujok6F9qe?si=9e891400eff6483a"
+  },
   {
     "name": "Michael Lesgart",
     "role": "Medical Student at the Lewis Katz School of Medicine at Temple University",
