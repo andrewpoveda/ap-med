@@ -1,3 +1,5 @@
+"use client";
+
 type Mentor = {
   name: string;
   role: string;
@@ -6,6 +8,8 @@ type Mentor = {
   openTo: string[];
   maxMentees: number;
 };
+
+import { track } from '@vercel/analytics';
 
 export default function MentorCard({ mentor }: { mentor: Mentor }) {
   return (
@@ -43,6 +47,7 @@ export default function MentorCard({ mentor }: { mentor: Mentor }) {
       </div>
 
       <a
+        onClick={() => track('mentor_click', { name: mentor.name })}
         href={`https://docs.google.com/forms/d/e/1FAIpQLSdcoPWXIt_UxQPOHJ4OHe9s9Gfxf6qTMtPaIPpiJGmOTqahjg/viewform?usp=pp_url&entry.478643649=${encodeURIComponent(
           mentor.name
         )}`}

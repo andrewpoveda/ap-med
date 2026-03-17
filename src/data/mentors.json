@@ -16,6 +16,14 @@
     "maxMentees": 2
   },
   {
+    "name": "Dr. David Velásquez",
+  "role": "Internal Medicine Resident, Brigham and Women's Hospital",
+  "identity": ["Latino", "First-Gen", "Low-Income"],
+  "specialty": "Internal Medicine",
+  "openTo": ["PS Review", "Mock Interviews", "Application Advice"],
+  "maxMentees": 2
+},
+  {
     "name": "Michael Lesgart",
     "role": "Medical Student at the Lewis Katz School of Medicine at Temple University",
     "identity": ["Latino", "First-gen"],
