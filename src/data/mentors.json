@@ -32,12 +32,20 @@
     "specialty": "Urology",
     "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
     "maxMentees": 2
-  }
+  },
   {
     "name": "Kaitlynn Chaljub",
     "role": "Medical Student at Hackensack Meridian School of Medicine",
     "identity": ["Latino", "First-gen"],
     "specialty": "OBGYN",
+    "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
+    "maxMentees": 2
+  },
+  {
+    "name": "Marcos Gomez Ambriz",
+    "role": "Medical Student at the Lewis Katz School of Medicine at Temple University",
+    "identity": ["Latino", "First-gen"],
+    "specialty": "General Surgery",
     "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
     "maxMentees": 2
   }
