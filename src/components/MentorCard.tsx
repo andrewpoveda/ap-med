@@ -55,6 +55,7 @@ export default function MentorCard({ mentor }: { mentor: Mentor }) {
         target="_blank"
         rel="noopener noreferrer"
         className="mt-4 inline-block px-3 py-2 text-sm rounded bg-[var(--global-theme-color)] text-white hover:opacity-90"
+        style={{ color: '#ffffff' }}
       >
         Request Mentorship
       </a>
