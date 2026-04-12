@@ -13,7 +13,7 @@
     "role": "Dermatology Resident",
     "identity": ["Latino", "First-gen"],
     "specialty": "Dermatology",
-    "openTo": ["PS review", "Mock interviews", "General guidance"],
+    "openTo": ["PS Review", "Mock Interviews", "General guidance"],
     "maxMentees": 2,
     "episode": "https://open.spotify.com/episode/7klpRJG7BFRHaeWluKoxYd?si=bb62a31390a54b03"
   },
@@ -31,7 +31,7 @@
     "role": "Medical Student at the Lewis Katz School of Medicine at Temple University",
     "identity": ["Latino", "First-gen"],
     "specialty": "Urology",
-    "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
+    "openTo": ["PS Review", "Mock Interviews", "General guidance", "Identity mentorship"],
     "maxMentees": 2,
     "episode": "https://open.spotify.com/episode/566p8oSRdORT1GAjI9VwUM?si=429aff6df34641a7"
   },
@@ -40,7 +40,7 @@
     "role": "Medical Student at Hackensack Meridian School of Medicine",
     "identity": ["Latino", "First-gen"],
     "specialty": "OBGYN",
-    "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
+    "openTo": ["PS Review", "Mock Interviews", "General guidance", "Identity mentorship"],
     "maxMentees": 2,
     "episode": "https://open.spotify.com/episode/6HK1bYN8b1UTYgFOCjXcED?si=d47b3f7a5d0f4f73"
   },
@@ -49,7 +49,7 @@
     "role": "Medical Student at the Lewis Katz School of Medicine at Temple University",
     "identity": ["Latino", "First-gen"],
     "specialty": "General Surgery",
-    "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
+    "openTo": ["PS Review", "Mock Interviews", "General guidance", "Identity mentorship"],
     "maxMentees": 2,
     "episode": "https://open.spotify.com/episode/0vhUGkCTSWTJyKQ3OMJb2B?si=ccaa978b5001475a"
   }
