@@ -20,7 +20,7 @@
   {
     "name": "Dr. David Velásquez",
     "role": "Internal Medicine Resident, Brigham and Women's Hospital",
-    "identity": ["Latino", "First-Gen", "Low-Income"],
+    "identity": ["Latino", "First-gen", "Low-Income"],
     "specialty": "Internal Medicine",
     "openTo": ["PS Review", "Mock Interviews", "Application Advice"],
     "maxMentees": 2,
