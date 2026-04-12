@@ -5,7 +5,8 @@
     "identity": ["Latino", "First-gen"],
     "specialty": "Cardiology",
     "openTo": ["General guidance", "Identity mentorship"],
-    "maxMentees": 3
+    "maxMentees": 3,
+    "episode": "https://open.spotify.com/episode/1pvgUkAfgVSMilhh1q2Xff?si=c962540623bf45da"
   },
   {
     "name": "Dr. Devin Barzallo",
@@ -31,7 +32,8 @@
     "identity": ["Latino", "First-gen"],
     "specialty": "Urology",
     "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
-    "maxMentees": 2
+    "maxMentees": 2,
+    "episode": "https://open.spotify.com/episode/566p8oSRdORT1GAjI9VwUM?si=429aff6df34641a7"
   },
   {
     "name": "Kaitlynn Chaljub",
@@ -39,7 +41,8 @@
     "identity": ["Latino", "First-gen"],
     "specialty": "OBGYN",
     "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
-    "maxMentees": 2
+    "maxMentees": 2,
+    "episode": "https://open.spotify.com/episode/6HK1bYN8b1UTYgFOCjXcED?si=d47b3f7a5d0f4f73"
   },
   {
     "name": "Marcos Gomez Ambriz",
@@ -47,6 +50,7 @@
     "identity": ["Latino", "First-gen"],
     "specialty": "General Surgery",
     "openTo": ["PS review", "Mock interviews", "General guidance", "Identity mentorship"],
-    "maxMentees": 2
+    "maxMentees": 2,
+    "episode": "https://open.spotify.com/episode/0vhUGkCTSWTJyKQ3OMJb2B?si=ccaa978b5001475a"
   }
 ]
