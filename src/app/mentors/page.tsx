@@ -29,7 +29,19 @@ export default function MentorsPage() {
   });
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
+
+      {/* Page Header */}
+      <div className="w-full">
+        <h1 className="text-4xl font-bold tracking-tight text-black dark:text-white">
+          Mentors
+        </h1>
+        <p className="text-neutral-700 dark:text-neutral-300 mt-2">
+          A growing directory of mentors supporting the next generation of physicians.
+        </p>
+      </div>
+
+      {/* Filters */}
       <FilterBar
         selectedIdentity={selectedIdentity}
         setSelectedIdentity={setSelectedIdentity}
@@ -42,9 +54,12 @@ export default function MentorsPage() {
         uniqueOpenTo={uniqueOpenTo}
       />
 
-      {filteredMentors.map((mentor) => (
-        <MentorCard key={mentor.name} mentor={mentor} />
-      ))}
+      {/* Mentor Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredMentors.map((mentor) => (
+          <MentorCard key={mentor.name} mentor={mentor} />
+        ))}
+      </div>
     </div>
   );
 }
