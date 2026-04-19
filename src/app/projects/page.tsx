@@ -17,9 +17,11 @@ export default function ProjectsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Episodes */}
-        <Link
-          href="/episodes"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
+        <a
+          href="https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB?si=92213571806748aa"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all block"
         >
           <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
             Episodes
@@ -28,11 +30,11 @@ export default function ProjectsPage() {
             Conversations with students, residents, physicians, and leaders
             sharing their journeys in medicine.
           </p>
-        </Link>
+        </a>
 
         {/* Directory */}
         <Link
-          href="/directory"
+          href="/mentors"
           className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
           <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
