@@ -18,22 +18,10 @@ export default function Home() {
           className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
           <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
-            About Me
+            About
           </h2>
           <p className="text-black dark:text-neutral-300">
-            Learn about my journey as a premed student and founder of AP: MED.
-          </p>
-        </Link>
-
-        <Link
-          href="/about"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
-        >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
-            AP: MED
-          </h2>
-          <p className="text-black dark:text-neutral-300">
-            A mentorship and storytelling platform for Latino and underrepresented voices in medicine.
+            Learn about my journey and the AP: MED platform for underrepresented voices in medicine.
           </p>
         </Link>
 
