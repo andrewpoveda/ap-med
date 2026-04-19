@@ -12,7 +12,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link
           href="/profile"
           className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
@@ -30,22 +30,10 @@ export default function Home() {
           className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
           <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
-            Projects
+            AP: MED
           </h2>
           <p className="text-black dark:text-neutral-300">
             Explore the AP: MED hub, episodes, community, and resources.
-          </p>
-        </Link>
-
-        <Link
-          href="/mentors"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
-        >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
-            Mentors
-          </h2>
-          <p className="text-black dark:text-neutral-300">
-            Connect with mentors and leaders in medicine.
           </p>
         </Link>
 
@@ -58,6 +46,18 @@ export default function Home() {
           </h2>
           <p className="text-black dark:text-neutral-300">
             Read articles and insights on medicine and mentorship.
+          </p>
+        </Link>
+
+        <Link
+          href="/mentors"
+          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
+        >
+          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+            Mentors
+          </h2>
+          <p className="text-black dark:text-neutral-300">
+            Connect with mentors and leaders in medicine.
           </p>
         </Link>
       </div>
