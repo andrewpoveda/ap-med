@@ -1,5 +1,7 @@
-{/* Blog Section */}
+export default function Blog() {
+  return (
 <section className="mt-16">
+  {/* Blog Section */}
   <h2 className="text-2xl font-bold mb-6 text-black dark:text-white">blog</h2>
 
   <div className="space-y-8">
@@ -66,3 +68,5 @@
 
   </div>
 </section>
+  );
+}
