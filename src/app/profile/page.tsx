@@ -55,20 +55,44 @@ export default function ProfilePage() {
         </p>
       </section>
 
-      {/* News Section */}
-      <section>
-        <h2 className="text-2xl font-bold mb-6 text-black dark:text-white">news</h2>
-        <div className="space-y-4">
-          <div className="flex gap-6 pb-4 border-b border-neutral-200 dark:border-gray-700 last:border-0">
-            <div className="flex-shrink-0 w-20 text-sm font-medium text-[var(--global-theme-color)]">
-              2025
-            </div>
-            <div className="flex-1 text-black dark:text-neutral-300">
-              Founded AP: MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. Began research and entered the BS/MD pathway.
-            </div>
-          </div>
-        </div>
-      </section>
+    {/* News Section */}
+<section>
+  <h2 className="text-2xl font-bold mb-6 text-black dark:text-white">news</h2>
+  <div className="space-y-4">
+
+    {/* 2026 */}
+    <div className="flex gap-6 pb-4 border-b border-neutral-200 dark:border-gray-700 last:border-0">
+      <div className="flex-shrink-0 w-20 text-sm font-medium text-[var(--global-theme-color)]">
+        2026
+      </div>
+      <div className="flex-1 text-black dark:text-neutral-300 space-y-2">
+        <p>
+          Awarded 2nd Place for Research at the LMSA-NE Regional Conference, presenting work that highlighted identity and representation in medicine.
+        </p>
+        <p>
+          Formalized partnership with LMSA-Northeast, establishing AP: MED as an official student resource for mentorship and storytelling.
+        </p>
+        <p>
+          Launched the AP: MED Mentorship Directory — a growing national network connecting underrepresented premeds with mentors across medicine.
+        </p>
+        <p>
+          Expanded AP: MED’s content series with new interviews, identity-driven storytelling, and community-focused episodes.
+        </p>
+      </div>
+    </div>
+
+    {/* 2025 */}
+    <div className="flex gap-6 pb-4 border-b border-neutral-200 dark:border-gray-700 last:border-0">
+      <div className="flex-shrink-0 w-20 text-sm font-medium text-[var(--global-theme-color)]">
+        2025
+      </div>
+      <div className="flex-1 text-black dark:text-neutral-300">
+        Founded AP: MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. Began research and entered the BS/MD pathway.
+      </div>
+    </div>
+
+  </div>
+</section>
     </div>
   );
 }
