@@ -86,12 +86,12 @@ export default function AboutPage() {
           <p className="text-lg text-black dark:text-neutral-300 leading-relaxed">
             Follow along on Instagram for updates, new episodes, and community work:{" "}
             <a
-              href="https://www.instagram.com/apmedpodcast/"
+              href="https://www.instagram.com/apmedicine/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[var(--global-theme-color)] hover:underline"
             >
-              @apmedpodcast
+              @apmedicine
             </a>
             .
           </p>
