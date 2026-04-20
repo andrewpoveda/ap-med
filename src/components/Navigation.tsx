@@ -18,12 +18,12 @@ export default function Navigation() {
     <nav className="sticky top-0 z-50 border-b border-gray-700 bg-[#111827]">
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 md:gap-8">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-colors whitespace-nowrap ${
                   pathname === item.href
                     ? "text-[var(--global-theme-color)]"
                     : "text-neutral-400 hover:text-[var(--global-theme-color)]"
