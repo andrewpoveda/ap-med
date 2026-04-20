@@ -5,7 +5,7 @@ export default function AboutPage() {
         about
       </h1>
 
-      <div className="prose max-w-none">
+      <div className="max-w-none space-y-6">
         <p className="text-lg text-black dark:text-neutral-300 leading-relaxed mb-6">
           AP: MED is a mentorship and storytelling platform centered on uplifting
           Latino and underrepresented voices in medicine. Through honest
