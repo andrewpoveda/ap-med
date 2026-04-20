@@ -29,7 +29,7 @@ export default function Home() {
           href="/projects"
           className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-black hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2 whitespace-nowrap">
             AP: MED
           </h2>
           <p className="text-black dark:text-white">
