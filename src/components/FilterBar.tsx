@@ -22,28 +22,30 @@ export default function FilterBar({
   uniqueOpenTo
 }: FilterBarProps) {
   return (
-    <div className="flex space-x-4 mb-4">
-      <select
-        value={selectedIdentity}
-        onChange={(e) => setSelectedIdentity(e.target.value)}
-        className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
-      >
-        <option value="">All Identities</option>
-        {uniqueIdentities.map(identity => (
-          <option key={identity} value={identity}>{identity}</option>
-        ))}
-      </select>
+    <div className="flex flex-col md:flex-row gap-4 mb-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <select
+          value={selectedIdentity}
+          onChange={(e) => setSelectedIdentity(e.target.value)}
+          className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
+        >
+          <option value="">All Identities</option>
+          {uniqueIdentities.map(identity => (
+            <option key={identity} value={identity}>{identity}</option>
+          ))}
+        </select>
 
-      <select
-        value={selectedSpecialty}
-        onChange={(e) => setSelectedSpecialty(e.target.value)}
-        className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
-      >
-        <option value="">All Specialties</option>
-        {uniqueSpecialties.map(specialty => (
-          <option key={specialty} value={specialty}>{specialty}</option>
-        ))}
-      </select>
+        <select
+          value={selectedSpecialty}
+          onChange={(e) => setSelectedSpecialty(e.target.value)}
+          className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
+        >
+          <option value="">All Specialties</option>
+          {uniqueSpecialties.map(specialty => (
+            <option key={specialty} value={specialty}>{specialty}</option>
+          ))}
+        </select>
+      </div>
 
       <select
         value={selectedOpenTo}
