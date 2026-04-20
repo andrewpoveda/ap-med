@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "./ThemeProvider";
-import ThemeToggle from "./ThemeToggle";
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { theme } = useTheme();
 
   const navItems = [
     { href: "/", label: "home" },
@@ -18,13 +15,7 @@ export default function Navigation() {
   ];
 
   return (
-    <nav 
-      className="sticky top-0 z-50 dark:border-b dark:border-gray-700"
-      style={{ 
-        backgroundColor: theme === 'light' ? '#ffffff' : '#111827',
-        borderBottom: theme === 'dark' ? '1px solid #374151' : 'none'
-      }}
-    >
+    <nav className="sticky top-0 z-50 border-b border-gray-700 bg-[#111827]">
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
@@ -35,11 +26,8 @@ export default function Navigation() {
                 className={`text-sm font-medium transition-colors ${
                   pathname === item.href
                     ? "text-[var(--global-theme-color)]"
-                    : "hover:text-[var(--global-theme-color)]"
+                    : "text-neutral-400 hover:text-[var(--global-theme-color)]"
                 }`}
-                style={pathname !== item.href ? { 
-                  color: theme === 'light' ? '#000000' : '#9ca3af' 
-                } : undefined}
               >
                 {item.label}
               </Link>
@@ -50,9 +38,8 @@ export default function Navigation() {
               href="https://github.com/andrewpoveda"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              className="p-2 rounded-lg hover:bg-neutral-800 transition-colors text-neutral-400"
               aria-label="GitHub"
-              style={{ color: theme === 'light' ? '#000000' : '#9ca3af' }}
             >
               <svg
                 className="w-5 h-5"
@@ -66,7 +53,6 @@ export default function Navigation() {
                 />
               </svg>
             </a>
-            <ThemeToggle />
           </div>
         </div>
       </div>
