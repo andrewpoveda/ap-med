@@ -33,10 +33,10 @@ export default function MentorsPage() {
 
       {/* Page Header */}
       <div className="w-full">
-        <h1 className="text-4xl font-bold tracking-tight text-black dark:text-white">
+        <h1 className="text-4xl font-bold tracking-tight text-[var(--global-text-color)]">
           AP: MED Mentors
         </h1>
-        <p className="text-neutral-700 dark:text-neutral-300 mt-2">
+        <p className="text-[var(--global-text-color)] dark:text-neutral-300 mt-2">
           A growing directory of mentors supporting the next generation of physicians.
         </p>
       </div>

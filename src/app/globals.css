@@ -20,7 +20,7 @@
 
 body {
   font-family: 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
-  color: #000000 !important;
+  color: var(--global-text-color);
   background-color: var(--global-bg-color);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
@@ -30,20 +30,7 @@ body {
 }
 
 html.dark body {
-  color: var(--global-text-color) !important;
-}
-
-/* Ensure text elements are black in light mode */
-html:not(.dark) p,
-html:not(.dark) h1,
-html:not(.dark) h2,
-html:not(.dark) h3,
-html:not(.dark) h4,
-html:not(.dark) h5,
-html:not(.dark) h6,
-html:not(.dark) span,
-html:not(.dark) div:not([class*="text-"]) {
-  color: #000000;
+  color: var(--global-text-color);
 }
 
 a:not([class*="text-"]) {
@@ -58,7 +45,7 @@ a:not([class*="text-"]):hover {
 
 .prose {
   line-height: 1.7;
-  color: #000000;
+  color: var(--global-text-color);
 }
 
 .dark .prose {
@@ -66,7 +53,7 @@ a:not([class*="text-"]):hover {
 }
 
 .prose h1, .prose h2, .prose h3 {
-  color: #000000;
+  color: var(--global-text-color);
   font-weight: 700;
 }
 
@@ -76,7 +63,7 @@ a:not([class*="text-"]):hover {
 
 .prose p {
   margin-bottom: 1.25em;
-  color: #000000;
+  color: var(--global-text-color);
 }
 
 .dark .prose p {
