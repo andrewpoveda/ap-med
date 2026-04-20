@@ -7,7 +7,7 @@ export default function Home() {
         <h1 className="text-5xl md:text-6xl font-bold text-black dark:text-white">
           Welcome
         </h1>
-        <p className="text-xl text-black dark:text-neutral-300 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xl text-black dark:text-white max-w-2xl mx-auto leading-relaxed">
           Exploring medicine, mentorship, and storytelling through the lens of underrepresented voices in healthcare.
         </p>
       </div>
