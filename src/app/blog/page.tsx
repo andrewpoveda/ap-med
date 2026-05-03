@@ -13,7 +13,7 @@ export default function Blog() {
       </h3>
       <time className="text-sm text-neutral-500 dark:text-neutral-400">March 2026</time>
       <p className="text-black dark:text-neutral-300">
-        One of the biggest lessons I took from the Harvard WPC is that storytelling is a form of leadership. The physicians who made the deepest impact weren&apos;t just experts, they were storytellers. That validated the entire foundation of AP:MED.
+        One of the biggest lessons I took from the Harvard WPC is that storytelling is a form of leadership. The physicians who made the deepest impact weren&apos;t just experts, they were storytellers. That validated the entire foundation of APMED.
       </p>
     </article>
 
@@ -31,7 +31,7 @@ export default function Blog() {
     {/* Post 3 — Directory Introduction */}
     <article className="flex flex-col gap-2 pb-6 border-b border-neutral-200 dark:border-gray-700">
       <h3 className="text-xl font-semibold text-black dark:text-white">
-        Introducing the AP: MED Mentorship Directory
+        Introducing the AP MED Mentorship Directory
       </h3>
       <time className="text-sm text-neutral-500 dark:text-neutral-400">February 2026</time>
       <p className="text-black dark:text-neutral-300">
@@ -42,18 +42,18 @@ export default function Blog() {
     {/* Post 4 — First-Gen Founder */}
     <article className="flex flex-col gap-2 pb-6 border-b border-neutral-200 dark:border-gray-700">
       <h3 className="text-xl font-semibold text-black dark:text-white">
-        Building AP: MED as a First-Gen Founder
+        Building AP MED as a First-Gen Founder
       </h3>
       <time className="text-sm text-neutral-500 dark:text-neutral-400">January 2026</time>
       <p className="text-black dark:text-neutral-300">
-        Behind the scenes of building a platform while navigating the premed journey — the challenges, the wins, and the lessons shaping AP: MED.
+        Behind the scenes of building a platform while navigating the premed journey — the challenges, the wins, and the lessons shaping AP MED.
       </p>
     </article>
 
     {/* Post 5 — Founder Story */}
     <article className="flex flex-col gap-2 pb-6 border-b border-neutral-200 dark:border-gray-700">
       <h3 className="text-xl font-semibold text-black dark:text-white">
-        Why I Started AP: MED
+        Why I Started AP MED
       </h3>
       <time className="text-sm text-neutral-500 dark:text-neutral-400">January 2026</time>
       <p className="text-black dark:text-neutral-300">
@@ -64,11 +64,11 @@ export default function Blog() {
     {/* Post 6 — Platform Overview */}
     <article className="flex flex-col gap-2 pb-6 border-b border-neutral-200 dark:border-gray-700">
       <h3 className="text-xl font-semibold text-black dark:text-white">
-        What AP: MED Is & How to Use This Platform
+        What AP MED Is & How to Use This Platform
       </h3>
       <time className="text-sm text-neutral-500 dark:text-neutral-400">January 2026</time>
       <p className="text-black dark:text-neutral-300">
-        A quick guide to AP: MED — what we do, who we serve, and how students can use the directory, episodes, and resources to navigate their premed journey.
+        A quick guide to AP MED — what we do, who we serve, and how students can use the directory, episodes, and resources to navigate their premed journey.
       </p>
     </article>
 

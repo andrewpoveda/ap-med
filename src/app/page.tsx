@@ -21,7 +21,7 @@ export default function Home() {
             About
           </h2>
           <p className="text-black dark:text-white">
-            Learn about my journey and the AP: MED platform for underrepresented voices in medicine.
+            Learn about my journey and the AP MED platform for underrepresented voices in medicine.
           </p>
         </Link>
 
@@ -30,10 +30,10 @@ export default function Home() {
           className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-black hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
           <h2 className="text-2xl font-semibold text-black dark:text-white mb-2 whitespace-nowrap">
-            AP: MED
+            AP MED
           </h2>
           <p className="text-black dark:text-white">
-            Explore the AP: MED hub, episodes, community, and resources.
+            Explore the AP MED hub, episodes, community, and resources.
           </p>
         </Link>
 

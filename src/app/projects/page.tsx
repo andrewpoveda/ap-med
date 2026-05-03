@@ -6,11 +6,11 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-10">
       <h1 className="text-4xl font-bold text-black dark:text-white mb-6">
-        AP: MED hub
+        AP MED hub
       </h1>
 
       <p className="text-lg text-black dark:text-neutral-300 leading-relaxed max-w-2xl">
-        This page highlights the core parts of AP: MED — the stories, the community,
+        This page highlights the core parts of AP MED — the stories, the community,
         the partnerships, and the resources built to support Latino and
         underrepresented students in medicine.
       </p>
@@ -41,7 +41,7 @@ export default function ProjectsPage() {
             Directory
           </h2>
           <p className="text-black dark:text-neutral-300">
-            A growing mentorship directory of AP: MED guests (coming soon).
+            A growing mentorship directory of AP MED guests (coming soon).
           </p>
         </Link>
 
@@ -54,7 +54,7 @@ export default function ProjectsPage() {
             Community
           </h2>
           <p className="text-black dark:text-neutral-300">
-            Stories, updates, and ways to get involved with the AP: MED mission.
+            Stories, updates, and ways to get involved with the AP MED mission.
           </p>
         </Link>
 
@@ -67,7 +67,7 @@ export default function ProjectsPage() {
             Partners
           </h2>
           <p className="text-black dark:text-neutral-300">
-            Collaborations and organizations supporting AP: MED, including LMSA‑NE.
+            Collaborations and organizations supporting AP MED, including LMSA‑NE.
           </p>
         </Link>
 

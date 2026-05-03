@@ -21,7 +21,7 @@ export default function AboutPage() {
             Andrew Poveda
           </h1>
           <p className="text-lg text-black dark:text-neutral-300 mb-4">
-            Founder & Host of AP: MED
+            Founder & Host of AP MED
           </p>
           <div className="space-y-2 text-black dark:text-neutral-400">
             <p>Montclair State University/Rutgers NJMS</p>
@@ -42,7 +42,7 @@ export default function AboutPage() {
       {/* About Section */}
       <section>
         <p className="text-lg leading-relaxed text-black dark:text-neutral-300 mb-6">
-          I&apos;m a passionate premed student and founder of AP: MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. You can learn more about my work on{" "}
+          I&apos;m a passionate premed student and founder of AP MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. You can learn more about my work on{" "}
           <a
             href="https://linkedin.com/in/andrew-poveda"
             target="_blank"
@@ -55,14 +55,14 @@ export default function AboutPage() {
         </p>
       </section>
 
-      {/* AP: MED Section */}
+      {/* AP MED Section */}
       <section>
         <h2 className="text-3xl font-bold mb-6 text-black dark:text-white">
-          About AP: MED
+          About AP MED
         </h2>
         <div className="prose max-w-none">
           <p className="text-lg text-black dark:text-neutral-300 leading-relaxed mb-6">
-            AP: MED is a mentorship and storytelling platform centered on uplifting
+            AP MED is a mentorship and storytelling platform centered on uplifting
             Latino and underrepresented voices in medicine. Through honest
             conversations with students, residents, physicians, and leaders, the
             goal is to make the path to medicine feel more human, more accessible,
@@ -70,14 +70,14 @@ export default function AboutPage() {
           </p>
 
           <p className="text-lg text-black dark:text-neutral-300 leading-relaxed mb-6">
-            I started AP: MED as a first-year BS/MD student who didn&apos;t see enough
+            I started AP MED as a first-year BS/MD student who didn&apos;t see enough
             stories that reflected my background, my community, or the realities
             many of us face. Every episode is meant to highlight identity, roots,
             resilience, and the different ways people find their place in medicine.
           </p>
 
           <p className="text-lg text-black dark:text-neutral-300 leading-relaxed mb-6">
-            Today, AP: MED continues to grow through partnerships, including LMSA-NE,
+            Today, AP MED continues to grow through partnerships, including LMSA-NE,
             and through the support of the students and mentors who believe in the
             mission. This platform is for anyone who has ever felt unseen in their
             journey — and for those who want to help change that.
@@ -111,13 +111,13 @@ export default function AboutPage() {
                 Awarded 2nd Place for Research at the LMSA-NE Regional Conference, presenting work that highlighted identity and representation in medicine.
               </p>
               <p>
-                Formalized partnership with LMSA-Northeast, establishing AP: MED as an official student resource for mentorship and storytelling.
+                Formalized partnership with LMSA-Northeast, establishing AP MED as an official student resource for mentorship and storytelling.
               </p>
               <p>
-                Launched the AP: MED Mentorship Directory — a growing national network connecting underrepresented premeds with mentors across medicine.
+                Launched the AP MED Mentorship Directory — a growing national network connecting underrepresented premeds with mentors across medicine.
               </p>
               <p>
-                Expanded AP: MED’s content series with new interviews, identity-driven storytelling, and community-focused episodes.
+                Expanded AP MED’s content series with new interviews, identity-driven storytelling, and community-focused episodes.
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function AboutPage() {
               2025
             </div>
             <div className="flex-1 text-black dark:text-neutral-300">
-              Founded AP: MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. Began research and entered the BS/MD pathway.
+              Founded AP MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. Began research and entered the BS/MD pathway.
             </div>
           </div>
         </div>
