@@ -11,7 +11,8 @@ export default function Navigation() {
     { href: "/about", label: "about" },
     { href: "/projects", label: "AP MED" },
     { href: "/blog", label: "blog" },
-    { href: "/mentors", label: "mentors" }
+    { href: "/mentors", label: "mentors" },
+    { href: "/mentor-onboarding", label: "become a mentor" }
   ];
 
   return (

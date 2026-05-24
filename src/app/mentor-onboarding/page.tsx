@@ -89,6 +89,52 @@ const SECTION_LABELS = [
   "Final step",
 ];
 
+const CheckItem = ({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}) => (
+  <label
+    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-all ${
+      checked
+        ? "border-[var(--global-theme-color)] bg-blue-950 text-blue-200"
+        : "border-gray-700 text-neutral-300 hover:border-gray-500"
+    }`}
+  >
+    <input type="checkbox" checked={checked} onChange={onChange} className="accent-[var(--global-theme-color)]" />
+    {label}
+  </label>
+);
+
+const RadioItem = ({ label, selected, onChange }: { label: string; selected: boolean; onChange: () => void }) => (
+  <label
+    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer text-sm transition-all ${
+      selected
+        ? "border-[var(--global-theme-color)] bg-blue-950 text-blue-200"
+        : "border-gray-700 text-neutral-300 hover:border-gray-500"
+    }`}
+  >
+    <input type="radio" checked={selected} onChange={onChange} className="accent-[var(--global-theme-color)]" />
+    {label}
+  </label>
+);
+
+const Field = ({ label, error, optional, hint, children }: { label: string; error?: string; optional?: boolean; hint?: string; children: React.ReactNode }) => (
+  <div className="flex flex-col gap-1">
+    <label className="text-sm font-medium text-neutral-200">
+      {label}
+      {optional && <span className="text-neutral-500 font-normal ml-1">(optional)</span>}
+    </label>
+    {hint && <p className="text-xs text-neutral-500">{hint}</p>}
+    {children}
+    {error && <p className="text-xs text-red-400">{error}</p>}
+  </div>
+);
+
 export default function MentorOnboardingPage() {
   const [section, setSection] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -167,6 +213,7 @@ export default function MentorOnboardingPage() {
   const handleBack = () => { setSection((s) => s - 1); window.scrollTo(0, 0); };
 
   const themeBlue = "var(--global-theme-color)";
+  const inputClass = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[var(--global-theme-color)] transition-colors";
 
   if (submitted) {
     return (
@@ -180,53 +227,6 @@ export default function MentorOnboardingPage() {
     );
   }
 
-  const CheckItem = ({
-    label,
-    checked,
-    onChange,
-  }: {
-    label: string;
-    checked: boolean;
-    onChange: () => void;
-  }) => (
-    <label
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-all ${
-        checked
-          ? "border-[var(--global-theme-color)] bg-blue-950 text-blue-200"
-          : "border-gray-700 text-neutral-300 hover:border-gray-500"
-      }`}
-    >
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-[var(--global-theme-color)]" />
-      {label}
-    </label>
-  );
-
-  const RadioItem = ({ label, selected, onChange }: { label: string; selected: boolean; onChange: () => void }) => (
-    <label
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer text-sm transition-all ${
-        selected
-          ? "border-[var(--global-theme-color)] bg-blue-950 text-blue-200"
-          : "border-gray-700 text-neutral-300 hover:border-gray-500"
-      }`}
-    >
-      <input type="radio" checked={selected} onChange={onChange} className="accent-[var(--global-theme-color)]" />
-      {label}
-    </label>
-  );
-
-  const Field = ({ label, error, optional, hint, children }: { label: string; error?: string; optional?: boolean; hint?: string; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-neutral-200">
-        {label}
-        {optional && <span className="text-neutral-500 font-normal ml-1">(optional)</span>}
-      </label>
-      {hint && <p className="text-xs text-neutral-500">{hint}</p>}
-      {children}
-      {error && <p className="text-xs text-red-400">{error}</p>}
-    </div>
-  );
-
-  const inputClass = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[var(--global-theme-color)] transition-colors";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
