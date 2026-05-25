@@ -13,10 +13,10 @@ type BlogPost = {
 const BLOG_POSTS: BlogPost[] = [
   {
     id: "harvard-wpc",
-    title: "What I Learned at the Harvard WPC",
+    title: "What I Learned at the Harvard World Pre-Health Conference",
     date: "March 2026",
-    preview: "One of the biggest lessons I took from the Harvard WPC is that storytelling is a form of leadership. The physicians who made the deepest impact weren't just experts, they were storytellers. That validated the entire foundation of APMED.",
-    content: "One of the biggest lessons I took from the Harvard WPC is that storytelling is a form of leadership. The physicians who made the deepest impact weren't just experts, they were storytellers. That validated the entire foundation of APMED.\n\nWhat struck me most was how many founders and leaders were using narrative as a tool for change. In medicine, we often think of impact as clinical outcomes or research publications, but I realized that influence—real, lasting influence—comes from being able to tell your story in a way that resonates.\n\nThis experience reinforced why AP MED exists. We're not just creating a directory; we're amplifying stories. We're creating a space where underrepresented voices in medicine don't just exist—they lead conversations.",
+    preview: "One of the biggest lessons I took from the Harvard World Pre-Health Conference (WPC) is that storytelling is a form of leadership. The physicians who made the deepest impact weren't just experts, they were storytellers. That validated the entire foundation of APMED.",
+    content: "One of the biggest lessons I took from the Harvard World Pre-Health Conference (WPC) is that storytelling is a form of leadership. The physicians who made the deepest impact weren't just experts, they were storytellers. That validated the entire foundation of APMED.\n\nAs a first-generation Latino premed, hearing the keynote speakers talk about the importance of your ‘why’ for medicine is most important. They spoke so openly about identity, community, and purpose, this showed me how dictating your story can shape your future in healthcare. You need to be a great storyteller.\n\nIn medicine, we often think of impact as clinical outcomes or a high number of research publications, but I realized that influence truly comes from being able to tell your story in a way that resonates.\n\nThis experience reinforced why AP MED exists. We're not just creating a directory; we're amplifying stories. We're creating a space where underrepresented voices in medicine don't just exist; they lead conversations. The WPC was a powerful reminder that the future of medicine will be shaped by those who can tell their stories with authenticity and purpose.",
   },
   {
     id: "lmsa-ne",
