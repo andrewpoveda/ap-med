@@ -14,6 +14,7 @@ type FormData = {
   identity: string[];
   stage: string;
   specialties: string[];
+  specialtyOther: string;
   helpWith: string[];
   capacity: string;
   contactMethods: string[];
@@ -79,6 +80,7 @@ const SPECIALTY_OPTIONS = [
   "Cardiothoracic Surgery",
   "Interventional Radiology",
   "Not yet decided",
+  "Other (not listed)",
 ];
 
 const HELP_OPTIONS = [
@@ -168,6 +170,7 @@ export default function MentorOnboardingPage() {
     identity: [],
     stage: "",
     specialties: [],
+    specialtyOther: "",
     helpWith: [],
     capacity: "",
     contactMethods: [],
@@ -186,7 +189,12 @@ export default function MentorOnboardingPage() {
   const toggleArray = (field: "identity" | "specialties" | "helpWith" | "contactMethods", value: string) => {
     setForm((f) => {
       const arr = f[field] as string[];
-      return { ...f, [field]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
+      const newArr = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
+      // If removing the 'Other (not listed)' specialty, clear the free-text field
+      if (field === "specialties") {
+        return { ...f, [field]: newArr, ...(newArr.includes("Other (not listed)") ? {} : { specialtyOther: "" }) };
+      }
+      return { ...f, [field]: newArr };
     });
     setErrors((err) => { const n = { ...err }; delete n[field]; return n; });
   };
@@ -354,6 +362,18 @@ export default function MentorOnboardingPage() {
                 <CheckItem key={opt} label={opt} checked={form.specialties.includes(opt)} onChange={() => toggleArray("specialties", opt)} />
               ))}
             </div>
+            {form.specialties.includes("Other (not listed)") && (
+              <div className="mt-4">
+                <Field label="Please specify your specialty or subspecialty" optional>
+                  <input
+                    className={inputClass}
+                    placeholder="e.g. Pediatric Cardiology"
+                    value={form.specialtyOther}
+                    onChange={setText("specialtyOther")}
+                  />
+                </Field>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-gray-700 pt-5">
