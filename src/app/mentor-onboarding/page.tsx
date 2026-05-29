@@ -244,22 +244,30 @@ export default function MentorOnboardingPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!validate(section)) return;
     if (section < 3) {
       setSection((s) => s + 1);
       window.scrollTo(0, 0);
     } else {
-      fetch("https://formspree.io/f/xzdwaeev", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      })
-        .then((res) => {
-          if (res.ok) setSubmitted(true);
-          else alert("Submission failed — please try again.");
-        })
-        .catch(() => alert("Network error — please try again."));
+      try {
+        const res = await fetch("https://api.tally.so/forms/ODkP0Y/submissions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer tly-gZrLlVcfBwcjB4sxegbwECp3yWwGQmu3",
+          },
+          body: JSON.stringify(form),
+        });
+
+        if (res.ok) {
+          setSubmitted(true);
+        } else {
+          alert("Submission failed — please try again.");
+        }
+      } catch {
+        alert("Network error — please try again.");
+      }
     }
   };
 
