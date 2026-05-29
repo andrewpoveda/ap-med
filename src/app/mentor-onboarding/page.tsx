@@ -109,10 +109,12 @@ const SECTION_LABELS = [
 
 const CheckItem = ({
   label,
+  name,
   checked,
   onChange,
 }: {
   label: string;
+  name: string;
   checked: boolean;
   onChange: () => void;
 }) => (
@@ -123,12 +125,19 @@ const CheckItem = ({
         : "border-gray-700 text-neutral-300 hover:border-gray-500"
     }`}
   >
-    <input type="checkbox" checked={checked} onChange={onChange} className="accent-[var(--global-theme-color)]" />
+    <input
+      type="checkbox"
+      name={name}
+      value={label}
+      checked={checked}
+      onChange={onChange}
+      className="accent-[var(--global-theme-color)]"
+    />
     {label}
   </label>
 );
 
-const RadioItem = ({ label, selected, onChange }: { label: string; selected: boolean; onChange: () => void }) => (
+const RadioItem = ({ label, name, selected, onChange }: { label: string; name: string; selected: boolean; onChange: () => void }) => (
   <label
     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer text-sm transition-all ${
       selected
@@ -136,7 +145,14 @@ const RadioItem = ({ label, selected, onChange }: { label: string; selected: boo
         : "border-gray-700 text-neutral-300 hover:border-gray-500"
     }`}
   >
-    <input type="radio" checked={selected} onChange={onChange} className="accent-[var(--global-theme-color)]" />
+    <input
+      type="radio"
+      name={name}
+      value={label}
+      checked={selected}
+      onChange={onChange}
+      className="accent-[var(--global-theme-color)]"
+    />
     {label}
   </label>
 );
@@ -230,8 +246,21 @@ export default function MentorOnboardingPage() {
 
   const handleNext = () => {
     if (!validate(section)) return;
-    if (section < 3) { setSection((s) => s + 1); window.scrollTo(0, 0); }
-    else setSubmitted(true);
+    if (section < 3) {
+      setSection((s) => s + 1);
+      window.scrollTo(0, 0);
+    } else {
+      fetch("https://formspree.io/f/xzdwaeev", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+        .then((res) => {
+          if (res.ok) setSubmitted(true);
+          else alert("Submission failed — please try again.");
+        })
+        .catch(() => alert("Network error — please try again."));
+    }
   };
 
   const handleBack = () => { setSection((s) => s - 1); window.scrollTo(0, 0); };
@@ -284,26 +313,26 @@ export default function MentorOnboardingPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name" error={errors.firstName}>
-              <input className={inputClass} placeholder="Andrew" value={form.firstName} onChange={setText("firstName")} />
+              <input name="firstName" className={inputClass} placeholder="Andrew" value={form.firstName} onChange={setText("firstName")} />
             </Field>
             <Field label="Last name" error={errors.lastName}>
-              <input className={inputClass} placeholder="Poveda" value={form.lastName} onChange={setText("lastName")} />
+              <input name="lastName" className={inputClass} placeholder="Poveda" value={form.lastName} onChange={setText("lastName")} />
             </Field>
           </div>
           <Field label="Credentials" optional hint="e.g. MD, DO, MS, MPH — appears after your name">
-            <input className={inputClass} placeholder="MD" value={form.credentials} onChange={setText("credentials")} />
+            <input name="credentials" className={inputClass} placeholder="MD" value={form.credentials} onChange={setText("credentials")} />
           </Field>
           <Field label="Current role / title" error={errors.role}>
-            <input className={inputClass} placeholder="Internal Medicine Resident" value={form.role} onChange={setText("role")} />
+            <input name="role" className={inputClass} placeholder="Internal Medicine Resident" value={form.role} onChange={setText("role")} />
           </Field>
           <Field label="Institution / Hospital / School" error={errors.institution}>
-            <input className={inputClass} placeholder="Brigham and Women's Hospital" value={form.institution} onChange={setText("institution")} />
+            <input name="institution" className={inputClass} placeholder="Brigham and Women's Hospital" value={form.institution} onChange={setText("institution")} />
           </Field>
           <Field label="LinkedIn URL" optional>
-            <input className={inputClass} placeholder="https://linkedin.com/in/yourname" value={form.linkedin} onChange={setText("linkedin")} />
+            <input name="linkedin" className={inputClass} placeholder="https://linkedin.com/in/yourname" value={form.linkedin} onChange={setText("linkedin")} />
           </Field>
           <Field label="Your AP MED episode link" optional hint="Leave blank if you haven't been a guest yet">
-            <input className={inputClass} placeholder="https://open.spotify.com/episode/..." value={form.episode} onChange={setText("episode")} />
+            <input name="episode" className={inputClass} placeholder="https://open.spotify.com/episode/..." value={form.episode} onChange={setText("episode")} />
           </Field>
         </div>
       )}
@@ -317,6 +346,7 @@ export default function MentorOnboardingPage() {
           </div>
           <Field label="Bio" error={errors.bio} hint="3–5 sentences about your path to medicine and what motivates you to mentor. This appears on your public profile.">
             <textarea
+              name="bio"
               className={`${inputClass} min-h-[100px] resize-y`}
               placeholder="I'm a first-gen Latino MD student at..."
               value={form.bio}
@@ -329,7 +359,7 @@ export default function MentorOnboardingPage() {
             <p className="text-xs text-neutral-500 mb-3">Select any that apply — helps students find mentors who share their background.</p>
             <div className="grid grid-cols-2 gap-2">
               {IDENTITY_OPTIONS.map((opt) => (
-                <CheckItem key={opt} label={opt} checked={form.identity.includes(opt)} onChange={() => toggleArray("identity", opt)} />
+                <CheckItem key={opt} name="identity" label={opt} checked={form.identity.includes(opt)} onChange={() => toggleArray("identity", opt)} />
               ))}
             </div>
           </div>
@@ -339,7 +369,7 @@ export default function MentorOnboardingPage() {
             {errors.stage && <p className="text-xs text-red-400 mb-2">{errors.stage}</p>}
             <div className="flex flex-col gap-2">
               {STAGE_OPTIONS.map((opt) => (
-                <RadioItem key={opt} label={opt} selected={form.stage === opt} onChange={() => setRadio("stage", opt)} />
+                <RadioItem key={opt} name="stage" label={opt} selected={form.stage === opt} onChange={() => setRadio("stage", opt)} />
               ))}
             </div>
           </div>
@@ -359,13 +389,14 @@ export default function MentorOnboardingPage() {
             <p className="text-xs text-neutral-500 mb-3">Current or intended — select all that apply</p>
             <div className="grid grid-cols-2 gap-2">
               {SPECIALTY_OPTIONS.map((opt) => (
-                <CheckItem key={opt} label={opt} checked={form.specialties.includes(opt)} onChange={() => toggleArray("specialties", opt)} />
+                <CheckItem key={opt} name="specialties" label={opt} checked={form.specialties.includes(opt)} onChange={() => toggleArray("specialties", opt)} />
               ))}
             </div>
             {form.specialties.includes("Other (not listed)") && (
               <div className="mt-4">
                 <Field label="Please specify your specialty or subspecialty" optional>
                   <input
+                    name="specialtyOther"
                     className={inputClass}
                     placeholder="e.g. Pediatric Cardiology"
                     value={form.specialtyOther}
@@ -381,7 +412,7 @@ export default function MentorOnboardingPage() {
             {errors.helpWith && <p className="text-xs text-red-400 mb-2">{errors.helpWith}</p>}
             <div className="grid grid-cols-2 gap-2">
               {HELP_OPTIONS.map((opt) => (
-                <CheckItem key={opt} label={opt} checked={form.helpWith.includes(opt)} onChange={() => toggleArray("helpWith", opt)} />
+                <CheckItem key={opt} name="helpWith" label={opt} checked={form.helpWith.includes(opt)} onChange={() => toggleArray("helpWith", opt)} />
               ))}
             </div>
           </div>
@@ -391,7 +422,7 @@ export default function MentorOnboardingPage() {
             {errors.capacity && <p className="text-xs text-red-400 mb-2">{errors.capacity}</p>}
             <div className="flex flex-col gap-2">
               {CAPACITY_OPTIONS.map((opt) => (
-                <RadioItem key={opt} label={opt} selected={form.capacity === opt} onChange={() => setRadio("capacity", opt)} />
+                <RadioItem key={opt} name="capacity" label={opt} selected={form.capacity === opt} onChange={() => setRadio("capacity", opt)} />
               ))}
             </div>
           </div>
@@ -400,13 +431,13 @@ export default function MentorOnboardingPage() {
             <p className="text-sm font-medium text-neutral-200 mb-1">Preferred contact method <span className="text-neutral-500 font-normal">(optional)</span></p>
             <div className="grid grid-cols-2 gap-2 mt-3">
               {CONTACT_OPTIONS.map((opt) => (
-                <CheckItem key={opt} label={opt} checked={form.contactMethods.includes(opt)} onChange={() => toggleArray("contactMethods", opt)} />
+                <CheckItem key={opt} name="contactMethods" label={opt} checked={form.contactMethods.includes(opt)} onChange={() => toggleArray("contactMethods", opt)} />
               ))}
             </div>
           </div>
 
           <Field label="Scheduling link" optional hint="Calendly, Cal.com, etc.">
-            <input className={inputClass} placeholder="https://calendly.com/yourname" value={form.schedulingLink} onChange={setText("schedulingLink")} />
+            <input name="schedulingLink" className={inputClass} placeholder="https://calendly.com/yourname" value={form.schedulingLink} onChange={setText("schedulingLink")} />
           </Field>
         </div>
       )}
@@ -423,6 +454,7 @@ export default function MentorOnboardingPage() {
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
+                name="consent1"
                 checked={form.consent1}
                 onChange={() => { setForm((f) => ({ ...f, consent1: !f.consent1 })); setErrors((e) => { const n = { ...e }; delete n.consent1; return n; }); }}
                 className="mt-0.5 accent-[var(--global-theme-color)]"
@@ -438,6 +470,7 @@ export default function MentorOnboardingPage() {
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
+                name="consent2"
                 checked={form.consent2}
                 onChange={() => setForm((f) => ({ ...f, consent2: !f.consent2 }))}
                 className="mt-0.5 accent-[var(--global-theme-color)]"
@@ -449,11 +482,12 @@ export default function MentorOnboardingPage() {
           </div>
 
           <Field label="Your email address" error={errors.email} hint="So Andrew can confirm when your profile is live. Not shown publicly.">
-            <input className={inputClass} type="email" placeholder="you@example.com" value={form.email} onChange={setText("email")} />
+            <input name="email" className={inputClass} type="email" placeholder="you@example.com" value={form.email} onChange={setText("email")} />
           </Field>
 
           <Field label="Anything else you'd like Andrew to know?" optional>
             <textarea
+              name="notes"
               className={`${inputClass} min-h-[80px] resize-y`}
               placeholder="Any scheduling constraints, preferred mentee types, questions, etc."
               value={form.notes}
