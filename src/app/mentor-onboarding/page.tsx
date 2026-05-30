@@ -245,28 +245,51 @@ export default function MentorOnboardingPage() {
   };
 
   const handleNext = async () => {
-    if (!validate(section)) return;
+    // if (!validate(section)) return;
     if (section < 3) {
       setSection((s) => s + 1);
       window.scrollTo(0, 0);
     } else {
       try {
-        const res = await fetch("https://api.tally.so/forms/ODkP0Y/submissions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer tly-gZrLlVcfBwcjB4sxegbwECp3yWwGQmu3",
-          },
-          body: JSON.stringify(form),
-        });
+        console.log("FORM CONTENTS:", form);
 
-        if (res.ok) {
-          setSubmitted(true);
-        } else {
-          alert("Submission failed — please try again.");
+        const response = await fetch('/api/mentor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            first_name: form.firstName,
+            last_name: form.lastName,
+            credentials: form.credentials,
+            current_role: form.role,
+            institution: form.institution,
+            linkedin_url: form.linkedin,
+            episode_url: form.episode,
+            bio: form.bio,
+            identity: form.identity,
+            current_stage: form.stage,
+            specialty: form.specialties,
+            can_help_with: form.helpWith,
+            mentee_capacity: form.capacity,
+            contact_method: form.contactMethods,
+            scheduling_url: form.schedulingLink,
+            open_to_podcast: form.consent2,
+            email: form.email,
+            notes: form.notes,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          console.error('Mentor API error:', data?.error || data)
+          alert('Something went wrong, please try again.')
+          return
         }
-      } catch {
-        alert("Network error — please try again.");
+
+        setSubmitted(true)
+      } catch (err) {
+        console.error(err)
+        alert('Something went wrong, please try again.')
       }
     }
   };
