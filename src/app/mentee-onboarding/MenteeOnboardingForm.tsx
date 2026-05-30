@@ -12,6 +12,7 @@ type MenteeOnboardingFormData = {
   requested_mentor: string
   identity: string[]
   interests: string[]
+    help_with: string[]
   preferred_specialty: string
   other_specialty: string        // ⭐ ADD THIS RIGHT HERE
   preferred_identity: string
@@ -77,7 +78,7 @@ export default function MenteeOnboardingForm() {
     }
   }, [mentorFromUrl])
 
-  const toggleArrayField = (field: 'identity' | 'interests', value: string) => {
+  const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: string) => {
     setForm((prev) => {
       const arr = prev[field] || []
       return arr.includes(value)
