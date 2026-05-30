@@ -1,10 +1,512 @@
-import { Suspense } from 'react'
-import MenteeOnboardingForm from './MenteeOnboardingForm'
+'use client'
+import { SPECIALTIES } from "@/data/specialties"
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
-export default function Page() {
+type MenteeOnboardingFormData = {
+  full_name: string
+  email: string
+  school: string
+  current_stage: string
+  requested_mentor: string
+  identity: string[]
+  interests: string[]
+  preferred_specialty: string
+  other_specialty: string        // ⭐ ADD THIS RIGHT HERE
+  preferred_identity: string
+  availability: string
+  linkedin_url: string
+  notes: string
+}
+
+const STAGES = [
+  'Pre-med / Undergrad',
+  'Post-bacc',
+  'Gap year',
+  'MD / DO Student',
+  'Other',
+]
+
+const IDENTITIES = [
+  'First-generation', 'Latino / Hispanic', 'Black / African American',
+  'Asian / Pacific Islander', 'Native American', 'Low-income background',
+  'LGBTQ+', 'International / IMG', 'Non-traditional student', 'Prefer not to say',
+]
+
+const HELP_WITH = [
+  'General guidance', 'Personal statement review', 'Application review',
+  'Mock interviews', 'MCAT advice', 'Research guidance',
+  'Clinical / shadowing advice', 'Specialty exploration',
+  'Identity mentorship', 'Residency application',
+]
+
+const AVAILABILITY = [
+  'Weekday mornings', 'Weekday afternoons', 'Weekday evenings',
+  'Weekend mornings', 'Weekend afternoons', 'Weekend evenings', 'Flexible',
+]
+
+export default function MenteeOnboardingForm() {
+  const searchParams = useSearchParams()
+  const mentorFromUrl = searchParams.get('mentor') || ''
+
+  const [form, setForm] = useState<MenteeOnboardingFormData>({
+  full_name: '',
+  email: '',
+  school: '',
+  current_stage: '',
+  requested_mentor: mentorFromUrl,
+  identity: [],
+  interests: [],          // specialties
+  help_with: [],          // help needed
+  preferred_specialty: '',
+  other_specialty: '',    // ⭐ ADD THIS
+  preferred_identity: '',
+  availability: '',
+  linkedin_url: '',
+  notes: '',
+})
+
+
+  const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (mentorFromUrl) {
+      setForm(prev => ({ ...prev, requested_mentor: mentorFromUrl }))
+    }
+  }, [mentorFromUrl])
+
+  const toggleArrayField = (field: 'identity' | 'interests', value: string) => {
+    setForm((prev) => {
+      const arr = prev[field] || []
+      return arr.includes(value)
+        ? { ...prev, [field]: arr.filter((v) => v !== value) }
+        : { ...prev, [field]: [...arr, value] }
+    })
+  }
+
+  const handleSubmit = async () => {
+    if (!form.full_name || !form.email || !form.school || !form.current_stage) {
+      alert('Please fill out all required fields.')
+      return
+    }
+
+    setLoading(true)
+
+    const response = await fetch('/api/mentees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+
+    const data = await response.json()
+    setLoading(false)
+
+    if (!response.ok) {
+      console.error('Supabase API error:', data?.error || data)
+      alert('Something went wrong, please try again.')
+      return
+    }
+
+    setSubmitted(true)
+  }
+
+  if (submitted) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0f1117',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'inherit',
+        color: 'white',
+        textAlign: 'center',
+        padding: '2rem',
+      }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>You're on the list</h1>
+        <p style={{ color: '#94a3b8', maxWidth: '480px', lineHeight: 1.6 }}>
+          Thanks for reaching out through AP MED Mentors. Andrew will review your request and connect you with your mentor — usually within a few days.
+        </p>
+        <Link href="/mentors" style={{
+          marginTop: '2rem',
+          color: '#60a5fa',
+          textDecoration: 'none',
+          fontSize: '0.9rem',
+        }}>
+          ← Back to mentors
+        </Link>
+      </div>
+    )
+  }
+
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0f1117' }} />}> 
-      <MenteeOnboardingForm />
-    </Suspense>
+    <div style={{
+      minHeight: '100vh',
+      background: '#0f1117',
+      color: 'white',
+      fontFamily: 'inherit',
+    }}>
+      <nav style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '2rem',
+        padding: '1.25rem 2rem',
+        borderBottom: '1px solid #1e2330',
+        fontSize: '0.9rem',
+      }}>
+        {['home', 'about', 'AP MED', 'blog', 'mentors'].map(item => (
+          <Link key={item} href={item === 'home' ? '/' : item === 'AP MED' ? '/projects' : `/${item}`}
+            style={{ color: '#94a3b8', textDecoration: 'none' }}>
+            {item}
+          </Link>
+        ))}
+        <Link href="/mentor-onboarding" style={{ color: '#60a5fa', textDecoration: 'none' }}>
+          become a mentor
+        </Link>
+      </nav>
+
+      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
+        <p style={{ color: '#60a5fa', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+          AP MED MENTORS
+        </p>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+          Request a mentor
+        </h1>
+        <p style={{ color: '#94a3b8', marginBottom: '2.5rem', lineHeight: 1.6 }}>
+          Fill out this short form and we'll connect you with the right mentor. Takes about 3–5 minutes.
+        </p>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+
+        {mentorFromUrl && (
+          <div style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#1a1f2e', borderRadius: '8px', border: '1px solid #2a3040' }}>
+            <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Requesting mentorship from</p>
+            <p style={{ fontWeight: 600, fontSize: '1rem' }}>{mentorFromUrl}</p>
+          </div>
+        )}
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Basic info</h2>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>First name *</label>
+            <input
+              style={inputStyle}
+              placeholder="Andrew"
+              value={form.full_name.split(' ')[0] || ''}
+              onChange={e => setForm(prev => ({
+                ...prev,
+                full_name: e.target.value + ' ' + (prev.full_name.split(' ')[1] || '')
+              }))}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Last name *</label>
+            <input
+              style={inputStyle}
+              placeholder="Poveda"
+              value={form.full_name.split(' ')[1] || ''}
+              onChange={e => setForm(prev => ({
+                ...prev,
+                full_name: (prev.full_name.split(' ')[0] || '') + ' ' + e.target.value
+              }))}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>Email address *</label>
+          <input
+            style={inputStyle}
+            type="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
+          />
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>School / Institution *</label>
+          <input
+            style={inputStyle}
+            placeholder="Montclair State University"
+            value={form.school}
+            onChange={e => setForm(prev => ({ ...prev, school: e.target.value }))}
+          />
+        </div>
+
+        <div style={{ marginBottom: '2.5rem' }}>
+          <label style={labelStyle}>LinkedIn URL <span style={{ color: '#64748b' }}>(optional)</span></label>
+          <input
+            style={inputStyle}
+            placeholder="https://linkedin.com/in/yourname"
+            value={form.linkedin_url}
+            onChange={e => setForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
+          />
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Your current stage *</h2>
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Where are you in your pre-med journey?</p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2.5rem' }}>
+          {STAGES.map(stage => (
+            <label key={stage} style={radioCardStyle(form.current_stage === stage)}>
+              <input
+                type="radio"
+                name="stage"
+                value={stage}
+                checked={form.current_stage === stage}
+                onChange={() => setForm(prev => ({ ...prev, current_stage: stage }))}
+                style={{ accentColor: '#60a5fa' }}
+              />
+              {stage}
+            </label>
+          ))}
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>What do you need help with?</h2>
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Select all that apply.</p>
+
+        <div style={checkGridStyle}>
+          {HELP_WITH.map(item => (
+  <label key={item} style={checkCardStyle(form.help_with.includes(item))}>
+    <input
+      type="checkbox"
+      checked={form.help_with.includes(item)}
+      onChange={() => toggleArrayField('help_with', item)}
+      style={{ accentColor: '#60a5fa' }}
+    />
+    {item}
+  </label>
+))}
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+<h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+  Your medical interests
+</h2>
+<p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
+  Select all specialties you're interested in.
+</p>
+
+<div style={checkGridStyle}>
+  {SPECIALTIES.map(spec => (
+    <label key={spec} style={checkCardStyle(form.interests.includes(spec))}>
+      <input
+        type="checkbox"
+        checked={form.interests.includes(spec)}
+        onChange={() => toggleArrayField("interests", spec)}
+        style={{ accentColor: '#60a5fa' }}
+      />
+      {spec}
+    </label>
+  ))}
+</div>
+
+<hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Preferred specialty <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
+        <select
+  value={form.preferred_specialty}
+  onChange={(e) =>
+    setForm({ ...form, preferred_specialty: e.target.value })
+  }
+  style={{
+    width: '100%',
+    padding: '0.75rem',
+    borderRadius: '0.5rem',
+    backgroundColor: '#0f172a',
+    border: '1px solid #1e293b',
+    color: 'white',
+    marginBottom: '1rem',
+  }}
+>
+  <option value="">Select a specialty</option>
+  {SPECIALTIES.map((s) => (
+    <option key={s} value={s}>
+      {s}
+    </option>
+  ))}
+</select>
+
+{form.preferred_specialty === "Other" && (
+  <input
+    type="text"
+    placeholder="Please specify"
+    value={form.other_specialty || ""}
+    onChange={(e) =>
+      setForm({ ...form, other_specialty: e.target.value })
+    }
+    style={{
+      width: '100%',
+      padding: '0.75rem',
+      borderRadius: '0.5rem',
+      backgroundColor: '#0f172a',
+      border: '1px solid #1e293b',
+      color: 'white',
+      marginBottom: '1rem',
+    }}
+  />
+)}
+
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Any specialties you're interested in exploring?</p>
+
+        <div style={checkGridStyle}>
+          {SPECIALTIES.map(item => (
+            <label key={item} style={checkCardStyle(form.preferred_specialty === item)}>
+              <input
+                type="radio"
+                name="preferred_specialty"
+                checked={form.preferred_specialty === item}
+                onChange={() => setForm(prev => ({ ...prev, preferred_specialty: item }))}
+                style={{ accentColor: '#60a5fa' }}
+              />
+              {item}
+            </label>
+          ))}
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Preferred mentor identity <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
+
+        <div style={checkGridStyle}>
+          {IDENTITIES.map(item => (
+            <label key={item} style={checkCardStyle(form.preferred_identity === item)}>
+              <input
+                type="radio"
+                name="preferred_identity"
+                checked={form.preferred_identity === item}
+                onChange={() => setForm(prev => ({ ...prev, preferred_identity: item }))}
+                style={{ accentColor: '#60a5fa' }}
+              />
+              {item}
+            </label>
+          ))}
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Availability <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>When are you generally free to meet?</p>
+
+        <div style={checkGridStyle}>
+          {AVAILABILITY.map(item => (
+            <label key={item} style={checkCardStyle(form.availability === item)}>
+              <input
+                type="radio"
+                name="availability"
+                checked={form.availability === item}
+                onChange={() => setForm(prev => ({ ...prev, availability: item }))}
+                style={{ accentColor: '#60a5fa' }}
+              />
+              {item}
+            </label>
+          ))}
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', margin: '2.5rem 0' }} />
+
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Anything else? <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
+        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Why do you want to connect with this mentor? Any specific goals or questions?</p>
+
+        <textarea
+          style={{
+            ...inputStyle,
+            height: '140px',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+          }}
+          placeholder="I'm a first-gen pre-med student interested in..."
+          value={form.notes}
+          onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+        />
+
+        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', margin: '2.5rem 0' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{
+              background: loading ? '#2a3040' : '#60a5fa',
+              color: loading ? '#64748b' : '#0f1117',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '0.75rem 2rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >
+            {loading ? 'Submitting...' : 'Submit →'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '0.875rem',
+  color: '#cbd5e1',
+  marginBottom: '0.4rem',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: '#1a1f2e',
+  border: '1px solid #2a3040',
+  borderRadius: '8px',
+  padding: '0.75rem 1rem',
+  color: 'white',
+  fontSize: '0.95rem',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const checkGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '0.5rem',
+  marginBottom: '2.5rem',
+}
+
+const radioCardStyle = (selected: boolean): React.CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  padding: '0.75rem 1rem',
+  background: selected ? '#1a2744' : '#1a1f2e',
+  border: `1px solid ${selected ? '#3b82f6' : '#2a3040'}`,
+  borderRadius: '8px',
+  cursor: 'pointer',
+  fontSize: '0.95rem',
+  color: selected ? '#ffffff' : '#cbd5e1',
+  transition: 'all 0.15s',
+})
+
+const checkCardStyle = (selected: boolean): React.CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  padding: '0.75rem 1rem',
+  background: selected ? '#1a2744' : '#1a1f2e',
+  border: `1px solid ${selected ? '#3b82f6' : '#2a3040'}`,
+  borderRadius: '8px',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  color: selected ? '#ffffff' : '#cbd5e1',
+  transition: 'all 0.15s',
+})
