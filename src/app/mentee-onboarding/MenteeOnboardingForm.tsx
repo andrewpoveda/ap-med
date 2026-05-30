@@ -15,7 +15,7 @@ type MenteeOnboardingFormData = {
     help_with: string[]
   preferred_specialty: string
   other_specialty: string        // ⭐ ADD THIS RIGHT HERE
-  preferred_identity: string
+  preferred_identity: string []
   availability: string
   linkedin_url: string
   notes: string
@@ -62,7 +62,7 @@ export default function MenteeOnboardingForm() {
   help_with: [],          // help needed
   preferred_specialty: '',
   other_specialty: '',    // ⭐ ADD THIS
-  preferred_identity: '',
+  preferred_identity: [],
   availability: '',
   linkedin_url: '',
   notes: '',
@@ -78,8 +78,7 @@ export default function MenteeOnboardingForm() {
     }
   }, [mentorFromUrl])
 
-  const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: string) => {
-    setForm((prev) => {
+const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'preferred_identity', value: string) => {    setForm((prev) => {
       const arr = prev[field] || []
       return arr.includes(value)
         ? { ...prev, [field]: arr.filter((v) => v !== value) }
@@ -315,28 +314,6 @@ export default function MenteeOnboardingForm() {
 <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
 
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Preferred specialty <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
-        <select
-  value={form.preferred_specialty}
-  onChange={(e) =>
-    setForm({ ...form, preferred_specialty: e.target.value })
-  }
-  style={{
-    width: '100%',
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
-    backgroundColor: '#0f172a',
-    border: '1px solid #1e293b',
-    color: 'white',
-    marginBottom: '1rem',
-  }}
->
-  <option value="">Select a specialty</option>
-  {SPECIALTIES.map((s) => (
-    <option key={s} value={s}>
-      {s}
-    </option>
-  ))}
-</select>
 
 {form.preferred_specialty === "Other" && (
   <input
@@ -380,20 +357,19 @@ export default function MenteeOnboardingForm() {
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Preferred mentor identity <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
         <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
 
-        <div style={checkGridStyle}>
-          {IDENTITIES.map(item => (
-            <label key={item} style={checkCardStyle(form.preferred_identity === item)}>
-              <input
-                type="radio"
-                name="preferred_identity"
-                checked={form.preferred_identity === item}
-                onChange={() => setForm(prev => ({ ...prev, preferred_identity: item }))}
-                style={{ accentColor: '#60a5fa' }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
+<div style={checkGridStyle}>
+  {IDENTITIES.map(item => (
+    <label key={item} style={checkCardStyle(form.preferred_identity.includes(item))}>
+      <input
+        type="checkbox"
+        checked={form.preferred_identity.includes(item)}
+        onChange={() => toggleArrayField('preferred_identity', item)}
+        style={{ accentColor: '#60a5fa' }}
+      />
+      {item}
+    </label>
+  ))}
+</div>
 
         <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
 
