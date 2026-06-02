@@ -1,7 +1,7 @@
 'use client'
 import { SPECIALTIES } from "@/data/specialties"
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 
 type MenteeOnboardingFormData = {
@@ -50,8 +50,10 @@ const OTHER_SPECIALTY = 'Other'
 const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)
 
 export default function MenteeOnboardingForm() {
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
+  const isMentorForm = pathname === '/mentee-onboarding'
 
   const [form, setForm] = useState<MenteeOnboardingFormData>({
   full_name: '',
@@ -113,22 +115,28 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
 
     setLoading(true)
 
-    const response = await fetch('/api/mentees', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
+    try {
+      const response = await fetch('/api/mentees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
 
-    const data = await response.json()
-    setLoading(false)
+      const data = await response.json()
 
-    if (!response.ok) {
-      console.error('Supabase API error:', data?.error || data)
+      if (!response.ok) {
+        console.error('Supabase API error:', data?.error || data)
+        alert('Something went wrong, please try again.')
+        return
+      }
+
+      setSubmitted(true)
+    } catch (error) {
+      console.error('Submit error:', error)
       alert('Something went wrong, please try again.')
-      return
+    } finally {
+      setLoading(false)
     }
-
-    setSubmitted(true)
   }
 
   if (submitted) {
@@ -177,13 +185,23 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         borderBottom: '1px solid #1e2330',
         fontSize: '0.9rem',
       }}>
-        {['home', 'about', 'AP MED', 'blog', 'mentors'].map(item => (
-          <Link key={item} href={item === 'home' ? '/' : item === 'AP MED' ? '/projects' : `/${item}`}
-            style={{ color: '#94a3b8', textDecoration: 'none' }}>
-            {item}
-          </Link>
-        ))}
-        <Link href="/mentor-onboarding" style={{ color: '#60a5fa', textDecoration: 'none' }}>
+        {['home', 'about', 'AP MED', 'blog', 'mentors'].map(item => {
+          const href = item === 'home' ? '/' : item === 'AP MED' ? '/projects' : `/${item}`
+          const isActive = href === pathname || (href === '/mentors' && isMentorForm)
+          return (
+            <Link key={item} href={href}
+              style={{
+                color: isActive ? '#60a5fa' : '#94a3b8',
+                textDecoration: 'none'
+              }}>
+              {item}
+            </Link>
+          )
+        })}
+        <Link href="/mentor-onboarding" style={{
+          color: pathname === '/mentor-onboarding' ? '#60a5fa' : '#94a3b8',
+          textDecoration: 'none'
+        }}>
           become a mentor
         </Link>
       </nav>
