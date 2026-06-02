@@ -350,6 +350,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
           </div>
         )}
 
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Identity / background</h2>
         <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
 
 <div style={checkGridStyle}>
