@@ -28,7 +28,6 @@ export async function POST(request: Request) {
       school: data.school,
       identity: data.identity, // ARRAY
       interests: data.interests, // ARRAY
-      preferred_specialty: data.preferred_specialty,
       preferred_identity: data.preferred_identity,
       availability: data.availability,
       notes: data.notes || "",

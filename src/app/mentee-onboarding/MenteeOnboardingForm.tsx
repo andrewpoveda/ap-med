@@ -12,10 +12,9 @@ type MenteeOnboardingFormData = {
   requested_mentor: string
   identity: string[]
   interests: string[]
-    help_with: string[]
-  preferred_specialty: string
-  other_specialty: string        // ⭐ ADD THIS RIGHT HERE
-  preferred_identity: string []
+  help_with: string[]
+  preferred_identity: string[]
+  other_interest: string
   availability: string
   linkedin_url: string
   notes: string
@@ -47,6 +46,9 @@ const AVAILABILITY = [
   'Weekend mornings', 'Weekend afternoons', 'Weekend evenings', 'Flexible',
 ]
 
+const OTHER_SPECIALTY = 'Other'
+const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)
+
 export default function MenteeOnboardingForm() {
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
@@ -60,9 +62,8 @@ export default function MenteeOnboardingForm() {
   identity: [],
   interests: [],          // specialties
   help_with: [],          // help needed
-  preferred_specialty: '',
-  other_specialty: '',    // ⭐ ADD THIS
   preferred_identity: [],
+  other_interest: '',
   availability: '',
   linkedin_url: '',
   notes: '',
@@ -78,7 +79,8 @@ export default function MenteeOnboardingForm() {
     }
   }, [mentorFromUrl])
 
-const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'preferred_identity', value: string) => {    setForm((prev) => {
+const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'preferred_identity', value: string) => {
+    setForm((prev) => {
       const arr = prev[field] || []
       return arr.includes(value)
         ? { ...prev, [field]: arr.filter((v) => v !== value) }
@@ -86,9 +88,26 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
     })
   }
 
+  const handleInterestToggle = (interest: string) => {
+    setForm((prev) => {
+      const current = prev.interests
+      const isSelected = current.includes(interest)
+      return {
+        ...prev,
+        interests: isSelected ? current.filter((item) => item !== interest) : [...current, interest],
+        other_interest: interest === OTHER_SPECIALTY && isSelected ? '' : prev.other_interest,
+      }
+    })
+  }
+
   const handleSubmit = async () => {
     if (!form.full_name || !form.email || !form.school || !form.current_stage) {
       alert('Please fill out all required fields.')
+      return
+    }
+
+    if (form.interests.includes(OTHER_SPECIALTY) && !form.other_interest.trim()) {
+      alert('Please enter your other specialty or deselect Other.')
       return
     }
 
@@ -298,12 +317,12 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
 </p>
 
 <div style={checkGridStyle}>
-  {SPECIALTIES.map(spec => (
+  {INTEREST_OPTIONS.map(spec => (
     <label key={spec} style={checkCardStyle(form.interests.includes(spec))}>
       <input
         type="checkbox"
         checked={form.interests.includes(spec)}
-        onChange={() => toggleArrayField("interests", spec)}
+        onChange={() => handleInterestToggle(spec)}
         style={{ accentColor: '#60a5fa' }}
       />
       {spec}
@@ -311,50 +330,26 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
   ))}
 </div>
 
-<hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+        {form.interests.includes(OTHER_SPECIALTY) && (
+          <div style={{ marginTop: '1rem' }}>
+            <label style={labelStyle}>Your other specialty</label>
+            <input
+              list="other-specialty-options"
+              style={inputStyle}
+              placeholder="Type your other specialty"
+              value={form.other_interest}
+              onChange={e => setForm(prev => ({ ...prev, other_interest: e.target.value }))}
+            />
+            <datalist id="other-specialty-options">
+              <option value="Global Health" />
+              <option value="Medical Education" />
+              <option value="Geriatrics" />
+              <option value="Transplant Surgery" />
+              <option value="Sports Medicine" />
+            </datalist>
+          </div>
+        )}
 
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Preferred specialty <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
-
-{form.preferred_specialty === "Other" && (
-  <input
-    type="text"
-    placeholder="Please specify"
-    value={form.other_specialty || ""}
-    onChange={(e) =>
-      setForm({ ...form, other_specialty: e.target.value })
-    }
-    style={{
-      width: '100%',
-      padding: '0.75rem',
-      borderRadius: '0.5rem',
-      backgroundColor: '#0f172a',
-      border: '1px solid #1e293b',
-      color: 'white',
-      marginBottom: '1rem',
-    }}
-  />
-)}
-
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Any specialties you're interested in exploring?</p>
-
-        <div style={checkGridStyle}>
-          {SPECIALTIES.map(item => (
-            <label key={item} style={checkCardStyle(form.preferred_specialty === item)}>
-              <input
-                type="radio"
-                name="preferred_specialty"
-                checked={form.preferred_specialty === item}
-                onChange={() => setForm(prev => ({ ...prev, preferred_specialty: item }))}
-                style={{ accentColor: '#60a5fa' }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Preferred mentor identity <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
         <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
 
 <div style={checkGridStyle}>
