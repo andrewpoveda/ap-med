@@ -175,10 +175,10 @@ function MatchCard({ mentor, rank, featured }: { mentor: ScoredMentor; rank?: nu
 
         {/* Tags */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-          {(mentor.specialty || []).slice(0, 3).map(s => (
+          {(Array.isArray(mentor.specialty) ? mentor.specialty : []).slice(0, 3).map(s => (
             <span key={s} style={tagStyle('#1e2d45', '#3b82f6')}>{s}</span>
           ))}
-          {(mentor.identity || []).slice(0, 2).map(id => (
+          {(Array.isArray(mentor.identity) ? mentor.identity : []).slice(0, 2).map(id => (
             <span key={id} style={tagStyle('#1e2d30', '#34d399')}>{id}</span>
           ))}
         </div>

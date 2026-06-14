@@ -17,8 +17,8 @@ type MenteeInfo = {
 
 export async function notifyMentorOfMatch(mentor: ScoredMentor, mentee: MenteeInfo) {
   const mentorName = `${mentor.first_name} ${mentor.last_name}`
-  const specialtyOverlap = mentee.interests.filter(s => (mentor.specialty || []).includes(s))
-  const identityOverlap = mentee.preferred_identity.filter(id => (mentor.identity || []).includes(id))
+  const specialtyOverlap = mentee.interests.filter(s => (Array.isArray(mentor.specialty) ? mentor.specialty : []).includes(s))
+  const identityOverlap = mentee.preferred_identity.filter(id => (Array.isArray(mentor.identity) ? mentor.identity : []).includes(id))
 
   const conversationStarters = buildConversationStarters(mentee, specialtyOverlap, identityOverlap)
 

@@ -64,9 +64,9 @@ function scoreOverlap(menteePrefs: string[], mentorTags: string[]): number {
 }
 
 function scoreMentor(mentor: Mentor, mentee: MenteeInput): number {
-  const specialtyScore = scoreOverlap(mentee.interests, mentor.specialty)
-  const identityScore = scoreOverlap(mentee.preferred_identity, mentor.identity)
-  const helpScore = scoreOverlap(mentee.help_with, mentor.can_help_with)
+  const specialtyScore = scoreOverlap(mentee.interests, Array.isArray(mentor.specialty) ? mentor.specialty : [])
+  const identityScore = scoreOverlap(mentee.preferred_identity, Array.isArray(mentor.identity) ? mentor.identity : [])
+  const helpScore = scoreOverlap(mentee.help_with, Array.isArray(mentor.can_help_with) ? mentor.can_help_with : [])
 
   const raw =
     specialtyScore * WEIGHTS.specialty +
