@@ -45,7 +45,7 @@ type Mentor = {
   email: string
 }
 
-export type ScoredMentor = Mentor & { matchPercent: number }
+type ScoredMentor = Mentor & { matchPercent: number }
 
 const WEIGHTS = {
   specialty: 0.40,
