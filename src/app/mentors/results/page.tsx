@@ -12,15 +12,19 @@ export default function MatchResultsPage() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('matchResults')
-    const name = sessionStorage.getItem('menteeName') || ''
-    if (!raw) {
-      router.replace('/mentors')
-      return
+    try {
+      const raw = sessionStorage.getItem('matchResults')
+      const name = sessionStorage.getItem('menteeName') || ''
+      if (!raw) {
+        router.replace('/mentee-onboarding')
+        return
+      }
+      setMentors(JSON.parse(raw))
+      setMenteeName(name)
+      setLoaded(true)
+    } catch {
+      router.replace('/mentee-onboarding')
     }
-    setMentors(JSON.parse(raw))
-    setMenteeName(name)
-    setLoaded(true)
   }, [router])
 
   if (!loaded) {
