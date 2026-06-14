@@ -54,8 +54,6 @@ export default function MenteeOnboardingForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
-  const isMentorForm = pathname === '/mentee-onboarding'
-
   const [form, setForm] = useState<MenteeOnboardingFormData>({
   full_name: '',
   email: '',
@@ -217,8 +215,8 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         fontSize: '0.9rem',
       }}>
         {['home', 'about', 'AP MED', 'blog', 'mentors'].map(item => {
-          const href = item === 'home' ? '/' : item === 'AP MED' ? '/projects' : `/${item}`
-          const isActive = href === pathname || (href === '/mentors' && isMentorForm)
+          const href = item === 'home' ? '/' : item === 'AP MED' ? '/projects' : item === 'mentors' ? '/mentee-onboarding' : `/${item}`
+          const isActive = href === pathname
           return (
             <Link key={item} href={href}
               style={{
