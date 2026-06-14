@@ -1,7 +1,7 @@
 'use client'
 import { SPECIALTIES } from "@/data/specialties"
 import { useState, useEffect } from 'react'
-import { useSearchParams, usePathname } from 'next/navigation'
+import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 type MenteeOnboardingFormData = {
@@ -51,6 +51,7 @@ const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, 
 
 export default function MenteeOnboardingForm() {
   const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
   const isMentorForm = pathname === '/mentee-onboarding'
@@ -116,21 +117,51 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
     setLoading(true)
 
     try {
-      const response = await fetch('/api/mentees', {
+      // 1. Save mentee to Supabase
+      const saveRes = await fetch('/api/mentees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
 
-      const data = await response.json()
+      const saveData = await saveRes.json()
 
-      if (!response.ok) {
-        console.error('Supabase API error:', data?.error || data)
+      if (!saveRes.ok) {
+        console.error('Supabase API error:', saveData?.error || saveData)
         alert('Something went wrong, please try again.')
         return
       }
 
-      setSubmitted(true)
+      // 2. Run matching algorithm
+      const matchRes = await fetch('/api/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: form.full_name,
+          email: form.email,
+          school: form.school,
+          current_stage: form.current_stage,
+          interests: form.interests,
+          preferred_identity: form.preferred_identity,
+          help_with: form.help_with,
+          notes: form.notes,
+          linkedin_url: form.linkedin_url,
+        }),
+      })
+
+      const matchData = await matchRes.json()
+
+      if (!matchRes.ok) {
+        console.error('Match API error:', matchData?.error)
+        // Still show results even if match fails — just redirect to browse all
+        router.push('/mentors/results')
+        return
+      }
+
+      // 3. Store results in sessionStorage and redirect
+      sessionStorage.setItem('matchResults', JSON.stringify(matchData.mentors))
+      sessionStorage.setItem('menteeName', form.full_name)
+      router.push('/mentors/results')
     } catch (error) {
       console.error('Submit error:', error)
       alert('Something went wrong, please try again.')
