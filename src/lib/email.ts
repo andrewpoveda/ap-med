@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import type { ScoredMentor } from '@/app/api/match/route'
+import type { ScoredMentor } from '@/types/mentor'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 

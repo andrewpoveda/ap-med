@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { notifyMentorOfMatch } from '@/lib/email'
+import type { ScoredMentor } from '@/types/mentor'
 
 export const runtime = 'nodejs'
 
@@ -44,8 +45,6 @@ type Mentor = {
   mentee_capacity: number
   email: string
 }
-
-type ScoredMentor = Mentor & { matchPercent: number }
 
 const WEIGHTS = {
   specialty: 0.40,
