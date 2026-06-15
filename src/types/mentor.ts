@@ -1,4 +1,4 @@
-export type ScoredMentor = {
+export type Mentor = {
   id: string
   first_name: string
   last_name: string
@@ -16,5 +16,7 @@ export type ScoredMentor = {
   contact_method: string[]
   mentee_capacity: number
   email: string
-  matchPercent: number
+  photo_url?: string
 }
+
+export type ScoredMentor = Mentor & { matchPercent: number }

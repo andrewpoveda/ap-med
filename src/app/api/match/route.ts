@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { notifyMentorOfMatch } from '@/lib/email'
-import type { ScoredMentor } from '@/types/mentor'
+import type { Mentor, ScoredMentor } from '@/types/mentor'
 
 export const runtime = 'nodejs'
 
@@ -24,26 +24,6 @@ type MenteeInput = {
   help_with: string[]
   notes?: string
   linkedin_url?: string
-}
-
-type Mentor = {
-  id: string
-  first_name: string
-  last_name: string
-  credentials: string
-  current_role: string
-  institution: string
-  bio: string
-  identity: string[]
-  specialty: string[]
-  can_help_with: string[]
-  current_stage: string
-  linkedin_url: string
-  episode_url: string
-  scheduling_url: string
-  contact_method: string[]
-  mentee_capacity: number
-  email: string
 }
 
 const WEIGHTS = {

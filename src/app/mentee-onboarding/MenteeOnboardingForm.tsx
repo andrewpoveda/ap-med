@@ -159,6 +159,17 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
       // 3. Store results in sessionStorage and redirect
       sessionStorage.setItem('matchResults', JSON.stringify(matchData.mentors))
       sessionStorage.setItem('menteeName', form.full_name)
+      sessionStorage.setItem('menteeData', JSON.stringify({
+        full_name: form.full_name,
+        email: form.email,
+        school: form.school,
+        current_stage: form.current_stage,
+        interests: form.interests,
+        preferred_identity: form.preferred_identity,
+        help_with: form.help_with,
+        notes: form.notes,
+        linkedin_url: form.linkedin_url,
+      }))
       router.push('/mentors/results')
     } catch (error) {
       console.error('Submit error:', error)

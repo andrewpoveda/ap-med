@@ -12,6 +12,20 @@ function getSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceRoleKey)
 }
 
+export async function GET() {
+  try {
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase
+      .from('mentor')
+      .select('*')
+      .order('last_name')
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ mentors: data })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function POST(request: Request) {
   const supabaseAdmin = getSupabaseAdmin()
   const data = await request.json()
