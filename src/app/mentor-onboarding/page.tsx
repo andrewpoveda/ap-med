@@ -86,7 +86,7 @@ const SPECIALTY_OPTIONS = [
 const HELP_OPTIONS = [
   "General guidance",
   "Personal statement review",
-  "Application review",
+  "Application advice",
   "Mock interviews",
   "MCAT advice",
   "Research guidance",

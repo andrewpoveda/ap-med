@@ -35,7 +35,7 @@ const IDENTITIES = [
 ]
 
 const HELP_WITH = [
-  'General guidance', 'Personal statement review', 'Application review',
+  'General guidance', 'Personal statement review', 'Application advice',
   'Mock interviews', 'MCAT advice', 'Research guidance',
   'Clinical / shadowing advice', 'Specialty exploration',
   'Identity mentorship', 'Residency application',
