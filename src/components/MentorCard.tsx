@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { track } from '@vercel/analytics';
 import type { Mentor } from '@/types/mentor';
 
@@ -7,26 +8,39 @@ type Props = {
   mentor: Mentor & { matchPercent?: number }
 }
 
+const AVATAR_COLORS = [
+  ['#1a2744', '#60a5fa'],
+  ['#14281a', '#4ade80'],
+  ['#2a1a2e', '#c084fc'],
+  ['#2a1f14', '#fb923c'],
+  ['#1a2434', '#38bdf8'],
+];
+
 function Avatar({ name, photoUrl }: { name: string; photoUrl?: string }) {
-  const initials = name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+  const initials = name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  const colorIndex = name.charCodeAt(0) % AVATAR_COLORS.length;
+  const [bg, fg] = AVATAR_COLORS[colorIndex];
+
   if (photoUrl) {
     return (
-      <img
+      <Image
         src={photoUrl}
         alt={name}
-        style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+        width={48}
+        height={48}
+        style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
       />
-    )
+    );
   }
   return (
     <div style={{
-      width: 48, height: 48, borderRadius: '50%', background: '#1a2744', flexShrink: 0,
+      width: 48, height: 48, borderRadius: '50%', background: bg, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '1rem', fontWeight: 700, color: '#60a5fa',
+      fontSize: '1rem', fontWeight: 700, color: fg, userSelect: 'none',
     }}>
       {initials}
     </div>
-  )
+  );
 }
 
 export default function MentorCard({ mentor }: Props) {

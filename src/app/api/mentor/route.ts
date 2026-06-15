@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -30,6 +31,11 @@ export async function POST(request: Request) {
   const supabaseAdmin = getSupabaseAdmin()
   const data = await request.json()
 
+  const turnstileOk = await verifyTurnstileToken(data.turnstile_token ?? "")
+  if (!turnstileOk) {
+    return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 })
+  }
+
   const { error } = await supabaseAdmin
     .from('mentor')
     .insert([{
@@ -41,12 +47,12 @@ export async function POST(request: Request) {
       linkedin_url: data.linkedin_url,
       episode_url: data.episode_url,
       bio: data.bio,
-      identity: data.identity,
+      identity: Array.isArray(data.identity) ? data.identity : [],
       current_stage: data.current_stage,
-      specialty: data.specialty,
-      can_help_with: data.can_help_with,
+      specialty: Array.isArray(data.specialty) ? data.specialty : [],
+      can_help_with: Array.isArray(data.can_help_with) ? data.can_help_with : [],
       mentee_capacity: data.mentee_capacity,
-      contact_method: data.contact_method,
+      contact_method: Array.isArray(data.contact_method) ? data.contact_method : [],
       scheduling_url: data.scheduling_url,
       open_to_podcast: data.open_to_podcast,
       email: data.email,

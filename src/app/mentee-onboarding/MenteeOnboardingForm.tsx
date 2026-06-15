@@ -1,6 +1,7 @@
 'use client'
 import { SPECIALTIES } from "@/data/specialties"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Turnstile } from "@marsidev/react-turnstile"
 import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -73,6 +74,7 @@ export default function MenteeOnboardingForm() {
 
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const turnstileToken = useRef<string | null>(null)
 
   useEffect(() => {
     if (mentorFromUrl) {
@@ -119,7 +121,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
       const saveRes = await fetch('/api/mentees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, turnstile_token: turnstileToken.current }),
       })
 
       const saveData = await saveRes.json()
@@ -463,6 +465,15 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         />
 
         <hr style={{ border: 'none', borderTop: '1px solid #1e2330', margin: '2.5rem 0' }} />
+
+        <div style={{ marginBottom: '1.5rem' }}>
+          <Turnstile
+            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+            onSuccess={(token) => { turnstileToken.current = token; }}
+            onExpire={() => { turnstileToken.current = null; }}
+            options={{ theme: "dark" }}
+          />
+        </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.SUPABASE_URL
@@ -18,6 +19,11 @@ function getSupabaseAdmin() {
 export async function POST(request: Request) {
   const supabaseAdmin = getSupabaseAdmin()
   const data = await request.json()
+
+  const turnstileOk = await verifyTurnstileToken(data.turnstile_token ?? "")
+  if (!turnstileOk) {
+    return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 })
+  }
 
   const { error } = await supabaseAdmin
   .from("mentees")

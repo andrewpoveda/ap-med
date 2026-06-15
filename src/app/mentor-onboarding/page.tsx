@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 type FormData = {
   firstName: string;
@@ -173,6 +174,7 @@ export default function MentorOnboardingPage() {
   const [section, setSection] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const turnstileToken = useRef<string | null>(null);
 
   const [form, setForm] = useState<FormData>({
     firstName: "",
@@ -257,6 +259,7 @@ export default function MentorOnboardingPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            turnstile_token: turnstileToken.current,
             first_name: form.firstName,
             last_name: form.lastName,
             credentials: form.credentials,
@@ -525,6 +528,18 @@ export default function MentorOnboardingPage() {
               onChange={setText("notes")}
             />
           </Field>
+        </div>
+      )}
+
+      {/* Turnstile CAPTCHA — only shown on final section */}
+      {section === 3 && (
+        <div className="mt-8">
+          <Turnstile
+            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+            onSuccess={(token) => { turnstileToken.current = token; }}
+            onExpire={() => { turnstileToken.current = null; }}
+            options={{ theme: "dark" }}
+          />
         </div>
       )}
 
