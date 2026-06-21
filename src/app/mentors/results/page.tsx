@@ -26,6 +26,7 @@ export default function MatchResultsPage() {
   const [loaded, setLoaded] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
+  const [testMode, setTestMode] = useState(false)
 
   useEffect(() => {
     try {
@@ -39,6 +40,7 @@ export default function MatchResultsPage() {
       setMentors(JSON.parse(raw))
       setMenteeName(name)
       if (rawMentee) setMenteeData(JSON.parse(rawMentee))
+      setTestMode(sessionStorage.getItem('matchTestMode') === '1')
       setLoaded(true)
     } catch {
       router.replace('/mentee-onboarding')
@@ -49,7 +51,7 @@ export default function MatchResultsPage() {
     setRequestedIds(prev => new Set([...prev, mentor.id]))
     if (!menteeData) return
     try {
-      await fetch('/api/notify', {
+      await fetch(`/api/notify${testMode ? '?test=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentor, mentee: menteeData }),
@@ -85,9 +87,15 @@ export default function MatchResultsPage() {
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
           Your top matches, {firstName}
         </h1>
-        <p style={{ color: '#94a3b8', marginBottom: '3rem', lineHeight: 1.6 }}>
+        <p style={{ color: '#94a3b8', marginBottom: testMode ? '1.5rem' : '3rem', lineHeight: 1.6 }}>
           Based on your specialty interests, background, and what you need help with.
         </p>
+
+        {testMode && (
+          <div style={{ marginBottom: '3rem', padding: '0.75rem 1rem', background: '#2a2410', border: '1px solid #a16207', borderRadius: '8px', color: '#fde68a', fontSize: '0.85rem', lineHeight: 1.5 }}>
+            🧪 <strong>Test mode</strong> — requesting a mentor here will <strong>not send any email</strong>.
+          </div>
+        )}
 
         {top3.length > 0 && (
           <>

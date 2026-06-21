@@ -55,6 +55,7 @@ export default function MenteeOnboardingForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
+  const testMode = searchParams.get('test') === '1'
   const [form, setForm] = useState<MenteeOnboardingFormData>({
   full_name: '',
   email: '',
@@ -132,8 +133,8 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         return
       }
 
-      // 2. Run matching algorithm
-      const matchRes = await fetch('/api/match', {
+      // 2. Run matching algorithm (?test=1 → dry-run: matches but skips the mentor email)
+      const matchRes = await fetch(`/api/match${testMode ? '?test=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -172,6 +173,8 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         notes: form.notes,
         linkedin_url: form.linkedin_url,
       }))
+      // Carry dry-run mode to the results page so the "Request" button also skips email
+      sessionStorage.setItem('matchTestMode', testMode ? '1' : '')
       router.push('/mentors/results')
     } catch (error) {
       console.error('Submit error:', error)
@@ -258,6 +261,12 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         <p style={{ color: '#94a3b8', marginBottom: '2.5rem', lineHeight: 1.6 }}>
           Fill out this short form and we'll connect you with the right mentor. Takes about 3–5 minutes.
         </p>
+
+        {testMode && (
+          <div style={{ marginBottom: '2rem', padding: '0.75rem 1rem', background: '#2a2410', border: '1px solid #a16207', borderRadius: '8px', color: '#fde68a', fontSize: '0.85rem', lineHeight: 1.5 }}>
+            🧪 <strong>Test mode</strong> — your submission will still be saved, but <strong>no email will be sent</strong> to the matched mentor.
+          </div>
+        )}
 
         <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
 

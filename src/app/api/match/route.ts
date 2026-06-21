@@ -58,6 +58,7 @@ function scoreMentor(mentor: Mentor, mentee: MenteeInput): number {
 
 export async function POST(request: Request) {
   try {
+    const dryRun = new URL(request.url).searchParams.get('test') === '1'
     const mentee: MenteeInput = await request.json()
     const supabase = getSupabaseAdmin()
 
@@ -76,15 +77,18 @@ export async function POST(request: Request) {
       }))
       .sort((a, b) => b.matchPercent - a.matchPercent)
 
-    // Notify top match via email (non-blocking — don't fail the response if email fails)
+    // Notify top match via email (non-blocking — don't fail the response if email fails).
+    // Skipped entirely in dry-run mode (?test=1) so prod test-submits don't email real mentors.
     const topMatch = scored[0]
-    if (topMatch?.email && mentee.email) {
+    if (dryRun) {
+      console.log(`[dry-run] Skipped mentor notification email to ${topMatch?.email ?? '(none)'}`)
+    } else if (topMatch?.email && mentee.email) {
       notifyMentorOfMatch(topMatch, mentee).catch(err =>
         console.error('Mentor email failed (non-fatal):', err)
       )
     }
 
-    return NextResponse.json({ mentors: scored })
+    return NextResponse.json({ mentors: scored, dryRun })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

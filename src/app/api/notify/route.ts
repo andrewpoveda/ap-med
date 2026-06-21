@@ -18,7 +18,12 @@ type MenteeData = {
 
 export async function POST(request: Request) {
   try {
+    const dryRun = new URL(request.url).searchParams.get('test') === '1'
     const { mentor, mentee }: { mentor: ScoredMentor; mentee: MenteeData } = await request.json()
+    if (dryRun) {
+      console.log(`[dry-run] Skipped notify email to ${mentor?.email ?? '(none)'}`)
+      return NextResponse.json({ success: true, dryRun: true })
+    }
     await notifyMentorOfMatch(mentor, mentee)
     return NextResponse.json({ success: true })
   } catch (err) {
