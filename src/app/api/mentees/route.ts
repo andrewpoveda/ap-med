@@ -35,6 +35,8 @@ export async function POST(request: Request) {
       identity: data.identity, // ARRAY
       interests: data.interests, // ARRAY
       preferred_identity: data.preferred_identity,
+      current_stage: data.current_stage,
+      help_with: data.help_with, // ARRAY
       availability: data.availability,
       notes: data.notes || "",
     },

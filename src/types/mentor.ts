@@ -1,5 +1,6 @@
 export type Mentor = {
   id: string
+  created_at: string
   first_name: string
   last_name: string
   credentials: string
@@ -14,8 +15,10 @@ export type Mentor = {
   episode_url: string
   scheduling_url: string
   contact_method: string[]
-  mentee_capacity: number
+  mentee_capacity: string
+  open_to_podcast: boolean
   email: string
+  notes: string | null
   photo_url?: string
 }
 
