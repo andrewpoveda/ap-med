@@ -1,8 +1,8 @@
 "use client";
 
 import Image from 'next/image';
-import { track } from '@vercel/analytics';
 import type { Mentor } from '@/types/mentor';
+import EpisodeLink from '@/components/EpisodeLink';
 
 type Props = {
   mentor: Mentor & { matchPercent?: number }
@@ -60,7 +60,10 @@ export default function MentorCard({ mentor }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="text-base font-semibold text-white leading-snug">{displayName}</h2>
+              <div className="flex items-center">
+                <h2 className="text-base font-semibold text-white leading-snug">{displayName}</h2>
+                <EpisodeLink mentor={mentor} />
+              </div>
               <p className="text-sm text-neutral-400 mt-0.5">
                 {mentor.current_role}{mentor.institution ? ` · ${mentor.institution}` : ''}
               </p>
@@ -87,18 +90,6 @@ export default function MentorCard({ mentor }: Props) {
               <span key={id} className="px-2 py-0.5 text-xs rounded-full bg-emerald-950 text-emerald-300">{id}</span>
             ))}
           </div>
-
-          {mentor.episode_url && (
-            <a
-              href={mentor.episode_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track('episode_click', { name: fullName })}
-              className="mt-3 inline-block px-3 py-1.5 text-xs rounded bg-neutral-700 text-neutral-200 hover:bg-neutral-600 transition"
-            >
-              Listen to Episode
-            </a>
-          )}
         </div>
       </div>
     </div>

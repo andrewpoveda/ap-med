@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ScoredMentor } from '@/types/mentor'
+import EpisodeLink from '@/components/EpisodeLink'
 
 type MenteeData = {
   full_name: string
@@ -259,8 +260,11 @@ function MatchCard({
       )}
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: featured ? '1.1rem' : '1rem', marginBottom: '0.25rem' }}>
-          {fullName}{mentor.credentials ? `, ${mentor.credentials}` : ''}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+          <span style={{ fontWeight: 700, fontSize: featured ? '1.1rem' : '1rem' }}>
+            {fullName}{mentor.credentials ? `, ${mentor.credentials}` : ''}
+          </span>
+          <EpisodeLink mentor={mentor} />
         </div>
         <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: mentor.bio ? '0.5rem' : '0.75rem' }}>
           {mentor.current_role}{mentor.institution ? ` · ${mentor.institution}` : ''}
