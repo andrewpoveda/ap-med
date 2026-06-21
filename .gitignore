@@ -36,6 +36,9 @@ yarn-error.log*
 # local-only Claude Code context (references machine-specific vault paths)
 CLAUDE.md
 
+# local-only Claude Code tooling (dev-server launch config + machine-specific settings)
+.claude/
+
 # vercel
 .vercel
 
