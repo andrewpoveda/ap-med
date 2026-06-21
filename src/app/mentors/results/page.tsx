@@ -66,7 +66,6 @@ export default function MatchResultsPage() {
   if (!loaded) {
     return (
       <div style={{ minHeight: '100vh', background: '#0f1117', color: 'white', fontFamily: 'inherit' }}>
-        <NavBar />
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
           <div style={{ height: '0.75rem', width: '8rem', background: '#1a1f2e', borderRadius: 4, marginBottom: '0.75rem' }} className="animate-pulse" />
           <div style={{ height: '2rem', width: '55%', background: '#1a1f2e', borderRadius: 4, marginBottom: '0.75rem' }} className="animate-pulse" />
@@ -79,7 +78,6 @@ export default function MatchResultsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f1117', color: 'white', fontFamily: 'inherit' }}>
-      <NavBar />
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
         <p style={{ color: '#60a5fa', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
           AP MED MENTORS
@@ -163,30 +161,6 @@ export default function MatchResultsPage() {
   )
 }
 
-function NavBar() {
-  return (
-    <nav style={{
-      display: 'flex', justifyContent: 'center', gap: '2rem',
-      padding: '1.25rem 2rem', borderBottom: '1px solid #1e2330', fontSize: '0.9rem',
-    }}>
-      {[
-        { label: 'home', href: '/' },
-        { label: 'about', href: '/about' },
-        { label: 'AP MED', href: '/projects' },
-        { label: 'blog', href: '/blog' },
-        { label: 'mentors', href: '/mentee-onboarding' },
-      ].map(({ label, href }) => (
-        <Link key={label} href={href} style={{ color: label === 'mentors' ? '#60a5fa' : '#94a3b8', textDecoration: 'none' }}>
-          {label}
-        </Link>
-      ))}
-      <Link href="/mentor-onboarding" style={{ color: '#94a3b8', textDecoration: 'none' }}>
-        become a mentor
-      </Link>
-    </nav>
-  )
-}
-
 function Avatar({ name, photoUrl }: { name: string; photoUrl?: string }) {
   const initials = name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
   if (photoUrl) {
@@ -236,62 +210,67 @@ function MatchCard({
   const fullName = `${mentor.first_name} ${mentor.last_name}`
 
   return (
-    <div style={{
-      background: featured ? '#111827' : '#0f1117',
-      border: `1px solid ${featured ? '#1e3a5f' : '#1e2330'}`,
-      borderRadius: '12px',
-      padding: featured ? '1.5rem' : '1.25rem',
-      display: 'flex',
-      gap: '1.25rem',
-      alignItems: 'flex-start',
-    }}>
-      <Avatar name={fullName} photoUrl={mentor.photo_url} />
+    <div
+      className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5"
+      style={{
+        background: featured ? '#111827' : '#0f1117',
+        border: `1px solid ${featured ? '#1e3a5f' : '#1e2330'}`,
+        borderRadius: '12px',
+        padding: featured ? '1.5rem' : '1.25rem',
+      }}
+    >
+      <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-5">
+        <Avatar name={fullName} photoUrl={mentor.photo_url} />
 
-      {rank && (
-        <div style={{
-          flexShrink: 0, width: '2rem', height: '2rem', borderRadius: '50%',
-          background: rank === 1 ? '#1a2744' : '#1a1f2e',
-          border: `1px solid ${rank === 1 ? '#3b82f6' : '#2a3040'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.8rem', fontWeight: 700, color: rank === 1 ? '#60a5fa' : '#94a3b8',
-        }}>
-          #{rank}
-        </div>
-      )}
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
-          <span style={{ fontWeight: 700, fontSize: featured ? '1.1rem' : '1rem' }}>
-            {fullName}{mentor.credentials ? `, ${mentor.credentials}` : ''}
-          </span>
-          <EpisodeLink mentor={mentor} />
-        </div>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: mentor.bio ? '0.5rem' : '0.75rem' }}>
-          {mentor.current_role}{mentor.institution ? ` · ${mentor.institution}` : ''}
-        </p>
-        {mentor.bio && (
-          <p style={{ color: '#cbd5e1', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>
-            {mentor.bio}
-          </p>
+        {rank && (
+          <div style={{
+            flexShrink: 0, width: '2rem', height: '2rem', borderRadius: '50%',
+            background: rank === 1 ? '#1a2744' : '#1a1f2e',
+            border: `1px solid ${rank === 1 ? '#3b82f6' : '#2a3040'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.8rem', fontWeight: 700, color: rank === 1 ? '#60a5fa' : '#94a3b8',
+          }}>
+            #{rank}
+          </div>
         )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-          {(Array.isArray(mentor.specialty) ? mentor.specialty : []).slice(0, 3).map(s => (
-            <span key={s} style={tagStyle('#1e2d45', '#3b82f6')}>{s}</span>
-          ))}
-          {(Array.isArray(mentor.identity) ? mentor.identity : []).slice(0, 2).map(id => (
-            <span key={id} style={tagStyle('#1e2d30', '#34d399')}>{id}</span>
-          ))}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem', minWidth: 0 }}>
+            <span style={{ fontWeight: 700, fontSize: featured ? '1.1rem' : '1rem', minWidth: 0, overflowWrap: 'anywhere' }}>
+              {fullName}{mentor.credentials ? `, ${mentor.credentials}` : ''}
+            </span>
+            <EpisodeLink mentor={mentor} />
+          </div>
+          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: mentor.bio ? '0.5rem' : '0.75rem' }}>
+            {mentor.current_role}{mentor.institution ? ` · ${mentor.institution}` : ''}
+          </p>
+          {mentor.bio && (
+            <p style={{ color: '#cbd5e1', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>
+              {mentor.bio}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {(Array.isArray(mentor.specialty) ? mentor.specialty : []).slice(0, 3).map(s => (
+              <span key={s} style={tagStyle('#1e2d45', '#3b82f6')}>{s}</span>
+            ))}
+            {(Array.isArray(mentor.identity) ? mentor.identity : []).slice(0, 2).map(id => (
+              <span key={id} style={tagStyle('#1e2d30', '#34d399')}>{id}</span>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, textAlign: 'right' }}>
-        <div style={{ fontSize: featured ? '1.5rem' : '1.25rem', fontWeight: 800, color: matchColor, marginBottom: '0.25rem' }}>
-          {mentor.matchPercent}%
+      <div className="flex w-full shrink-0 items-center justify-between sm:w-auto sm:flex-col sm:items-end sm:justify-start">
+        <div className="text-left sm:text-right">
+          <div style={{ fontSize: featured ? '1.5rem' : '1.25rem', fontWeight: 800, color: matchColor, marginBottom: '0.25rem' }}>
+            {mentor.matchPercent}%
+          </div>
+          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>match</div>
         </div>
-        <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '1rem' }}>match</div>
         <button
           onClick={onRequest}
           disabled={requested}
+          className="sm:mt-4"
           style={{
             display: 'inline-block',
             background: requested ? '#0d2010' : featured ? '#60a5fa' : '#1a2744',
