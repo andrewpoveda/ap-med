@@ -2,7 +2,7 @@
 import { SPECIALTIES } from "@/data/specialties"
 import { useState, useEffect, useRef } from 'react'
 import { Turnstile } from "@marsidev/react-turnstile"
-import { useSearchParams, usePathname, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 type MenteeOnboardingFormData = {
@@ -51,7 +51,6 @@ const OTHER_SPECIALTY = 'Other'
 const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)
 
 export default function MenteeOnboardingForm() {
-  const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
@@ -222,35 +221,6 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
       color: 'white',
       fontFamily: 'inherit',
     }}>
-      <nav style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '2rem',
-        padding: '1.25rem 2rem',
-        borderBottom: '1px solid #1e2330',
-        fontSize: '0.9rem',
-      }}>
-        {['home', 'about', 'AP MED', 'blog', 'mentors'].map(item => {
-          const href = item === 'home' ? '/' : item === 'AP MED' ? '/projects' : item === 'mentors' ? '/mentee-onboarding' : `/${item}`
-          const isActive = href === pathname
-          return (
-            <Link key={item} href={href}
-              style={{
-                color: isActive ? '#60a5fa' : '#94a3b8',
-                textDecoration: 'none'
-              }}>
-              {item}
-            </Link>
-          )
-        })}
-        <Link href="/mentor-onboarding" style={{
-          color: pathname === '/mentor-onboarding' ? '#60a5fa' : '#94a3b8',
-          textDecoration: 'none'
-        }}>
-          become a mentor
-        </Link>
-      </nav>
-
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
         <p style={{ color: '#60a5fa', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
           AP MED MENTORS
