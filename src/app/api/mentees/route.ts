@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 
 function getSupabaseAdmin() {
-  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -32,12 +32,12 @@ export async function POST(request: Request) {
       full_name: data.full_name,
       email: data.email,
       school: data.school,
-      identity: data.identity, // ARRAY
-      interests: data.interests, // ARRAY
-      preferred_identity: data.preferred_identity,
+      identity: data.identity, // ARRAY — the mentee's OWN background (was mis-bound to preferred_identity)
+      interests: data.interests, // ARRAY — specialties of interest
       current_stage: data.current_stage,
       help_with: data.help_with, // ARRAY
       availability: data.availability,
+      linkedin_url: data.linkedin_url || "",
       notes: data.notes || "",
     },
   ]);
