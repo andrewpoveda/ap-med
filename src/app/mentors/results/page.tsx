@@ -13,7 +13,7 @@ type MenteeData = {
   current_stage: string
   interests: string[]
   help_with: string[]
-  preferred_identity: string[]
+  identity: string[]
   notes?: string
   linkedin_url?: string
 }

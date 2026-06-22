@@ -20,15 +20,15 @@ type MenteeInput = {
   school: string
   current_stage: string
   interests: string[]
-  preferred_identity: string[]
+  identity: string[]
   help_with: string[]
   notes?: string
   linkedin_url?: string
 }
 
 const WEIGHTS = {
-  specialty: 0.40,
-  identity: 0.35,
+  identity: 0.40,
+  specialty: 0.35,
   canHelpWith: 0.25,
 }
 
@@ -45,7 +45,7 @@ function scoreOverlap(menteePrefs: string[], mentorTags: string[]): number {
 
 function scoreMentor(mentor: Mentor, mentee: MenteeInput): number {
   const specialtyScore = scoreOverlap(mentee.interests, Array.isArray(mentor.specialty) ? mentor.specialty : [])
-  const identityScore = scoreOverlap(mentee.preferred_identity, Array.isArray(mentor.identity) ? mentor.identity : [])
+  const identityScore = scoreOverlap(mentee.identity, Array.isArray(mentor.identity) ? mentor.identity : [])
   const helpScore = scoreOverlap(mentee.help_with, Array.isArray(mentor.can_help_with) ? mentor.can_help_with : [])
 
   const raw =

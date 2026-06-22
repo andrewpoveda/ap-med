@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { SPECIALTIES } from "@/data/specialties";
 
 type FormData = {
   firstName: string;
@@ -49,40 +50,9 @@ const STAGE_OPTIONS = [
   "Faculty / Dean / Administrator",
 ];
 
-const SPECIALTY_OPTIONS = [
-  "Internal Medicine",
-  "General Surgery",
-  "Pediatrics",
-  "OB-GYN",
-  "Psychiatry",
-  "Neurology",
-  "Gastroenterology",
-  "Nephrology",
-  "Rheumatology",
-  "Cardiology",
-  "Orthopedics",
-  "Pulmonary",
-  "Critical Care",
-  "Ophthalmology",
-  "ENT",
-  "Endocrinology",
-  "Dermatology",
-  "Emergency Medicine",
-  "Family Medicine",
-  "Radiology",
-  "Anesthesiology",
-  "Urology",
-  "Hematology/Oncology",
-  "PM&R / Physical Medicine",
-  "Pathology",
-  "Radiation Oncology",
-  "Neurosurgery",
-  "Plastic Surgery",
-  "Cardiothoracic Surgery",
-  "Interventional Radiology",
-  "Not yet decided",
-  "Other (not listed)",
-];
+// Specialty options come from the shared canonical list (src/data/specialties.ts)
+// so the mentor + mentee forms emit identical strings — see SPECIALTIES import.
+const SPECIALTY_OPTIONS = SPECIALTIES;
 
 const HELP_OPTIONS = [
   "General guidance",
@@ -208,9 +178,9 @@ export default function MentorOnboardingPage() {
     setForm((f) => {
       const arr = f[field] as string[];
       const newArr = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
-      // If removing the 'Other (not listed)' specialty, clear the free-text field
+      // If removing the 'Other' specialty, clear the free-text field
       if (field === "specialties") {
-        return { ...f, [field]: newArr, ...(newArr.includes("Other (not listed)") ? {} : { specialtyOther: "" }) };
+        return { ...f, [field]: newArr, ...(newArr.includes("Other") ? {} : { specialtyOther: "" }) };
       }
       return { ...f, [field]: newArr };
     });
@@ -426,7 +396,7 @@ export default function MentorOnboardingPage() {
                 <CheckItem key={opt} name="specialties" label={opt} checked={form.specialties.includes(opt)} onChange={() => toggleArray("specialties", opt)} />
               ))}
             </div>
-            {form.specialties.includes("Other (not listed)") && (
+            {form.specialties.includes("Other") && (
               <div className="mt-4">
                 <Field label="Please specify your specialty or subspecialty" optional>
                   <input

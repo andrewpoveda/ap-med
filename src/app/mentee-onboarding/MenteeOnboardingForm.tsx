@@ -14,7 +14,6 @@ type MenteeOnboardingFormData = {
   identity: string[]
   interests: string[]
   help_with: string[]
-  preferred_identity: string[]
   other_interest: string
   availability: string
   linkedin_url: string
@@ -61,10 +60,9 @@ export default function MenteeOnboardingForm() {
   school: '',
   current_stage: '',
   requested_mentor: mentorFromUrl,
-  identity: [],
-  interests: [],          // specialties
+  identity: [],           // the mentee's OWN background (drives identity match + email resonance)
+  interests: [],          // specialties they're interested in
   help_with: [],          // help needed
-  preferred_identity: [],
   other_interest: '',
   availability: '',
   linkedin_url: '',
@@ -82,7 +80,7 @@ export default function MenteeOnboardingForm() {
     }
   }, [mentorFromUrl])
 
-const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'preferred_identity', value: string) => {
+const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: string) => {
     setForm((prev) => {
       const arr = prev[field] || []
       return arr.includes(value)
@@ -142,7 +140,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
           school: form.school,
           current_stage: form.current_stage,
           interests: form.interests,
-          preferred_identity: form.preferred_identity,
+          identity: form.identity,
           help_with: form.help_with,
           notes: form.notes,
           linkedin_url: form.linkedin_url,
@@ -167,7 +165,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
         school: form.school,
         current_stage: form.current_stage,
         interests: form.interests,
-        preferred_identity: form.preferred_identity,
+        identity: form.identity,
         help_with: form.help_with,
         notes: form.notes,
         linkedin_url: form.linkedin_url,
@@ -394,11 +392,11 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with' | 'prefe
 
 <div style={checkGridStyle}>
   {IDENTITIES.map(item => (
-    <label key={item} style={checkCardStyle(form.preferred_identity.includes(item))}>
+    <label key={item} style={checkCardStyle(form.identity.includes(item))}>
       <input
         type="checkbox"
-        checked={form.preferred_identity.includes(item)}
-        onChange={() => toggleArrayField('preferred_identity', item)}
+        checked={form.identity.includes(item)}
+        onChange={() => toggleArrayField('identity', item)}
         style={{ accentColor: '#60a5fa' }}
       />
       {item}
