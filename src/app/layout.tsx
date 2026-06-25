@@ -5,8 +5,8 @@ import Navigation from "@/components/Navigation";
 import PostHogProvider from "@/components/PostHogProvider";
 
 export const metadata: Metadata = {
-  title: "Andrew Poveda | Portfolio",
-  description: "Montclair State University freshman studying Molecular Biology."
+  title: "AP MED",
+  description: "Free mentorship for underrepresented pre-med students. Find a mentor matched to your identity, specialty, and goals.",
 };
 
 export default function RootLayout({
