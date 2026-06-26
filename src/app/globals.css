@@ -11,6 +11,10 @@
   color-scheme: light;
 }
 
+html {
+  background-color: var(--global-bg-color);
+}
+
 body {
   font-family: 'Inter', 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
   color: var(--global-text-color);
