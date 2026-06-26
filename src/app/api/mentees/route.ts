@@ -36,7 +36,6 @@ export async function POST(request: Request) {
       interests: data.interests, // ARRAY — specialties of interest
       current_stage: data.current_stage,
       help_with: data.help_with, // ARRAY
-      availability: data.availability,
       linkedin_url: data.linkedin_url || "",
       notes: data.notes || "",
     },
