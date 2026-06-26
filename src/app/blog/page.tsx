@@ -65,14 +65,14 @@ export default function Blog() {
       <section className="mt-16">
         <button
           onClick={() => setSelectedPost(null)}
-          className="text-sm text-neutral-400 hover:text-white transition-colors mb-6"
+          className="text-sm text-[#6b6b6b] hover:text-[#1a1a2e] transition-colors mb-6"
         >
           ← Back to posts
         </button>
         <article className="max-w-2xl">
-          <h1 className="text-3xl font-bold text-white mb-2">{post.title}</h1>
-          <time className="text-sm text-neutral-500 block mb-6">{post.date}</time>
-          <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+          <h1 className="text-3xl font-bold text-[#1a1a2e] mb-2">{post.title}</h1>
+          <time className="text-sm text-[#6b6b6b] block mb-6">{post.date}</time>
+          <p className="text-[#4a4a5a] leading-relaxed whitespace-pre-wrap">{post.content}</p>
         </article>
       </section>
     );
@@ -80,18 +80,18 @@ export default function Blog() {
 
   return (
     <section className="mt-16">
-      <h2 className="text-2xl font-bold mb-6 text-white">blog</h2>
+      <h2 className="text-2xl font-bold mb-6 text-[#1a1a2e]">blog</h2>
       <div className="space-y-4">
         {BLOG_POSTS.map((post) => (
           <button
             key={post.id}
             onClick={() => setSelectedPost(post.id)}
-            className="w-full text-left flex flex-col gap-2 pb-4 px-4 py-3 rounded-lg border border-gray-700 hover:border-[var(--global-theme-color)] hover:bg-gray-800 transition-all"
+            className="w-full text-left flex flex-col gap-2 pb-4 px-4 py-3 rounded-lg border border-[#e8e4dc] bg-white hover:border-[var(--global-theme-color)] hover:bg-[#f7f3ec] transition-all"
           >
-            <h3 className="text-lg font-semibold text-white">{post.title}</h3>
-            <time className="text-xs text-neutral-500">{post.date}</time>
-            <p className="text-sm text-neutral-400 line-clamp-2">{post.preview}</p>
-            <span className="text-xs text-neutral-500 mt-1">Read more →</span>
+            <h3 className="text-lg font-semibold text-[#1a1a2e]">{post.title}</h3>
+            <time className="text-xs text-[#6b6b6b]">{post.date}</time>
+            <p className="text-sm text-[#6b6b6b] line-clamp-2">{post.preview}</p>
+            <span className="text-xs text-[#6b6b6b] mt-1">Read more →</span>
           </button>
         ))}
       </div>

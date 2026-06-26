@@ -5,11 +5,11 @@ import Link from "next/link";
 export default function ProjectsPage() {
   return (
     <div className="space-y-10">
-      <h1 className="text-4xl font-bold text-black dark:text-white mb-6">
+      <h1 className="text-4xl font-bold text-[#1a1a2e] mb-6">
         AP MED hub
       </h1>
 
-      <p className="text-lg text-black dark:text-neutral-300 leading-relaxed max-w-2xl">
+      <p className="text-lg text-[#4a4a5a] leading-relaxed max-w-2xl">
         This page highlights the core parts of AP MED — the stories, the community,
         the partnerships, and the resources built to support Latino and
         underrepresented students in medicine.
@@ -21,12 +21,12 @@ export default function ProjectsPage() {
           href="https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB?si=92213571806748aa"
           target="_blank"
           rel="noopener noreferrer"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all block"
+          className="p-6 rounded-lg border border-[#e8e4dc] bg-white hover:border-[var(--global-theme-color)] hover:shadow-md transition-all block"
         >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-[#1a1a2e] mb-2">
             Episodes
           </h2>
-          <p className="text-black dark:text-neutral-300">
+          <p className="text-[#4a4a5a]">
             Conversations with students, residents, physicians, and leaders
             sharing their journeys in medicine.
           </p>
@@ -35,12 +35,12 @@ export default function ProjectsPage() {
         {/* Directory */}
         <Link
           href="/mentors"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
+          className="p-6 rounded-lg border border-[#e8e4dc] bg-white hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-[#1a1a2e] mb-2">
             Directory
           </h2>
-          <p className="text-black dark:text-neutral-300">
+          <p className="text-[#4a4a5a]">
             A growing mentorship directory of AP MED guests (coming soon).
           </p>
         </Link>
@@ -48,12 +48,12 @@ export default function ProjectsPage() {
         {/* Community */}
         <Link
           href="/community"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
+          className="p-6 rounded-lg border border-[#e8e4dc] bg-white hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-[#1a1a2e] mb-2">
             Community
           </h2>
-          <p className="text-black dark:text-neutral-300">
+          <p className="text-[#4a4a5a]">
             Stories, updates, and ways to get involved with the AP MED mission.
           </p>
         </Link>
@@ -61,12 +61,12 @@ export default function ProjectsPage() {
         {/* Partners */}
         <Link
           href="/partners"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
+          className="p-6 rounded-lg border border-[#e8e4dc] bg-white hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-[#1a1a2e] mb-2">
             Partners
           </h2>
-          <p className="text-black dark:text-neutral-300">
+          <p className="text-[#4a4a5a]">
             Collaborations and organizations supporting AP MED, including LMSA‑NE.
           </p>
         </Link>
@@ -74,12 +74,12 @@ export default function ProjectsPage() {
         {/* Resources */}
         <Link
           href="/resources"
-          className="p-6 rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
+          className="p-6 rounded-lg border border-[#e8e4dc] bg-white hover:border-[var(--global-theme-color)] hover:shadow-md transition-all"
         >
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-[#1a1a2e] mb-2">
             Resources
           </h2>
-          <p className="text-black dark:text-neutral-300">
+          <p className="text-[#4a4a5a]">
             Guides, tools, and support for premeds and medical students.
           </p>
         </Link>

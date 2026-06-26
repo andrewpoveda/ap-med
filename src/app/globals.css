@@ -1,23 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --global-theme-color: #60a5fa;
-  --global-text-color: #f9fafb;
-  --global-bg-color: #111827;
-  --global-card-bg: #1f2937;
-  --global-border-color: #374151;
-  --global-hover-color: #1f2937;
+  --global-theme-color: #c8a96e;
+  --global-text-color: #1a1a2e;
+  --global-muted-color: #6b6b6b;
+  --global-bg-color: #faf8f4;
+  --global-card-bg: #ffffff;
+  --global-border-color: #e8e4dc;
+  --global-hover-color: #f0ece4;
+  color-scheme: light;
+}
+
+html {
+  background-color: var(--global-bg-color);
 }
 
 body {
-  font-family: 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
   color: var(--global-text-color);
   background-color: var(--global-bg-color);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 * {
-  font-family: 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 a:not([class*="text-"]) {
@@ -35,24 +54,12 @@ a:not([class*="text-"]):hover {
   color: var(--global-text-color);
 }
 
-.dark .prose {
-  color: var(--global-text-color);
-}
-
 .prose h1, .prose h2, .prose h3 {
   color: var(--global-text-color);
   font-weight: 700;
 }
 
-.dark .prose h1, .dark .prose h2, .dark .prose h3 {
-  color: var(--global-text-color);
-}
-
 .prose p {
   margin-bottom: 1.25em;
-  color: var(--global-text-color);
-}
-
-.dark .prose p {
   color: var(--global-text-color);
 }

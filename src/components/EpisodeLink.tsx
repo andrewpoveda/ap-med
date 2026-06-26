@@ -36,7 +36,7 @@ export default function EpisodeLink({ mentor }: Props) {
           mentor_name: fullName,
         });
       }}
-      className="inline-flex items-center justify-center w-7 h-7 ml-2 align-middle rounded-full text-neutral-500 hover:text-neutral-100 hover:bg-neutral-700/60 transition-colors flex-shrink-0"
+      className="inline-flex items-center justify-center w-7 h-7 ml-2 align-middle rounded-full text-[#9a948a] hover:text-[#1a1a2e] hover:bg-[#f0ece4] transition-colors flex-shrink-0"
     >
       <Headphones size={14} />
     </a>

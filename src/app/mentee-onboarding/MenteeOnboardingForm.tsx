@@ -185,24 +185,24 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0f1117',
+        background: '#faf8f4',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         fontFamily: 'inherit',
-        color: 'white',
+        color: '#1a1a2e',
         textAlign: 'center',
         padding: '2rem',
       }}>
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
         <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>You're on the list</h1>
-        <p style={{ color: '#94a3b8', maxWidth: '480px', lineHeight: 1.6 }}>
+        <p style={{ color: '#6b6b6b', maxWidth: '480px', lineHeight: 1.6 }}>
           Thanks for reaching out through AP MED Mentors. Andrew will review your request and connect you with your mentor — usually within a few days.
         </p>
         <Link href="/mentors" style={{
           marginTop: '2rem',
-          color: '#60a5fa',
+          color: '#c8a96e',
           textDecoration: 'none',
           fontSize: '0.9rem',
         }}>
@@ -215,32 +215,32 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0f1117',
-      color: 'white',
+      background: '#faf8f4',
+      color: '#1a1a2e',
       fontFamily: 'inherit',
     }}>
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-        <p style={{ color: '#60a5fa', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+        <p style={{ color: '#c8a96e', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
           AP MED MENTORS
         </p>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
           Request a mentor
         </h1>
-        <p style={{ color: '#94a3b8', marginBottom: '2.5rem', lineHeight: 1.6 }}>
+        <p style={{ color: '#6b6b6b', marginBottom: '2.5rem', lineHeight: 1.6 }}>
           Fill out this short form and we'll connect you with the right mentor. Takes about 3–5 minutes.
         </p>
 
         {testMode && (
-          <div style={{ marginBottom: '2rem', padding: '0.75rem 1rem', background: '#2a2410', border: '1px solid #a16207', borderRadius: '8px', color: '#fde68a', fontSize: '0.85rem', lineHeight: 1.5 }}>
+          <div style={{ marginBottom: '2rem', padding: '0.75rem 1rem', background: '#fdf6e3', border: '1px solid #e0c060', borderRadius: '8px', color: '#8a6d1f', fontSize: '0.85rem', lineHeight: 1.5 }}>
             🧪 <strong>Test mode</strong> — your submission will still be saved, but <strong>no email will be sent</strong> to the matched mentor.
           </div>
         )}
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
 
         {mentorFromUrl && (
-          <div style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#1a1f2e', borderRadius: '8px', border: '1px solid #2a3040' }}>
-            <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Requesting mentorship from</p>
+          <div style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e8e4dc' }}>
+            <p style={{ color: '#6b6b6b', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Requesting mentorship from</p>
             <p style={{ fontWeight: 600, fontSize: '1rem' }}>{mentorFromUrl}</p>
           </div>
         )}
@@ -296,7 +296,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         </div>
 
         <div style={{ marginBottom: '2.5rem' }}>
-          <label style={labelStyle}>LinkedIn URL <span style={{ color: '#64748b' }}>(optional)</span></label>
+          <label style={labelStyle}>LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span></label>
           <input
             style={inputStyle}
             placeholder="https://linkedin.com/in/yourname"
@@ -305,10 +305,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           />
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
 
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Your current stage *</h2>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Where are you in your pre-med journey?</p>
+        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Where are you in your pre-med journey?</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2.5rem' }}>
           {STAGES.map(stage => (
@@ -319,17 +319,17 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 value={stage}
                 checked={form.current_stage === stage}
                 onChange={() => setForm(prev => ({ ...prev, current_stage: stage }))}
-                style={{ accentColor: '#60a5fa' }}
+                style={{ accentColor: '#c8a96e' }}
               />
               {stage}
             </label>
           ))}
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
 
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>What do you need help with?</h2>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Select all that apply.</p>
+        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Select all that apply.</p>
 
         <div style={checkGridStyle}>
           {HELP_WITH.map(item => (
@@ -338,18 +338,18 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
       type="checkbox"
       checked={form.help_with.includes(item)}
       onChange={() => toggleArrayField('help_with', item)}
-      style={{ accentColor: '#60a5fa' }}
+      style={{ accentColor: '#c8a96e' }}
     />
     {item}
   </label>
 ))}
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
 <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
   Your medical interests
 </h2>
-<p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
+<p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
   Select all specialties you're interested in.
 </p>
 
@@ -360,7 +360,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         type="checkbox"
         checked={form.interests.includes(spec)}
         onChange={() => handleInterestToggle(spec)}
-        style={{ accentColor: '#60a5fa' }}
+        style={{ accentColor: '#c8a96e' }}
       />
       {spec}
     </label>
@@ -388,7 +388,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         )}
 
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Identity / background</h2>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
+        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
 
 <div style={checkGridStyle}>
   {IDENTITIES.map(item => (
@@ -397,17 +397,17 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         type="checkbox"
         checked={form.identity.includes(item)}
         onChange={() => toggleArrayField('identity', item)}
-        style={{ accentColor: '#60a5fa' }}
+        style={{ accentColor: '#c8a96e' }}
       />
       {item}
     </label>
   ))}
 </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2.5rem' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
 
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Availability <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>When are you generally free to meet?</p>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Availability <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
+        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>When are you generally free to meet?</p>
 
         <div style={checkGridStyle}>
           {AVAILABILITY.map(item => (
@@ -417,17 +417,17 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 name="availability"
                 checked={form.availability === item}
                 onChange={() => setForm(prev => ({ ...prev, availability: item }))}
-                style={{ accentColor: '#60a5fa' }}
+                style={{ accentColor: '#c8a96e' }}
               />
               {item}
             </label>
           ))}
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', margin: '2.5rem 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
 
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Anything else? <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
-        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Why do you want to connect with this mentor? Any specific goals or questions?</p>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Anything else? <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
+        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Why do you want to connect with this mentor? Any specific goals or questions?</p>
 
         <textarea
           style={{
@@ -441,15 +441,28 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
         />
 
-        <hr style={{ border: 'none', borderTop: '1px solid #1e2330', margin: '2.5rem 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
 
         <div style={{ marginBottom: '1.5rem' }}>
           <Turnstile
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
             onSuccess={(token) => { turnstileToken.current = token; }}
             onExpire={() => { turnstileToken.current = null; }}
-            options={{ theme: "dark" }}
+            options={{ theme: "light" }}
           />
+        </div>
+
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1rem 1.25rem',
+          background: '#f7f3ec',
+          border: '1px solid #e8e4dc',
+          borderRadius: '8px',
+          color: '#6b6b6b',
+          fontSize: '0.8rem',
+          lineHeight: 1.6,
+        }}>
+          By submitting this form, you agree to engage with your mentor respectfully and professionally. AP MED connects students and mentors in good faith and is not responsible for the outcomes of individual mentorship relationships. Any inappropriate or unprofessional conduct may result in removal from the platform.
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -457,8 +470,8 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
             onClick={handleSubmit}
             disabled={loading}
             style={{
-              background: loading ? '#2a3040' : '#60a5fa',
-              color: loading ? '#64748b' : '#0f1117',
+              background: loading ? '#e8e4dc' : '#c8a96e',
+              color: loading ? '#9a948a' : '#1a1a2e',
               border: 'none',
               borderRadius: '8px',
               padding: '0.75rem 2rem',
@@ -479,17 +492,17 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '0.875rem',
-  color: '#cbd5e1',
+  color: '#4a4a5a',
   marginBottom: '0.4rem',
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  background: '#1a1f2e',
-  border: '1px solid #2a3040',
+  background: '#ffffff',
+  border: '1px solid #e8e4dc',
   borderRadius: '8px',
   padding: '0.75rem 1rem',
-  color: 'white',
+  color: '#1a1a2e',
   fontSize: '0.95rem',
   outline: 'none',
   boxSizing: 'border-box',
@@ -507,12 +520,12 @@ const radioCardStyle = (selected: boolean): React.CSSProperties => ({
   alignItems: 'center',
   gap: '0.75rem',
   padding: '0.75rem 1rem',
-  background: selected ? '#1a2744' : '#1a1f2e',
-  border: `1px solid ${selected ? '#3b82f6' : '#2a3040'}`,
+  background: selected ? '#f5efe2' : '#ffffff',
+  border: `1px solid ${selected ? '#c8a96e' : '#e8e4dc'}`,
   borderRadius: '8px',
   cursor: 'pointer',
   fontSize: '0.95rem',
-  color: selected ? '#ffffff' : '#cbd5e1',
+  color: selected ? '#ffffff' : '#4a4a5a',
   transition: 'all 0.15s',
 })
 
@@ -521,11 +534,11 @@ const checkCardStyle = (selected: boolean): React.CSSProperties => ({
   alignItems: 'center',
   gap: '0.75rem',
   padding: '0.75rem 1rem',
-  background: selected ? '#1a2744' : '#1a1f2e',
-  border: `1px solid ${selected ? '#3b82f6' : '#2a3040'}`,
+  background: selected ? '#f5efe2' : '#ffffff',
+  border: `1px solid ${selected ? '#c8a96e' : '#e8e4dc'}`,
   borderRadius: '8px',
   cursor: 'pointer',
   fontSize: '0.875rem',
-  color: selected ? '#ffffff' : '#cbd5e1',
+  color: selected ? '#ffffff' : '#4a4a5a',
   transition: 'all 0.15s',
 })

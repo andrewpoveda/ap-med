@@ -92,8 +92,8 @@ const CheckItem = ({
   <label
     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-all ${
       checked
-        ? "border-[var(--global-theme-color)] bg-blue-950 text-blue-200"
-        : "border-gray-700 text-neutral-300 hover:border-gray-500"
+        ? "border-[var(--global-theme-color)] bg-[#f5efe2] text-[#8a6a2f]"
+        : "border-[#e8e4dc] text-[#4a4a5a] hover:border-[#c8a96e]"
     }`}
   >
     <input
@@ -112,8 +112,8 @@ const RadioItem = ({ label, name, selected, onChange }: { label: string; name: s
   <label
     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer text-sm transition-all ${
       selected
-        ? "border-[var(--global-theme-color)] bg-blue-950 text-blue-200"
-        : "border-gray-700 text-neutral-300 hover:border-gray-500"
+        ? "border-[var(--global-theme-color)] bg-[#f5efe2] text-[#8a6a2f]"
+        : "border-[#e8e4dc] text-[#4a4a5a] hover:border-[#c8a96e]"
     }`}
   >
     <input
@@ -130,13 +130,13 @@ const RadioItem = ({ label, name, selected, onChange }: { label: string; name: s
 
 const Field = ({ label, error, optional, hint, children }: { label: string; error?: string; optional?: boolean; hint?: string; children: React.ReactNode }) => (
   <div className="flex flex-col gap-1">
-    <label className="text-sm font-medium text-neutral-200">
+    <label className="text-sm font-medium text-[#1a1a2e]">
       {label}
-      {optional && <span className="text-neutral-500 font-normal ml-1">(optional)</span>}
+      {optional && <span className="text-[#9a948a] font-normal ml-1">(optional)</span>}
     </label>
-    {hint && <p className="text-xs text-neutral-500">{hint}</p>}
+    {hint && <p className="text-xs text-[#9a948a]">{hint}</p>}
     {children}
-    {error && <p className="text-xs text-red-400">{error}</p>}
+    {error && <p className="text-xs text-red-600">{error}</p>}
   </div>
 );
 
@@ -270,14 +270,14 @@ export default function MentorOnboardingPage() {
   const handleBack = () => { setSection((s) => s - 1); window.scrollTo(0, 0); };
 
   const themeBlue = "var(--global-theme-color)";
-  const inputClass = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[var(--global-theme-color)] transition-colors";
+  const inputClass = "w-full bg-white border border-[#e8e4dc] rounded-lg px-3 py-2 text-sm text-[#1a1a2e] placeholder-[#9a948a] focus:outline-none focus:border-[var(--global-theme-color)] transition-colors";
 
   if (submitted) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
         <div className="text-5xl mb-6">✓</div>
-        <h2 className="text-3xl font-bold text-white mb-4">You&apos;re on the list</h2>
-        <p className="text-neutral-400 leading-relaxed">
+        <h2 className="text-3xl font-bold text-[#1a1a2e] mb-4">You&apos;re on the list</h2>
+        <p className="text-[#6b6b6b] leading-relaxed">
           Thanks for joining AP MED Mentors. Andrew will review your submission and reach out once your profile is live — usually within a few days.
         </p>
       </div>
@@ -288,10 +288,10 @@ export default function MentorOnboardingPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       {/* Header */}
-      <div className="mb-8 border-b border-gray-700 pb-6">
-        <p className="text-xs tracking-widest uppercase text-neutral-500 mb-1">AP MED Mentors</p>
-        <h1 className="text-3xl font-bold text-white mb-2">Mentor onboarding</h1>
-        <p className="text-sm text-neutral-400">
+      <div className="mb-8 border-b border-[#e8e4dc] pb-6">
+        <p className="text-xs tracking-widest uppercase text-[#9a948a] mb-1">AP MED Mentors</p>
+        <h1 className="text-3xl font-bold text-[#1a1a2e] mb-2">Mentor onboarding</h1>
+        <p className="text-sm text-[#6b6b6b]">
           Join a free mentorship directory connecting pre-med students with healthcare professionals. Takes about 5–10 minutes.
         </p>
       </div>
@@ -302,18 +302,18 @@ export default function MentorOnboardingPage() {
           <div
             key={i}
             className="h-1 flex-1 rounded-full transition-all"
-            style={{ background: i <= section ? themeBlue : "#374151", opacity: i < section ? 0.4 : 1 }}
+            style={{ background: i <= section ? themeBlue : "#e8e4dc", opacity: i < section ? 0.4 : 1 }}
           />
         ))}
       </div>
-      <p className="text-xs text-neutral-500 mb-8">Section {section + 1} of 4 — {SECTION_LABELS[section]}</p>
+      <p className="text-xs text-[#9a948a] mb-8">Section {section + 1} of 4 — {SECTION_LABELS[section]}</p>
 
       {/* Section 0: Basic Info */}
       {section === 0 && (
         <div className="space-y-5">
           <div>
-            <h2 className="text-xl font-semibold text-white mb-1">Basic info</h2>
-            <p className="text-sm text-neutral-400 mb-6">This is what will appear on your public profile.</p>
+            <h2 className="text-xl font-semibold text-[#1a1a2e] mb-1">Basic info</h2>
+            <p className="text-sm text-[#6b6b6b] mb-6">This is what will appear on your public profile.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name" error={errors.firstName}>
@@ -345,8 +345,8 @@ export default function MentorOnboardingPage() {
       {section === 1 && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold text-white mb-1">Your background</h2>
-            <p className="text-sm text-neutral-400 mb-6">Help students understand who you are and why you want to mentor.</p>
+            <h2 className="text-xl font-semibold text-[#1a1a2e] mb-1">Your background</h2>
+            <p className="text-sm text-[#6b6b6b] mb-6">Help students understand who you are and why you want to mentor.</p>
           </div>
           <Field label="Bio" error={errors.bio} hint="3–5 sentences about your path to medicine and what motivates you to mentor. This appears on your public profile.">
             <textarea
@@ -358,9 +358,9 @@ export default function MentorOnboardingPage() {
             />
           </Field>
 
-          <div className="border-t border-gray-700 pt-5">
-            <p className="text-sm font-medium text-neutral-200 mb-1">Identity <span className="text-neutral-500 font-normal">(optional)</span></p>
-            <p className="text-xs text-neutral-500 mb-3">Select any that apply — helps students find mentors who share their background.</p>
+          <div className="border-t border-[#e8e4dc] pt-5">
+            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Identity <span className="text-[#9a948a] font-normal">(optional)</span></p>
+            <p className="text-xs text-[#9a948a] mb-3">Select any that apply — helps students find mentors who share their background.</p>
             <div className="grid grid-cols-2 gap-2">
               {IDENTITY_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="identity" label={opt} checked={form.identity.includes(opt)} onChange={() => toggleArray("identity", opt)} />
@@ -368,9 +368,9 @@ export default function MentorOnboardingPage() {
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-5">
-            <p className="text-sm font-medium text-neutral-200 mb-3">Your current stage</p>
-            {errors.stage && <p className="text-xs text-red-400 mb-2">{errors.stage}</p>}
+          <div className="border-t border-[#e8e4dc] pt-5">
+            <p className="text-sm font-medium text-[#1a1a2e] mb-3">Your current stage</p>
+            {errors.stage && <p className="text-xs text-red-600 mb-2">{errors.stage}</p>}
             <div className="flex flex-col gap-2">
               {STAGE_OPTIONS.map((opt) => (
                 <RadioItem key={opt} name="stage" label={opt} selected={form.stage === opt} onChange={() => setRadio("stage", opt)} />
@@ -384,13 +384,13 @@ export default function MentorOnboardingPage() {
       {section === 2 && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold text-white mb-1">How you can help</h2>
-            <p className="text-sm text-neutral-400 mb-6">Tell students what you&apos;re able to offer and how much time you have.</p>
+            <h2 className="text-xl font-semibold text-[#1a1a2e] mb-1">How you can help</h2>
+            <p className="text-sm text-[#6b6b6b] mb-6">Tell students what you&apos;re able to offer and how much time you have.</p>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-neutral-200 mb-1">Specialty <span className="text-neutral-500 font-normal">(optional)</span></p>
-            <p className="text-xs text-neutral-500 mb-3">Current or intended — select all that apply</p>
+            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Specialty <span className="text-[#9a948a] font-normal">(optional)</span></p>
+            <p className="text-xs text-[#9a948a] mb-3">Current or intended — select all that apply</p>
             <div className="grid grid-cols-2 gap-2">
               {SPECIALTY_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="specialties" label={opt} checked={form.specialties.includes(opt)} onChange={() => toggleArray("specialties", opt)} />
@@ -411,9 +411,9 @@ export default function MentorOnboardingPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-700 pt-5">
-            <p className="text-sm font-medium text-neutral-200 mb-3">What can you help mentees with?</p>
-            {errors.helpWith && <p className="text-xs text-red-400 mb-2">{errors.helpWith}</p>}
+          <div className="border-t border-[#e8e4dc] pt-5">
+            <p className="text-sm font-medium text-[#1a1a2e] mb-3">What can you help mentees with?</p>
+            {errors.helpWith && <p className="text-xs text-red-600 mb-2">{errors.helpWith}</p>}
             <div className="grid grid-cols-2 gap-2">
               {HELP_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="helpWith" label={opt} checked={form.helpWith.includes(opt)} onChange={() => toggleArray("helpWith", opt)} />
@@ -421,9 +421,9 @@ export default function MentorOnboardingPage() {
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-5">
-            <p className="text-sm font-medium text-neutral-200 mb-3">How many mentees can you take on right now?</p>
-            {errors.capacity && <p className="text-xs text-red-400 mb-2">{errors.capacity}</p>}
+          <div className="border-t border-[#e8e4dc] pt-5">
+            <p className="text-sm font-medium text-[#1a1a2e] mb-3">How many mentees can you take on right now?</p>
+            {errors.capacity && <p className="text-xs text-red-600 mb-2">{errors.capacity}</p>}
             <div className="flex flex-col gap-2">
               {CAPACITY_OPTIONS.map((opt) => (
                 <RadioItem key={opt} name="capacity" label={opt} selected={form.capacity === opt} onChange={() => setRadio("capacity", opt)} />
@@ -431,8 +431,8 @@ export default function MentorOnboardingPage() {
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-5">
-            <p className="text-sm font-medium text-neutral-200 mb-1">Preferred contact method <span className="text-neutral-500 font-normal">(optional)</span></p>
+          <div className="border-t border-[#e8e4dc] pt-5">
+            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Preferred contact method <span className="text-[#9a948a] font-normal">(optional)</span></p>
             <div className="grid grid-cols-2 gap-2 mt-3">
               {CONTACT_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="contactMethods" label={opt} checked={form.contactMethods.includes(opt)} onChange={() => toggleArray("contactMethods", opt)} />
@@ -450,11 +450,11 @@ export default function MentorOnboardingPage() {
       {section === 3 && (
         <div className="space-y-5">
           <div>
-            <h2 className="text-xl font-semibold text-white mb-1">Almost done</h2>
-            <p className="text-sm text-neutral-400 mb-6">Just a couple of final confirmations before your profile goes live.</p>
+            <h2 className="text-xl font-semibold text-[#1a1a2e] mb-1">Almost done</h2>
+            <p className="text-sm text-[#6b6b6b] mb-6">Just a couple of final confirmations before your profile goes live.</p>
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-4 space-y-1">
+          <div className="bg-[#f7f3ec] border border-[#e8e4dc] rounded-xl p-4 space-y-1">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -463,14 +463,14 @@ export default function MentorOnboardingPage() {
                 onChange={() => { setForm((f) => ({ ...f, consent1: !f.consent1 })); setErrors((e) => { const n = { ...e }; delete n.consent1; return n; }); }}
                 className="mt-0.5 accent-[var(--global-theme-color)]"
               />
-              <span className="text-sm text-neutral-300 leading-relaxed">
+              <span className="text-sm text-[#4a4a5a] leading-relaxed">
                 I agree to be listed publicly on the AP MED Mentors directory. I understand my name, role, institution, bio, and selected tags will be visible to pre-med students.
               </span>
             </label>
-            {errors.consent1 && <p className="text-xs text-red-400 pl-6">{errors.consent1}</p>}
+            {errors.consent1 && <p className="text-xs text-red-600 pl-6">{errors.consent1}</p>}
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-4">
+          <div className="bg-[#f7f3ec] border border-[#e8e4dc] rounded-xl p-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -479,8 +479,8 @@ export default function MentorOnboardingPage() {
                 onChange={() => setForm((f) => ({ ...f, consent2: !f.consent2 }))}
                 className="mt-0.5 accent-[var(--global-theme-color)]"
               />
-              <span className="text-sm text-neutral-300 leading-relaxed">
-                I&apos;m open to being a future guest on the AP MED podcast, if I haven&apos;t been already. <span className="text-neutral-500">(optional)</span>
+              <span className="text-sm text-[#4a4a5a] leading-relaxed">
+                I&apos;m open to being a future guest on the AP MED podcast, if I haven&apos;t been already. <span className="text-[#9a948a]">(optional)</span>
               </span>
             </label>
           </div>
@@ -508,21 +508,21 @@ export default function MentorOnboardingPage() {
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
             onSuccess={(token) => { turnstileToken.current = token; }}
             onExpire={() => { turnstileToken.current = null; }}
-            options={{ theme: "dark" }}
+            options={{ theme: "light" }}
           />
         </div>
       )}
 
       {/* Nav */}
-      <div className="flex justify-between items-center mt-10 pt-6 border-t border-gray-700">
+      <div className="flex justify-between items-center mt-10 pt-6 border-t border-[#e8e4dc]">
         {section > 0 ? (
-          <button onClick={handleBack} className="text-sm text-neutral-400 hover:text-white transition-colors">
+          <button onClick={handleBack} className="text-sm text-[#6b6b6b] hover:text-[#1a1a2e] transition-colors">
             ← Back
           </button>
         ) : <div />}
         <button
           onClick={handleNext}
-          className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+          className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#1a1a2e] transition-all hover:opacity-90"
           style={{ background: themeBlue }}
         >
           {section === 3 ? "Submit →" : "Continue →"}
