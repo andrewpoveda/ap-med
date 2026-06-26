@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "About AP MED | Free Pre-Med Mentorship Platform",
+  description:
+    "AP MED is a free mentorship platform and podcast for underrepresented pre-med students, founded by Andrew Poveda.",
+};
 
 export default function AboutPage() {
   return (
@@ -18,16 +25,16 @@ export default function AboutPage() {
         </div>
         <div className="flex-1">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-black dark:text-white">
-            Andrew Poveda
+            About AP MED
           </h1>
           <p className="text-lg text-black dark:text-neutral-300 mb-4">
-            Founder & Host of AP MED
+            Founded & hosted by Andrew Poveda
           </p>
           <div className="space-y-2 text-black dark:text-neutral-400">
-            <p>Montclair State University/Rutgers NJMS</p>
+            <p>Montclair State University / Rutgers NJMS</p>
             <p>NYC Metropolitan Area</p>
             <p className="pt-2">
-              Reach me at{" "}
+              Contact us at{" "}
               <a
                 href="mailto:apmedpodcast@gmail.com"
                 className="text-[var(--global-theme-color)] hover:underline"
@@ -39,26 +46,10 @@ export default function AboutPage() {
         </div>
       </div>
 
-      {/* About Section */}
-      <section>
-        <p className="text-lg leading-relaxed text-black dark:text-neutral-300 mb-6">
-          I&apos;m a passionate premed student and founder of AP MED — a mentorship and storytelling platform amplifying underrepresented voices in medicine. You can learn more about my work on{" "}
-          <a
-            href="https://linkedin.com/in/andrew-poveda"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[var(--global-theme-color)] hover:underline"
-          >
-            LinkedIn
-          </a>
-          .
-        </p>
-      </section>
-
       {/* AP MED Section */}
       <section>
         <h2 className="text-3xl font-bold mb-6 text-black dark:text-white">
-          About AP MED
+          Our mission
         </h2>
         <div className="prose max-w-none">
           <p className="text-lg text-black dark:text-neutral-300 leading-relaxed mb-6">

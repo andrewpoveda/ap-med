@@ -452,6 +452,19 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           />
         </div>
 
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1rem 1.25rem',
+          background: '#161b27',
+          border: '1px solid #2a3040',
+          borderRadius: '8px',
+          color: '#94a3b8',
+          fontSize: '0.8rem',
+          lineHeight: 1.6,
+        }}>
+          By submitting this form, you agree to engage with your mentor respectfully and professionally. AP MED connects students and mentors in good faith and is not responsible for the outcomes of individual mentorship relationships. Any inappropriate or unprofessional conduct may result in removal from the platform.
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={handleSubmit}

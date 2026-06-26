@@ -10,14 +10,27 @@
 }
 
 body {
-  font-family: 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
   color: var(--global-text-color);
   background-color: var(--global-bg-color);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 * {
-  font-family: 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Inter', 'Calibri', 'Calibri Light', 'Segoe UI', Arial, sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 a:not([class*="text-"]) {
