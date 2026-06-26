@@ -15,7 +15,6 @@ type MenteeOnboardingFormData = {
   interests: string[]
   help_with: string[]
   other_interest: string
-  availability: string
   linkedin_url: string
   notes: string
 }
@@ -41,11 +40,6 @@ const HELP_WITH = [
   'Identity mentorship', 'Residency application',
 ]
 
-const AVAILABILITY = [
-  'Weekday mornings', 'Weekday afternoons', 'Weekday evenings',
-  'Weekend mornings', 'Weekend afternoons', 'Weekend evenings', 'Flexible',
-]
-
 const OTHER_SPECIALTY = 'Other'
 const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)
 
@@ -64,7 +58,6 @@ export default function MenteeOnboardingForm() {
   interests: [],          // specialties they're interested in
   help_with: [],          // help needed
   other_interest: '',
-  availability: '',
   linkedin_url: '',
   notes: '',
 })
@@ -228,6 +221,23 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         </h1>
         <p style={{ color: '#6b6b6b', marginBottom: '2.5rem', lineHeight: 1.6 }}>
           Fill out this short form and we'll connect you with the right mentor. Takes about 3–5 minutes.
+        </p>
+
+        <p style={{
+          marginBottom: '1.5rem',
+          color: '#4a4a5a',
+          fontSize: '1rem',
+          fontWeight: 400,
+          fontStyle: 'normal',
+          fontFamily: 'inherit',
+          lineHeight: 1.6,
+          textAlign: 'center',
+        }}>
+          AP MED Mentors connects students with volunteer mentors in good faith. By submitting this form, you agree to engage respectfully and professionally. AP MED reserves the right to remove any user from the platform for inappropriate conduct. AP MED is not liable for the outcomes of mentorship relationships.
+        </p>
+
+        <p style={{ color: '#6b6b6b', marginTop: '1.5rem', marginBottom: '2.5rem', lineHeight: 1.6, textAlign: 'center' }}>
+          We're so glad you're here, and we look forward to supporting you on your path to medicine.
         </p>
 
         {testMode && (
@@ -404,26 +414,6 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
   ))}
 </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Availability <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>When are you generally free to meet?</p>
-
-        <div style={checkGridStyle}>
-          {AVAILABILITY.map(item => (
-            <label key={item} style={checkCardStyle(form.availability === item)}>
-              <input
-                type="radio"
-                name="availability"
-                checked={form.availability === item}
-                onChange={() => setForm(prev => ({ ...prev, availability: item }))}
-                style={{ accentColor: '#c8a96e' }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-
         <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
 
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Anything else? <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
@@ -450,19 +440,6 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
             onExpire={() => { turnstileToken.current = null; }}
             options={{ theme: "light" }}
           />
-        </div>
-
-        <div style={{
-          marginBottom: '1.5rem',
-          padding: '1rem 1.25rem',
-          background: '#f7f3ec',
-          border: '1px solid #e8e4dc',
-          borderRadius: '8px',
-          color: '#6b6b6b',
-          fontSize: '0.8rem',
-          lineHeight: 1.6,
-        }}>
-          By submitting this form, you agree to engage with your mentor respectfully and professionally. AP MED connects students and mentors in good faith and is not responsible for the outcomes of individual mentorship relationships. Any inappropriate or unprofessional conduct may result in removal from the platform.
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
