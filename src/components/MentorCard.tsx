@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import type { Mentor } from '@/types/mentor';
 import EpisodeLink from '@/components/EpisodeLink';
@@ -56,6 +57,17 @@ export default function MentorCard({ mentor }: Props) {
   const specialties = Array.isArray(mentor.specialty) ? mentor.specialty : []
   const identities = Array.isArray(mentor.identity) ? mentor.identity : []
 
+  const [expanded, setExpanded] = useState(false)
+  const [isClamped, setIsClamped] = useState(false)
+  const bioRef = useRef<HTMLParagraphElement>(null)
+
+  // Detect whether the (clamped) bio actually overflows 3 lines, so the
+  // "Read more" toggle only shows on cards that need it.
+  useEffect(() => {
+    const el = bioRef.current
+    if (el && !expanded) setIsClamped(el.scrollHeight > el.clientHeight + 1)
+  }, [mentor.bio, expanded])
+
   return (
     <div
       className="border border-[#e8e4dc] rounded-xl bg-white overflow-hidden hover:border-[#d8d0c0] transition flex flex-col"
@@ -73,17 +85,30 @@ export default function MentorCard({ mentor }: Props) {
         </p>
 
         {mentor.bio && (
-          <p
-            className="text-sm text-[#4a4a5a] mt-2 leading-relaxed"
-            style={{
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {mentor.bio}
-          </p>
+          <>
+            <p
+              ref={bioRef}
+              className="text-sm text-[#4a4a5a] mt-2 leading-relaxed"
+              style={expanded ? undefined : {
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {mentor.bio}
+            </p>
+            {(isClamped || expanded) && (
+              <button
+                type="button"
+                onClick={() => setExpanded(v => !v)}
+                className="text-xs font-semibold mt-1 hover:underline"
+                style={{ color: '#8a6a2f', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                {expanded ? 'Show less' : 'Read more'}
+              </button>
+            )}
+          </>
         )}
 
         <div className="flex flex-wrap gap-1.5 mt-3">
