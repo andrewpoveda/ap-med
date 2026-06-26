@@ -16,10 +16,10 @@ export default function GlobalError({
 
   return (
     <html>
-      <body style={{ background: "#0f1117", color: "white", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", fontFamily: "inherit" }}>
+      <body style={{ background: "#faf8f4", color: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", fontFamily: "inherit" }}>
         <div style={{ textAlign: "center" }}>
           <h2 style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>Something went wrong</h2>
-          <button onClick={reset} style={{ background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", padding: "0.6rem 1.5rem", cursor: "pointer" }}>
+          <button onClick={reset} style={{ background: "#c8a96e", color: "#1a1a2e", border: "none", borderRadius: "8px", padding: "0.6rem 1.5rem", cursor: "pointer" }}>
             Try again
           </button>
         </div>

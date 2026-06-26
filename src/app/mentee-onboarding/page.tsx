@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0f1117' }} />}> 
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#faf8f4' }} />}>
       <MenteeOnboardingForm />
     </Suspense>
   )

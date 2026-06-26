@@ -21,7 +21,7 @@ const STATS = [
 
 const goldButton: React.CSSProperties = {
   background: GOLD,
-  color: "#111827",
+  color: "#1a1a2e",
   padding: "0.8rem 1.75rem",
   borderRadius: "8px",
   fontWeight: 600,
@@ -32,14 +32,14 @@ const goldButton: React.CSSProperties = {
 
 const ghostButton: React.CSSProperties = {
   background: "transparent",
-  color: "#ffffff",
+  color: "#1a1a2e",
   padding: "0.8rem 1.75rem",
   borderRadius: "8px",
   fontWeight: 600,
   fontSize: "0.95rem",
   textDecoration: "none",
   display: "inline-block",
-  border: "1px solid rgba(255,255,255,0.4)",
+  border: "1px solid rgba(26,26,46,0.25)",
 };
 
 const eyebrowStyle: React.CSSProperties = {
@@ -52,7 +52,7 @@ const eyebrowStyle: React.CSSProperties = {
 
 export default function Home() {
   return (
-    <div className="space-y-20">
+    <div className="space-y-28">
       {/* Hero */}
       <section className="text-center">
         <p style={{ ...eyebrowStyle, marginBottom: "1.5rem" }}>
@@ -64,7 +64,7 @@ export default function Home() {
             fontWeight: 400,
             fontSize: "clamp(2.5rem, 6vw, 3.5rem)",
             lineHeight: 1.1,
-            color: "#ffffff",
+            color: "#1a1a2e",
             maxWidth: "16ch",
             margin: "0 auto",
           }}
@@ -75,7 +75,7 @@ export default function Home() {
         </h1>
         <p
           style={{
-            color: "#cbd5e1",
+            color: "#4a4a5a",
             maxWidth: "620px",
             margin: "1.5rem auto 0",
             fontSize: "1.1rem",
@@ -127,7 +127,7 @@ export default function Home() {
               </div>
               <div
                 style={{
-                  color: "#94a3b8",
+                  color: "#6b6b6b",
                   fontSize: "0.8rem",
                   marginTop: "0.25rem",
                 }}
@@ -148,7 +148,7 @@ export default function Home() {
               fontWeight: 400,
               fontSize: "2rem",
               lineHeight: 1.15,
-              color: "#ffffff",
+              color: "#1a1a2e",
               marginBottom: "1rem",
             }}
           >
@@ -156,7 +156,7 @@ export default function Home() {
           </h2>
           <p
             style={{
-              color: "#cbd5e1",
+              color: "#4a4a5a",
               fontSize: "1rem",
               lineHeight: 1.7,
               marginBottom: "1.25rem",
@@ -182,7 +182,7 @@ export default function Home() {
             height: "320px",
             borderRadius: "12px",
             overflow: "hidden",
-            border: "1px solid rgba(240,237,230,0.12)",
+            border: "1px solid #e8e4dc",
           }}
         >
           <Image
@@ -203,7 +203,7 @@ export default function Home() {
           rel="noopener noreferrer"
           style={{
             background: SPOTIFY_GREEN,
-            color: "#0a0f1e",
+            color: "#1a1a2e",
             padding: "0.8rem 1.75rem",
             borderRadius: "9999px",
             fontWeight: 600,

@@ -23,13 +23,13 @@ export default function Navigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-gray-700 bg-[#111827]">
+    <nav className="sticky top-0 z-50 border-b border-[#e8e4dc] bg-[#faf8f4]">
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between h-16 gap-4">
           <Link
             href="/"
             style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            className="text-2xl text-white tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap shrink-0"
+            className="text-2xl text-[#1a1a2e] tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap shrink-0"
           >
             AP MED
           </Link>
@@ -41,7 +41,7 @@ export default function Navigation() {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium transition-colors whitespace-nowrap text-neutral-400 hover:text-[var(--global-theme-color)]"
+                  className="text-sm font-medium transition-colors whitespace-nowrap text-[#6b6b6b] hover:text-[var(--global-theme-color)]"
                 >
                   {item.label}
                 </a>
@@ -52,7 +52,7 @@ export default function Navigation() {
                   className={`text-sm font-medium transition-colors whitespace-nowrap ${
                     pathname === item.href
                       ? "text-[var(--global-theme-color)]"
-                      : "text-neutral-400 hover:text-[var(--global-theme-color)]"
+                      : "text-[#6b6b6b] hover:text-[var(--global-theme-color)]"
                   }`}
                 >
                   {item.label}

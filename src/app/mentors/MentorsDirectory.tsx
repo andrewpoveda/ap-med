@@ -8,15 +8,15 @@ import FilterBar from "@/components/FilterBar";
 
 function SkeletonCard() {
   return (
-    <div className="border border-neutral-700 rounded-xl bg-neutral-900 overflow-hidden animate-pulse">
-      <div className="w-full h-[180px] bg-neutral-800" />
+    <div className="border border-[#e8e4dc] rounded-xl bg-white overflow-hidden animate-pulse">
+      <div className="w-full h-[180px] bg-[#ece7dd]" />
       <div className="p-5 space-y-2">
-        <div className="h-4 bg-neutral-700 rounded w-1/2" />
-        <div className="h-3 bg-neutral-800 rounded w-3/4" />
-        <div className="h-3 bg-neutral-800 rounded w-full mt-2" />
+        <div className="h-4 bg-[#e4ded3] rounded w-1/2" />
+        <div className="h-3 bg-[#ece7dd] rounded w-3/4" />
+        <div className="h-3 bg-[#ece7dd] rounded w-full mt-2" />
         <div className="flex gap-1.5 pt-1">
-          <div className="h-5 w-16 bg-neutral-700 rounded-full" />
-          <div className="h-5 w-20 bg-neutral-700 rounded-full" />
+          <div className="h-5 w-16 bg-[#e4ded3] rounded-full" />
+          <div className="h-5 w-20 bg-[#e4ded3] rounded-full" />
         </div>
       </div>
     </div>
@@ -69,7 +69,7 @@ export default function MentorsDirectory() {
           <h1 className="text-4xl font-bold tracking-tight text-[var(--global-text-color)]">
             AP MED Mentors
           </h1>
-          <p className="text-neutral-300 mt-2 max-w-xl">
+          <p className="text-[#6b6b6b] mt-2 max-w-xl">
             Browse our mentors below. When you&apos;re ready, get matched and we&apos;ll
             surface your compatibility with each one.
           </p>
@@ -79,7 +79,7 @@ export default function MentorsDirectory() {
           className="self-start sm:self-auto whitespace-nowrap"
           style={{
             background: "#c8a96e",
-            color: "#111827",
+            color: "#1a1a2e",
             padding: "0.7rem 1.5rem",
             borderRadius: "8px",
             fontWeight: 600,

@@ -67,11 +67,11 @@ export default function MatchResultsPage() {
 
   if (!loaded) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f1117', color: 'white', fontFamily: 'inherit' }}>
+      <div style={{ minHeight: '100vh', background: '#faf8f4', color: '#1a1a2e', fontFamily: 'inherit' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-          <div style={{ height: '0.75rem', width: '8rem', background: '#1a1f2e', borderRadius: 4, marginBottom: '0.75rem' }} className="animate-pulse" />
-          <div style={{ height: '2rem', width: '55%', background: '#1a1f2e', borderRadius: 4, marginBottom: '0.75rem' }} className="animate-pulse" />
-          <div style={{ height: '0.875rem', width: '70%', background: '#1a1f2e', borderRadius: 4, marginBottom: '3rem' }} className="animate-pulse" />
+          <div style={{ height: '0.75rem', width: '8rem', background: '#ffffff', borderRadius: 4, marginBottom: '0.75rem' }} className="animate-pulse" />
+          <div style={{ height: '2rem', width: '55%', background: '#ffffff', borderRadius: 4, marginBottom: '0.75rem' }} className="animate-pulse" />
+          <div style={{ height: '0.875rem', width: '70%', background: '#ffffff', borderRadius: 4, marginBottom: '3rem' }} className="animate-pulse" />
           {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
         </div>
       </div>
@@ -79,20 +79,20 @@ export default function MatchResultsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: 'white', fontFamily: 'inherit' }}>
+    <div style={{ minHeight: '100vh', background: '#faf8f4', color: '#1a1a2e', fontFamily: 'inherit' }}>
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-        <p style={{ color: '#60a5fa', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+        <p style={{ color: '#c8a96e', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
           AP MED MENTORS
         </p>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
           Your top matches, {firstName}
         </h1>
-        <p style={{ color: '#94a3b8', marginBottom: testMode ? '1.5rem' : '3rem', lineHeight: 1.6 }}>
+        <p style={{ color: '#6b6b6b', marginBottom: testMode ? '1.5rem' : '3rem', lineHeight: 1.6 }}>
           Based on your specialty interests, background, and what you need help with.
         </p>
 
         {testMode && (
-          <div style={{ marginBottom: '3rem', padding: '0.75rem 1rem', background: '#2a2410', border: '1px solid #a16207', borderRadius: '8px', color: '#fde68a', fontSize: '0.85rem', lineHeight: 1.5 }}>
+          <div style={{ marginBottom: '3rem', padding: '0.75rem 1rem', background: '#fdf6e3', border: '1px solid #e0c060', borderRadius: '8px', color: '#8a6d1f', fontSize: '0.85rem', lineHeight: 1.5 }}>
             🧪 <strong>Test mode</strong> — requesting a mentor here will <strong>not send any email</strong>.
           </div>
         )}
@@ -101,7 +101,7 @@ export default function MatchResultsPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Best matches</span>
-              <span style={{ background: '#1a2744', color: '#60a5fa', borderRadius: '9999px', padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600 }}>
+              <span style={{ background: '#f5efe2', color: '#c8a96e', borderRadius: '9999px', padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600 }}>
                 Top {top3.length}
               </span>
             </div>
@@ -122,19 +122,19 @@ export default function MatchResultsPage() {
 
         {rest.length > 0 && (
           <>
-            <hr style={{ border: 'none', borderTop: '1px solid #1e2330', marginBottom: '2rem' }} />
+            <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2rem' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showAll ? '1.5rem' : 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Browse all mentors</span>
-                <span style={{ background: '#1a1f2e', color: '#94a3b8', borderRadius: '9999px', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
+                <span style={{ background: '#ffffff', color: '#6b6b6b', borderRadius: '9999px', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
                   {rest.length} more
                 </span>
               </div>
               <button
                 onClick={() => setShowAll(v => !v)}
                 style={{
-                  background: '#1a1f2e', border: '1px solid #2a3040', borderRadius: '6px',
-                  color: '#60a5fa', padding: '0.4rem 0.85rem', fontSize: '0.8rem',
+                  background: '#ffffff', border: '1px solid #e8e4dc', borderRadius: '6px',
+                  color: '#c8a96e', padding: '0.4rem 0.85rem', fontSize: '0.8rem',
                   fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -159,9 +159,9 @@ export default function MatchResultsPage() {
         )}
 
         {mentors.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: '4rem 0', color: '#6b6b6b' }}>
             <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No mentors found yet.</p>
-            <Link href="/mentors" style={{ color: '#60a5fa' }}>Browse the directory →</Link>
+            <Link href="/mentors" style={{ color: '#c8a96e' }}>Browse the directory →</Link>
           </div>
         )}
       </div>
@@ -178,9 +178,9 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl?: string }) {
   }
   return (
     <div style={{
-      width: 48, height: 48, borderRadius: '50%', background: '#1a2744', flexShrink: 0,
+      width: 48, height: 48, borderRadius: '50%', background: '#1a1a2e', flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '1rem', fontWeight: 700, color: '#60a5fa',
+      fontSize: '1rem', fontWeight: 700, color: '#c8a96e',
     }}>
       {initials}
     </div>
@@ -189,13 +189,13 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl?: string }) {
 
 function SkeletonCard() {
   return (
-    <div style={{ background: '#111827', border: '1px solid #1e3a5f', borderRadius: '12px', padding: '1.5rem', display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-      <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#1e2330', flexShrink: 0 }} className="animate-pulse" />
+    <div style={{ background: '#ffffff', border: '1px solid #e8e4dc', borderRadius: '12px', padding: '1.5rem', display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#e8e4dc', flexShrink: 0 }} className="animate-pulse" />
       <div style={{ flex: 1 }}>
-        <div style={{ height: '1rem', width: '40%', background: '#1e2330', borderRadius: 4, marginBottom: '0.5rem' }} className="animate-pulse" />
-        <div style={{ height: '0.75rem', width: '60%', background: '#1a1f2e', borderRadius: 4, marginBottom: '0.5rem' }} className="animate-pulse" />
-        <div style={{ height: '0.75rem', width: '90%', background: '#1a1f2e', borderRadius: 4, marginBottom: '0.4rem' }} className="animate-pulse" />
-        <div style={{ height: '0.75rem', width: '80%', background: '#1a1f2e', borderRadius: 4 }} className="animate-pulse" />
+        <div style={{ height: '1rem', width: '40%', background: '#e8e4dc', borderRadius: 4, marginBottom: '0.5rem' }} className="animate-pulse" />
+        <div style={{ height: '0.75rem', width: '60%', background: '#ffffff', borderRadius: 4, marginBottom: '0.5rem' }} className="animate-pulse" />
+        <div style={{ height: '0.75rem', width: '90%', background: '#ffffff', borderRadius: 4, marginBottom: '0.4rem' }} className="animate-pulse" />
+        <div style={{ height: '0.75rem', width: '80%', background: '#ffffff', borderRadius: 4 }} className="animate-pulse" />
       </div>
     </div>
   )
@@ -211,9 +211,9 @@ function MatchCard({
   onRequest: () => void
 }) {
   const matchColor =
-    mentor.matchPercent >= 75 ? '#4ade80' :
-    mentor.matchPercent >= 50 ? '#60a5fa' :
-    '#94a3b8'
+    mentor.matchPercent >= 75 ? '#2f8f5f' :
+    mentor.matchPercent >= 50 ? '#b8923f' :
+    '#9a948a'
 
   const fullName = `${mentor.first_name} ${mentor.last_name}`
 
@@ -221,8 +221,9 @@ function MatchCard({
     <div
       className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5"
       style={{
-        background: featured ? '#111827' : '#0f1117',
-        border: `1px solid ${featured ? '#1e3a5f' : '#1e2330'}`,
+        background: featured ? '#fffdf9' : '#ffffff',
+        border: `1px solid ${featured ? '#e0cfa3' : '#e8e4dc'}`,
+        boxShadow: '0 1px 2px rgba(26,26,46,0.04), 0 6px 16px rgba(26,26,46,0.06)',
         borderRadius: '12px',
         padding: featured ? '1.5rem' : '1.25rem',
       }}
@@ -233,10 +234,10 @@ function MatchCard({
         {rank && (
           <div style={{
             flexShrink: 0, width: '2rem', height: '2rem', borderRadius: '50%',
-            background: rank === 1 ? '#1a2744' : '#1a1f2e',
-            border: `1px solid ${rank === 1 ? '#3b82f6' : '#2a3040'}`,
+            background: rank === 1 ? '#f5efe2' : '#ffffff',
+            border: `1px solid ${rank === 1 ? '#c8a96e' : '#e8e4dc'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '0.8rem', fontWeight: 700, color: rank === 1 ? '#60a5fa' : '#94a3b8',
+            fontSize: '0.8rem', fontWeight: 700, color: rank === 1 ? '#c8a96e' : '#6b6b6b',
           }}>
             #{rank}
           </div>
@@ -249,20 +250,20 @@ function MatchCard({
             </span>
             <EpisodeLink mentor={mentor} />
           </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: mentor.bio ? '0.5rem' : '0.75rem' }}>
+          <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: mentor.bio ? '0.5rem' : '0.75rem' }}>
             {mentor.current_role}{mentor.institution ? ` · ${mentor.institution}` : ''}
           </p>
           {mentor.bio && (
-            <p style={{ color: '#cbd5e1', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>
+            <p style={{ color: '#4a4a5a', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>
               {mentor.bio}
             </p>
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
             {(Array.isArray(mentor.specialty) ? mentor.specialty : []).slice(0, 3).map(s => (
-              <span key={s} style={tagStyle('#1e2d45', '#3b82f6')}>{s}</span>
+              <span key={s} style={tagStyle('rgba(91,124,250,0.14)', '#4255b5')}>{s}</span>
             ))}
             {(Array.isArray(mentor.identity) ? mentor.identity : []).slice(0, 2).map(id => (
-              <span key={id} style={tagStyle('#1e2d30', '#34d399')}>{id}</span>
+              <span key={id} style={tagStyle('rgba(60,160,110,0.16)', '#2f8f5f')}>{id}</span>
             ))}
           </div>
         </div>
@@ -273,7 +274,7 @@ function MatchCard({
           <div style={{ fontSize: featured ? '1.5rem' : '1.25rem', fontWeight: 800, color: matchColor, marginBottom: '0.25rem' }}>
             {mentor.matchPercent}%
           </div>
-          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>match</div>
+          <div style={{ fontSize: '0.7rem', color: '#9a948a' }}>match</div>
         </div>
         <button
           onClick={onRequest}
@@ -281,9 +282,9 @@ function MatchCard({
           className="sm:mt-4"
           style={{
             display: 'inline-block',
-            background: requested ? '#0d2010' : featured ? '#60a5fa' : '#1a2744',
-            color: requested ? '#4ade80' : featured ? '#0f1117' : '#60a5fa',
-            border: requested ? '1px solid #4ade80' : featured ? 'none' : '1px solid #3b82f6',
+            background: requested ? '#e6f4ec' : featured ? '#c8a96e' : '#f5efe2',
+            color: requested ? '#2f8f5f' : featured ? '#1a1a2e' : '#8a6a2f',
+            border: requested ? '1px solid #9ed9b8' : featured ? 'none' : '1px solid #c8a96e',
             borderRadius: '6px',
             padding: '0.4rem 0.85rem',
             fontSize: '0.8rem',

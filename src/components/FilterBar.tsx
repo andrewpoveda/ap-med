@@ -27,7 +27,7 @@ export default function FilterBar({
         <select
           value={selectedIdentity}
           onChange={(e) => setSelectedIdentity(e.target.value)}
-          className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
+          className="border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"
         >
           <option value="">All Identities</option>
           {uniqueIdentities.map(identity => (
@@ -38,7 +38,7 @@ export default function FilterBar({
         <select
           value={selectedSpecialty}
           onChange={(e) => setSelectedSpecialty(e.target.value)}
-          className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
+          className="border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"
         >
           <option value="">All Specialties</option>
           {uniqueSpecialties.map(specialty => (
@@ -50,7 +50,7 @@ export default function FilterBar({
       <select
         value={selectedOpenTo}
         onChange={(e) => setSelectedOpenTo(e.target.value)}
-        className="border border-neutral-300 dark:border-neutral-700 rounded p-2"
+        className="border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"
       >
         <option value="">All Help Types</option>
         {uniqueOpenTo.map(openTo => (

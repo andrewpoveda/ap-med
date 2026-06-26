@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -32,17 +32,17 @@ export default function RootLayout({
           </main>
           <footer
             style={{
-              borderTop: "1px solid rgba(240,237,230,0.12)",
-              marginTop: "4rem",
-              padding: "2rem 1rem",
+              borderTop: "1px solid #e8e4dc",
+              marginTop: "6rem",
+              padding: "3rem 1rem",
               textAlign: "center",
             }}
           >
-            <p style={{ fontSize: "0.8rem", color: "rgba(240,237,230,0.4)", margin: 0 }}>
+            <p style={{ fontSize: "0.8rem", color: "#6b6b6b", margin: 0 }}>
               © 2026 AP MED · All rights reserved.
             </p>
             <p style={{ fontSize: "0.8rem", marginTop: "0.4rem", margin: "0.4rem 0 0" }}>
-              <a href="mailto:apmedpodcast@gmail.com" style={{ color: "rgba(240,237,230,0.4)" }}>
+              <a href="mailto:apmedpodcast@gmail.com" style={{ color: "#6b6b6b" }}>
                 apmedpodcast@gmail.com
               </a>
             </p>
