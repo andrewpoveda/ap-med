@@ -262,7 +262,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
             <label style={labelStyle}>First name *</label>
             <input
               style={inputStyle}
-              placeholder="Andrew"
+              placeholder="John"
               value={form.full_name.split(' ')[0] || ''}
               onChange={e => setForm(prev => ({
                 ...prev,
@@ -274,7 +274,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
             <label style={labelStyle}>Last name *</label>
             <input
               style={inputStyle}
-              placeholder="Poveda"
+              placeholder="Doe"
               value={form.full_name.split(' ')[1] || ''}
               onChange={e => setForm(prev => ({
                 ...prev,
@@ -299,7 +299,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           <label style={labelStyle}>School / Institution *</label>
           <input
             style={inputStyle}
-            placeholder="Montclair State University"
+            placeholder="Rutgers University"
             value={form.school}
             onChange={e => setForm(prev => ({ ...prev, school: e.target.value }))}
           />
