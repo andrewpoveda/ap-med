@@ -54,7 +54,7 @@ export default function MatchResultsPage() {
       await fetch(`/api/notify${testMode ? '?test=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentor, mentee: menteeData }),
+        body: JSON.stringify({ mentorId: mentor.id, mentee: menteeData }),
       })
     } catch {
       // silent — UI already updated
