@@ -13,7 +13,7 @@ const SPOTIFY_GREEN = "#1DB954";
 const SPOTIFY_SHOW_URL = "https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB";
 
 const STATS = [
-  { value: "7+", label: "Active Mentors" },
+  { value: "9", label: "Active Mentors" },
   { value: "5+", label: "Specialties" },
   { value: "100%", label: "Free" },
   { value: "LMSA-NE", label: "Partner" },
