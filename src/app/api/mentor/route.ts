@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyTurnstileToken } from '@/lib/turnstile'
+import { PUBLIC_MENTOR_COLUMNS } from '@/types/mentor'
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -16,9 +17,11 @@ function getSupabaseAdmin() {
 export async function GET() {
   try {
     const supabase = getSupabaseAdmin()
+    // Public directory endpoint — never select('*') here: the row carries
+    // mentor emails and private notes that must stay server-side.
     const { data, error } = await supabase
       .from('mentor')
-      .select('*')
+      .select(PUBLIC_MENTOR_COLUMNS.join(', '))
       .order('last_name')
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ mentors: data })

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import type { Mentor } from "@/types/mentor";
+import type { PublicMentor } from "@/types/mentor";
 import MentorCard from "@/components/MentorCard";
 import FilterBar from "@/components/FilterBar";
 
@@ -24,7 +24,7 @@ function SkeletonCard() {
 }
 
 export default function MentorsDirectory() {
-  const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [mentors, setMentors] = useState<PublicMentor[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIdentity, setSelectedIdentity] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
@@ -37,7 +37,7 @@ export default function MentorsDirectory() {
     fetch("/api/mentor")
       .then(r => r.json())
       .then(data => {
-        const fetched: Mentor[] = data.mentors || [];
+        const fetched: PublicMentor[] = data.mentors || [];
         fetched.sort((a, b) => a.last_name.localeCompare(b.last_name));
         setMentors(fetched);
         setLoading(false);

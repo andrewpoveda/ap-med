@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { ScoredMentor } from '@/types/mentor'
+import type { ScoredPublicMentor } from '@/types/mentor'
 import EpisodeLink from '@/components/EpisodeLink'
 
 type MenteeData = {
@@ -20,7 +20,7 @@ type MenteeData = {
 
 export default function MatchResultsPage() {
   const router = useRouter()
-  const [mentors, setMentors] = useState<ScoredMentor[]>([])
+  const [mentors, setMentors] = useState<ScoredPublicMentor[]>([])
   const [menteeName, setMenteeName] = useState('')
   const [menteeData, setMenteeData] = useState<MenteeData | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -47,7 +47,7 @@ export default function MatchResultsPage() {
     }
   }, [router])
 
-  const handleRequest = async (mentor: ScoredMentor) => {
+  const handleRequest = async (mentor: ScoredPublicMentor) => {
     setRequestedIds(prev => new Set([...prev, mentor.id]))
     if (!menteeData) return
     try {
@@ -204,7 +204,7 @@ function SkeletonCard() {
 function MatchCard({
   mentor, rank, featured, requested, onRequest,
 }: {
-  mentor: ScoredMentor
+  mentor: ScoredPublicMentor
   rank?: number
   featured: boolean
   requested: boolean

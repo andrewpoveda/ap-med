@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import type { Mentor } from '@/types/mentor';
+import type { PublicMentor } from '@/types/mentor';
 import EpisodeLink from '@/components/EpisodeLink';
 
 type Props = {
-  mentor: Mentor
+  mentor: PublicMentor
 }
 
 const GOLD = '#c8a96e';

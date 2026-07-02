@@ -23,3 +23,32 @@ export type Mentor = {
 }
 
 export type ScoredMentor = Mentor & { matchPercent: number }
+
+// Columns safe to send to the browser. Everything else on the mentor row
+// (email, notes, contact_method, mentee_capacity, open_to_podcast,
+// scheduling_url, created_at, linkedin_url) stays server-side — /api/notify
+// resolves the mentor's email from the DB by id, so no client view needs it.
+export const PUBLIC_MENTOR_COLUMNS = [
+  'id',
+  'first_name',
+  'last_name',
+  'credentials',
+  'current_role',
+  'institution',
+  'bio',
+  'identity',
+  'specialty',
+  'can_help_with',
+  'current_stage',
+  'episode_url',
+  'photo_url',
+] as const
+
+export type PublicMentor = Pick<Mentor, (typeof PUBLIC_MENTOR_COLUMNS)[number]>
+export type ScoredPublicMentor = PublicMentor & { matchPercent: number }
+
+export function toPublicMentor(mentor: Mentor): PublicMentor {
+  return Object.fromEntries(
+    PUBLIC_MENTOR_COLUMNS.map(col => [col, mentor[col]])
+  ) as PublicMentor
+}

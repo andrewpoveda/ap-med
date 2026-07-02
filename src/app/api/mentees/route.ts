@@ -5,7 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 import { notifyMentorOfMatch } from '@/lib/email'
 import { scoreMentor } from '@/lib/match'
-import type { Mentor, ScoredMentor } from '@/types/mentor'
+import { toPublicMentor } from '@/types/mentor'
+import type { Mentor, ScoredMentor, ScoredPublicMentor } from '@/types/mentor'
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -92,5 +93,12 @@ export async function POST(request: Request) {
     )
   }
 
-  return NextResponse.json({ success: true, mentors: scored, dryRun })
+  // The full scored rows (with emails) stay server-side; the browser only
+  // needs the public profile fields plus the score.
+  const publicScored: ScoredPublicMentor[] = scored.map(m => ({
+    ...toPublicMentor(m),
+    matchPercent: m.matchPercent,
+  }))
+
+  return NextResponse.json({ success: true, mentors: publicScored, dryRun })
 }
