@@ -15,22 +15,6 @@ function getSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceRoleKey)
 }
 
-type MenteeInput = {
-  full_name: string
-  email: string
-  school: string
-  current_stage: string
-  interests: string[]
-  help_with: string[]
-  identity: string[]
-  notes?: string
-  linkedin_url?: string
-}
-
-// Basic email shape check — enough to reject junk before it becomes a replyTo.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const MAX_EMAIL = 320
-const MAX_NAME = 200
 const MAX_NOTES = 2000
 
 export async function POST(request: Request) {
@@ -42,29 +26,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
-    // Accept ONLY an id for the mentor — never a client-supplied mentor object.
-    // The send-to address is resolved from the DB row below, so a caller can't
-    // point this endpoint at an arbitrary recipient (open-relay prevention).
+    // Accept ONLY ids — never client-supplied mentor/mentee objects. Recipients
+    // and all email content are resolved from the DB rows below, so a caller can
+    // neither pick an arbitrary recipient (open relay) nor inject content the
+    // Turnstile-verified onboarding form didn't collect. A menteeId is only
+    // valid if its row exists in `mentees`, and rows only get there through the
+    // verified /api/mentees submission — one human CAPTCHA solve per id.
     const mentorId = typeof body.mentorId === 'string' ? body.mentorId.trim() : ''
-    const mentee = body.mentee as MenteeInput | undefined
+    const menteeId = typeof body.menteeId === 'string' ? body.menteeId.trim() : ''
 
     if (!mentorId) {
       return NextResponse.json({ error: 'mentorId is required' }, { status: 400 })
     }
-    if (!mentee || typeof mentee !== 'object') {
-      return NextResponse.json({ error: 'mentee is required' }, { status: 400 })
-    }
-    if (typeof mentee.full_name !== 'string' || !mentee.full_name.trim() || mentee.full_name.length > MAX_NAME) {
-      return NextResponse.json({ error: 'mentee.full_name is required and must be under 200 chars' }, { status: 400 })
-    }
-    if (typeof mentee.email !== 'string' || mentee.email.length > MAX_EMAIL || !EMAIL_RE.test(mentee.email)) {
-      return NextResponse.json({ error: 'mentee.email is not a valid email' }, { status: 400 })
-    }
-    if (mentee.notes != null && (typeof mentee.notes !== 'string' || mentee.notes.length > MAX_NOTES)) {
-      return NextResponse.json({ error: 'mentee.notes is too long' }, { status: 400 })
+    if (!menteeId) {
+      return NextResponse.json({ error: 'menteeId is required' }, { status: 400 })
     }
 
     const supabase = getSupabaseAdmin()
+
     const { data: mentorRow, error: mentorErr } = await supabase
       .from('mentor')
       .select('*')
@@ -75,8 +54,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Mentor not found' }, { status: 404 })
     }
 
+    const { data: menteeRow, error: menteeErr } = await supabase
+      .from('mentees')
+      .select('*')
+      .eq('id', menteeId)
+      .single()
+
+    if (menteeErr || !menteeRow) {
+      return NextResponse.json({ error: 'Mentee not found' }, { status: 404 })
+    }
+
+    // One email per (mentee, mentor) pair, enforced by the UNIQUE constraint in
+    // mentee_requests — recorded BEFORE sending so a duplicate can never produce
+    // a second email. Deliberately not skipped in dry-run (mirrors the mentees
+    // insert precedent): the rehearsal exercises the real path, only the emails
+    // are skipped.
+    const { error: requestErr } = await supabase
+      .from('mentee_requests')
+      .insert({ mentee_id: menteeId, mentor_id: mentorId })
+
+    if (requestErr) {
+      if (requestErr.code === '23505') {
+        return NextResponse.json({ error: 'Already requested' }, { status: 409 })
+      }
+      console.error('mentee_requests insert failed:', requestErr.message)
+      return NextResponse.json({ error: 'Failed to record request' }, { status: 500 })
+    }
+
     const mentor = mentorRow as Mentor
-    // matchPercent is recomputed server-side from the trusted DB row, never trusted from the client.
+    const mentee = {
+      full_name: String(menteeRow.full_name ?? ''),
+      email: String(menteeRow.email ?? ''),
+      school: String(menteeRow.school ?? ''),
+      current_stage: String(menteeRow.current_stage ?? ''),
+      interests: Array.isArray(menteeRow.interests) ? menteeRow.interests : [],
+      help_with: Array.isArray(menteeRow.help_with) ? menteeRow.help_with : [],
+      identity: Array.isArray(menteeRow.identity) ? menteeRow.identity : [],
+      notes: typeof menteeRow.notes === 'string' ? menteeRow.notes.slice(0, MAX_NOTES) : '',
+      linkedin_url: typeof menteeRow.linkedin_url === 'string' ? menteeRow.linkedin_url : '',
+    }
+
+    // matchPercent is recomputed from the two trusted DB rows, never taken from the client.
     const scoredMentor = { ...mentor, matchPercent: scoreMentor(mentor, mentee) }
 
     if (dryRun) {
@@ -84,8 +102,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, dryRun: true })
     }
 
-    // Core action: notify the mentor. A failure here fails the request.
-    await notifyMentorOfMatch(scoredMentor, mentee)
+    // Core action: notify the mentor. On failure, release the dedupe slot so the
+    // mentee can retry — no email actually went out.
+    try {
+      await notifyMentorOfMatch(scoredMentor, mentee)
+    } catch (err) {
+      await supabase
+        .from('mentee_requests')
+        .delete()
+        .eq('mentee_id', menteeId)
+        .eq('mentor_id', mentorId)
+      console.error('Mentor notification failed:', err)
+      return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 })
+    }
 
     // Secondary action: confirm to the mentee. Never fail the request over this —
     // the mentor has already been notified, which is the action the user asked for.

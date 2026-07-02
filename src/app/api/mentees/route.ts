@@ -3,7 +3,6 @@ export const runtime = "nodejs";
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyTurnstileToken } from '@/lib/turnstile'
-import { notifyMentorOfMatch } from '@/lib/email'
 import { scoreMentor } from '@/lib/match'
 import { toPublicMentor } from '@/types/mentor'
 import type { Mentor, ScoredMentor, ScoredPublicMentor } from '@/types/mentor'
@@ -22,7 +21,6 @@ function getSupabaseAdmin() {
 
 export async function POST(request: Request) {
   const supabaseAdmin = getSupabaseAdmin()
-  const dryRun = new URL(request.url).searchParams.get('test') === '1'
   const data = await request.json()
 
   const turnstileOk = await verifyTurnstileToken(data.turnstile_token ?? "")
@@ -42,7 +40,10 @@ export async function POST(request: Request) {
     linkedin_url: data.linkedin_url || "",
   }
 
-  const { error } = await supabaseAdmin
+  // The returned id doubles as the mentee's request capability: /api/notify only
+  // accepts menteeIds that exist in this table, and rows only get here through
+  // this Turnstile-verified route.
+  const { data: inserted, error } = await supabaseAdmin
   .from("mentees")
   .insert([
     {
@@ -56,10 +57,12 @@ export async function POST(request: Request) {
       linkedin_url: mentee.linkedin_url,
       notes: mentee.notes,
     },
-  ]);
+  ])
+  .select('id')
+  .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error || !inserted) {
+    return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
   }
 
   // Matching runs inside this Turnstile-verified request (merged from the former
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
     // The mentee row is already saved — degrade to the browse-all results view
     // rather than failing the whole submission.
     console.error('Mentor fetch failed after insert (non-fatal):', mentorError.message)
-    return NextResponse.json({ success: true, mentors: null, dryRun })
+    return NextResponse.json({ success: true, menteeId: inserted.id, mentors: null })
   }
 
   const scored: ScoredMentor[] = (mentors as Mentor[])
@@ -82,16 +85,8 @@ export async function POST(request: Request) {
     }))
     .sort((a, b) => b.matchPercent - a.matchPercent)
 
-  // Notify top match via email (non-blocking — don't fail the response if email fails).
-  // Skipped entirely in dry-run mode (?test=1) so prod test-submits don't email real mentors.
-  const topMatch = scored[0]
-  if (dryRun) {
-    console.log(`[dry-run] Skipped mentor notification email to ${topMatch?.email ?? '(none)'}`)
-  } else if (topMatch?.email && mentee.email) {
-    notifyMentorOfMatch(topMatch, mentee).catch(err =>
-      console.error('Mentor email failed (non-fatal):', err)
-    )
-  }
+  // No email fires here — mentors are only notified when the mentee explicitly
+  // clicks "Request" on the results page (/api/notify).
 
   // The full scored rows (with emails) stay server-side; the browser only
   // needs the public profile fields plus the score.
@@ -100,5 +95,5 @@ export async function POST(request: Request) {
     matchPercent: m.matchPercent,
   }))
 
-  return NextResponse.json({ success: true, mentors: publicScored, dryRun })
+  return NextResponse.json({ success: true, menteeId: inserted.id, mentors: publicScored })
 }

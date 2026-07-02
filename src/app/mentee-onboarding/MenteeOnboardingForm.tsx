@@ -108,9 +108,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
     setLoading(true)
 
     try {
-      // 1. Save mentee + run matching in one Turnstile-verified request
-      //    (?test=1 → dry-run: matches but skips the mentor email)
-      const saveRes = await fetch(`/api/mentees${testMode ? '?test=1' : ''}`, {
+      // 1. Save mentee + run matching in one Turnstile-verified request.
+      //    No email fires on submit — mentors are only notified when the mentee
+      //    clicks "Request" on the results page.
+      const saveRes = await fetch('/api/mentees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, turnstile_token: turnstileToken.current }),
@@ -131,20 +132,12 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         return
       }
 
-      // 2. Store results in sessionStorage and redirect
+      // 2. Store results in sessionStorage and redirect. The menteeId is the
+      //    request capability the results page sends to /api/notify — the
+      //    endpoint resolves all mentee data from the DB row by this id.
       sessionStorage.setItem('matchResults', JSON.stringify(saveData.mentors))
       sessionStorage.setItem('menteeName', form.full_name)
-      sessionStorage.setItem('menteeData', JSON.stringify({
-        full_name: form.full_name,
-        email: form.email,
-        school: form.school,
-        current_stage: form.current_stage,
-        interests: form.interests,
-        identity: form.identity,
-        help_with: form.help_with,
-        notes: form.notes,
-        linkedin_url: form.linkedin_url,
-      }))
+      sessionStorage.setItem('menteeId', saveData.menteeId || '')
       // Carry dry-run mode to the results page so the "Request" button also skips email
       sessionStorage.setItem('matchTestMode', testMode ? '1' : '')
       router.push('/mentors/results')
@@ -224,7 +217,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
 
         {testMode && (
           <div style={{ marginBottom: '2rem', padding: '0.75rem 1rem', background: '#fdf6e3', border: '1px solid #e0c060', borderRadius: '8px', color: '#8a6d1f', fontSize: '0.85rem', lineHeight: 1.5 }}>
-            🧪 <strong>Test mode</strong> — your submission will still be saved, but <strong>no email will be sent</strong> to the matched mentor.
+            🧪 <strong>Test mode</strong> — your submission will still be saved, and clicking Request on your results will <strong>not send any email</strong>.
           </div>
         )}
 

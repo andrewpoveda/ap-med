@@ -6,23 +6,11 @@ import Link from 'next/link'
 import type { ScoredPublicMentor } from '@/types/mentor'
 import EpisodeLink from '@/components/EpisodeLink'
 
-type MenteeData = {
-  full_name: string
-  email: string
-  school: string
-  current_stage: string
-  interests: string[]
-  help_with: string[]
-  identity: string[]
-  notes?: string
-  linkedin_url?: string
-}
-
 export default function MatchResultsPage() {
   const router = useRouter()
   const [mentors, setMentors] = useState<ScoredPublicMentor[]>([])
   const [menteeName, setMenteeName] = useState('')
-  const [menteeData, setMenteeData] = useState<MenteeData | null>(null)
+  const [menteeId, setMenteeId] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
@@ -32,14 +20,13 @@ export default function MatchResultsPage() {
     try {
       const raw = sessionStorage.getItem('matchResults')
       const name = sessionStorage.getItem('menteeName') || ''
-      const rawMentee = sessionStorage.getItem('menteeData')
       if (!raw) {
         router.replace('/mentee-onboarding')
         return
       }
       setMentors(JSON.parse(raw))
       setMenteeName(name)
-      if (rawMentee) setMenteeData(JSON.parse(rawMentee))
+      setMenteeId(sessionStorage.getItem('menteeId') || '')
       setTestMode(sessionStorage.getItem('matchTestMode') === '1')
       setLoaded(true)
     } catch {
@@ -49,12 +36,14 @@ export default function MatchResultsPage() {
 
   const handleRequest = async (mentor: ScoredPublicMentor) => {
     setRequestedIds(prev => new Set([...prev, mentor.id]))
-    if (!menteeData) return
+    if (!menteeId) return
     try {
+      // /api/notify resolves both parties from the DB by id — no mentee data
+      // leaves the browser here.
       await fetch(`/api/notify${testMode ? '?test=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentorId: mentor.id, mentee: menteeData }),
+        body: JSON.stringify({ mentorId: mentor.id, menteeId }),
       })
     } catch {
       // silent — UI already updated
