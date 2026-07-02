@@ -108,8 +108,9 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
     setLoading(true)
 
     try {
-      // 1. Save mentee to Supabase
-      const saveRes = await fetch('/api/mentees', {
+      // 1. Save mentee + run matching in one Turnstile-verified request
+      //    (?test=1 → dry-run: matches but skips the mentor email)
+      const saveRes = await fetch(`/api/mentees${testMode ? '?test=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, turnstile_token: turnstileToken.current }),
@@ -123,34 +124,15 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         return
       }
 
-      // 2. Run matching algorithm (?test=1 → dry-run: matches but skips the mentor email)
-      const matchRes = await fetch(`/api/match${testMode ? '?test=1' : ''}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: form.full_name,
-          email: form.email,
-          school: form.school,
-          current_stage: form.current_stage,
-          interests: form.interests,
-          identity: form.identity,
-          help_with: form.help_with,
-          notes: form.notes,
-          linkedin_url: form.linkedin_url,
-        }),
-      })
-
-      const matchData = await matchRes.json()
-
-      if (!matchRes.ok) {
-        console.error('Match API error:', matchData?.error)
+      if (!saveData.mentors) {
+        console.error('Matching failed (mentee saved) — showing browse-all results')
         // Still show results even if match fails — just redirect to browse all
         router.push('/mentors/results')
         return
       }
 
-      // 3. Store results in sessionStorage and redirect
-      sessionStorage.setItem('matchResults', JSON.stringify(matchData.mentors))
+      // 2. Store results in sessionStorage and redirect
+      sessionStorage.setItem('matchResults', JSON.stringify(saveData.mentors))
       sessionStorage.setItem('menteeName', form.full_name)
       sessionStorage.setItem('menteeData', JSON.stringify({
         full_name: form.full_name,
