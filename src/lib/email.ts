@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import type { ScoredMentor } from '@/types/mentor'
+import { safeUrl } from '@/lib/url'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -15,16 +16,6 @@ function escapeHtml(str: string | null | undefined): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
-}
-
-/**
- * Only allow http(s) URLs through as link targets. Anything else (javascript:,
- * data:, etc.) collapses to '#' so a mentee-supplied linkedin_url can't smuggle
- * a script-scheme href. The result is still escaped by the caller.
- */
-function safeUrl(url: string | null | undefined): string {
-  const u = String(url ?? '').trim()
-  return /^https?:\/\//i.test(u) ? u : '#'
 }
 
 type MenteeInfo = {

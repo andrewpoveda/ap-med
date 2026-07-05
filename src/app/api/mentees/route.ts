@@ -6,6 +6,7 @@ import { verifyTurnstileToken } from '@/lib/turnstile'
 import { scoreMentor } from '@/lib/match'
 import { toPublicMentor } from '@/types/mentor'
 import type { Mentor, ScoredMentor, ScoredPublicMentor } from '@/types/mentor'
+import { cap, isValidEmail, LIMITS } from '@/lib/validate'
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -28,16 +29,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "CAPTCHA verification failed" }, { status: 400 })
   }
 
+  // A single well-formed email is required: this row's email is later used
+  // verbatim as the confirmation-email recipient, so rejecting malformed /
+  // multi-recipient values here is what keeps that send from becoming a relay.
+  if (!isValidEmail(data.email)) {
+    return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
+  }
+
   const mentee = {
-    full_name: data.full_name,
-    email: data.email,
-    school: data.school,
-    current_stage: data.current_stage,
-    interests: data.interests ?? [],
-    identity: data.identity ?? [],
-    help_with: data.help_with ?? [],
-    notes: data.notes || "",
-    linkedin_url: data.linkedin_url || "",
+    full_name: cap(data.full_name, LIMITS.name),
+    email: cap(data.email, LIMITS.name),
+    school: cap(data.school, LIMITS.name),
+    current_stage: cap(data.current_stage, LIMITS.name),
+    interests: Array.isArray(data.interests) ? data.interests : [],
+    identity: Array.isArray(data.identity) ? data.identity : [],
+    help_with: Array.isArray(data.help_with) ? data.help_with : [],
+    notes: cap(data.notes, LIMITS.text),
+    linkedin_url: cap(data.linkedin_url, LIMITS.name),
   }
 
   // The returned id doubles as the mentee's request capability: /api/notify only
@@ -62,14 +70,18 @@ export async function POST(request: Request) {
   .single();
 
   if (error || !inserted) {
-    return NextResponse.json({ error: error?.message ?? 'Insert failed' }, { status: 500 })
+    console.error('Mentee insert failed:', error?.message)
+    return NextResponse.json({ error: 'Could not save your submission' }, { status: 500 })
   }
 
   // Matching runs inside this Turnstile-verified request (merged from the former
   // /api/match route, which auto-emailed mentors without any token check).
+  // Only vetted mentors are eligible — unapproved submissions never appear in
+  // results (see migration 0003).
   const { data: mentors, error: mentorError } = await supabaseAdmin
     .from('mentor')
     .select('*')
+    .eq('approved', true)
 
   if (mentorError) {
     // The mentee row is already saved — degrade to the browse-all results view

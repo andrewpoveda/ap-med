@@ -217,14 +217,12 @@ export default function MentorOnboardingPage() {
   };
 
   const handleNext = async () => {
-    // if (!validate(section)) return;
+    if (!validate(section)) return;
     if (section < 3) {
       setSection((s) => s + 1);
       window.scrollTo(0, 0);
     } else {
       try {
-        console.log("FORM CONTENTS:", form);
-
         const response = await fetch('/api/mentor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

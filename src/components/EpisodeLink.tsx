@@ -4,6 +4,7 @@ import { Headphones } from "lucide-react";
 import { track } from "@vercel/analytics";
 import { usePostHog } from "posthog-js/react";
 import type { Mentor } from "@/types/mentor";
+import { safeUrl } from "@/lib/url";
 
 type Props = {
   mentor: Pick<Mentor, "id" | "first_name" | "last_name" | "episode_url">;
@@ -15,14 +16,18 @@ type Props = {
 // in the data).
 export default function EpisodeLink({ mentor }: Props) {
   const posthog = usePostHog();
-  const hasEpisode = mentor.episode_url && mentor.episode_url !== "EMPTY";
+  // Defense-in-depth for legacy rows: only render an http(s) target. A stored
+  // javascript:/data: episode_url collapses to '#' via safeUrl and is dropped
+  // here, so it can never become a clickable script href.
+  const href = safeUrl(mentor.episode_url);
+  const hasEpisode = mentor.episode_url && mentor.episode_url !== "EMPTY" && href !== "#";
   if (!hasEpisode) return null;
 
   const fullName = `${mentor.first_name} ${mentor.last_name}`;
 
   return (
     <a
-      href={mentor.episode_url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Listen to ${mentor.first_name}'s podcast episode`}

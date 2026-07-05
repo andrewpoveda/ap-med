@@ -47,7 +47,9 @@ export async function POST(request: Request) {
     const { data: mentorRow, error: mentorErr } = await supabase
       .from('mentor')
       .select('*')
+      // Never notify an unvetted, self-service mentor submission.
       .eq('id', mentorId)
+      .eq('approved', true)
       .single()
 
     if (mentorErr || !mentorRow) {
