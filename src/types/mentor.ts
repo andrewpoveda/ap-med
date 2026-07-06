@@ -20,6 +20,11 @@ export type Mentor = {
   email: string
   notes: string | null
   photo_url?: string
+  // Server-side only (not in PUBLIC_MENTOR_COLUMNS). `approved` is the moderation
+  // gate (migration 0003); `auth_user_id` links the row to a Supabase auth user
+  // on first Google sign-in (migration 0004).
+  approved: boolean
+  auth_user_id: string | null
 }
 
 export type ScoredMentor = Mentor & { matchPercent: number }
