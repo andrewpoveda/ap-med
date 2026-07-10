@@ -38,22 +38,31 @@ export async function linkMentorByEmail(
   if (!mentor) return { status: 'no-profile' }
 
   if (mentor.auth_user_id && mentor.auth_user_id !== userId) {
-    console.error(
-      `Mentor ${mentor.id} already linked to a different auth user — not overriding`,
-    )
+    // No row identifiers in the message: Sentry's console integration attaches
+    // console.error output to error events as breadcrumbs. The conflicted row
+    // is findable in the DB by the signing-in user's email.
+    console.error('Mentor link conflict — not overriding existing auth_user_id')
     return { status: 'conflict', mentorId: mentor.id }
   }
 
   if (!mentor.auth_user_id) {
-    const { error: updateErr } = await admin
+    const { data: claimed, error: updateErr } = await admin
       .from('mentor')
       .update({ auth_user_id: userId })
       .eq('id', mentor.id)
       // Guard against a race: only claim while still unclaimed.
       .is('auth_user_id', null)
+      .select('id')
     if (updateErr) {
       console.error('Mentor link update failed:', updateErr.message)
       return { status: 'error' }
+    }
+    if (!claimed || claimed.length === 0) {
+      // Lost the claim race: another sign-in linked the row between our SELECT
+      // above and this UPDATE. The conditional WHERE already prevented an
+      // override — report it instead of a false 'linked'.
+      console.error('Mentor link conflict — not overriding existing auth_user_id')
+      return { status: 'conflict', mentorId: mentor.id }
     }
   }
 
