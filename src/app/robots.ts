@@ -5,8 +5,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      // API endpoints and the session-dependent results page are not crawlable content
-      disallow: ['/api/', '/mentors/results'],
+      // API endpoints, the session-dependent results page, and the authenticated
+      // mentor area are not crawlable content
+      disallow: ['/api/', '/mentors/results', '/dashboard', '/login', '/auth/'],
     },
     sitemap: 'https://ap-med.org/sitemap.xml',
   }
