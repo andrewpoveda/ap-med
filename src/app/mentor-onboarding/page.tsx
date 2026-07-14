@@ -315,10 +315,10 @@ export default function MentorOnboardingPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name" error={errors.firstName}>
-              <input name="firstName" className={inputClass} placeholder="Andrew" value={form.firstName} onChange={setText("firstName")} />
+              <input name="firstName" className={inputClass} placeholder="John" value={form.firstName} onChange={setText("firstName")} />
             </Field>
             <Field label="Last name" error={errors.lastName}>
-              <input name="lastName" className={inputClass} placeholder="Poveda" value={form.lastName} onChange={setText("lastName")} />
+              <input name="lastName" className={inputClass} placeholder="Doe" value={form.lastName} onChange={setText("lastName")} />
             </Field>
           </div>
           <Field label="Credentials" optional hint="e.g. MD, DO, MS, MPH — appears after your name">
