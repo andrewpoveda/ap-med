@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser, linkMentorByEmail } from '@/lib/mentor-link'
+import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
   getGoogleTokenRow,
@@ -93,6 +94,10 @@ export default async function DashboardPage({
     }
   }
 
+  // Cohort admins get a link into the admin panel from here — /admin has no
+  // public nav entry.
+  const adminUser = user.email ? await getAdminUserByEmail(user.email) : null
+
   const { calendar } = await searchParams
   const banner = calendar ? CALENDAR_BANNERS[calendar] : undefined
 
@@ -142,6 +147,14 @@ export default async function DashboardPage({
           Signed in as {user.email}
         </span>
         <SignOutButton />
+        {adminUser && (
+          <Link
+            href="/admin"
+            style={{ color: '#8a6a2f', fontSize: '0.9rem', fontWeight: 600 }}
+          >
+            Admin panel →
+          </Link>
+        )}
       </div>
 
       {banner && (

@@ -6,8 +6,9 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       // API endpoints, the session-dependent results page, the authenticated
-      // mentor area, and tokenized scheduling links are not crawlable content
-      disallow: ['/api/', '/mentors/results', '/dashboard', '/login', '/auth/', '/schedule/'],
+      // mentor and admin areas, and tokenized scheduling links are not
+      // crawlable content
+      disallow: ['/api/', '/mentors/results', '/dashboard', '/admin', '/login', '/auth/', '/schedule/'],
     },
     sitemap: 'https://ap-med.org/sitemap.xml',
   }
