@@ -22,9 +22,12 @@ export type Mentor = {
   photo_url?: string
   // Server-side only (not in PUBLIC_MENTOR_COLUMNS). `approved` is the moderation
   // gate (migration 0003); `auth_user_id` links the row to a Supabase auth user
-  // on first Google sign-in (migration 0004).
+  // on first Google sign-in (migration 0004); `cohort_id` marks Ascenso cohort
+  // members (migration 0006) — non-null rows are excluded from every public
+  // surface and must never be added to PUBLIC_MENTOR_COLUMNS.
   approved: boolean
   auth_user_id: string | null
+  cohort_id: string | null
 }
 
 export type ScoredMentor = Mentor & { matchPercent: number }

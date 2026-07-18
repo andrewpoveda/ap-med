@@ -82,6 +82,9 @@ export async function POST(request: Request) {
     .from('mentor')
     .select('*')
     .eq('approved', true)
+    // Cohort mentors are excluded from general-platform matching (migration
+    // 0006) — the cohort runs its own scoped matching workflow.
+    .is('cohort_id', null)
 
   if (mentorError) {
     // The mentee row is already saved — degrade to the browse-all results view
