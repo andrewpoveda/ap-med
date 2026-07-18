@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
+import Link from 'next/link'
 import { requireAdminSession } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
@@ -165,6 +166,14 @@ export default async function AdminCohortsPage() {
                   ) : (
                     'No applications yet.'
                   )}
+                </p>
+                <p style={{ margin: '0.75rem 0 0' }}>
+                  <Link
+                    href={`/admin/cohorts/${cohort.id}/applications`}
+                    style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
+                  >
+                    Review applications →
+                  </Link>
                 </p>
               </div>
             )
