@@ -27,6 +27,9 @@ export async function GET() {
       // Only vetted mentors are public; self-service submissions stay hidden
       // until manually approved (see migration 0003).
       .eq('approved', true)
+      // Cohort members never appear in the public directory (migration 0006) —
+      // isolation is a P0 security requirement, not a preference.
+      .is('cohort_id', null)
       .order('last_name')
     if (error) {
       console.error('Mentor list query failed:', error.message)

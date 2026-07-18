@@ -52,6 +52,9 @@ export async function POST(request: Request) {
       // Never notify an unvetted, self-service mentor submission.
       .eq('id', mentorId)
       .eq('approved', true)
+      // Cohort mentors are not reachable through the public request flow
+      // (migration 0006) — even with a leaked UUID, no email fires.
+      .is('cohort_id', null)
       .single()
 
     if (mentorErr || !mentorRow) {
@@ -62,6 +65,9 @@ export async function POST(request: Request) {
       .from('mentees')
       .select('*')
       .eq('id', menteeId)
+      // A cohort mentee's row id is not a valid capability for the public
+      // request flow (migration 0006) — cohort members never mix into it.
+      .is('cohort_id', null)
       .single()
 
     if (menteeErr || !menteeRow) {
