@@ -4,8 +4,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser } from '@/lib/mentor-link'
-import { getMentorAccessToken, requestExists } from '@/lib/sessions'
-import { createCalendarEvent, deleteCalendarEvent } from '@/lib/google'
+import { bookSession, requestExists } from '@/lib/sessions'
 import { cap, LIMITS } from '@/lib/validate'
 
 /**
@@ -72,94 +71,55 @@ export async function POST(request: Request) {
     const menteeEmail = String(menteeRow.email ?? '')
     const menteeName = String(menteeRow.full_name ?? 'your mentee')
 
-    // Dry-run: record the row, skip the external Google call (mirrors /api/notify).
-    if (dryRun) {
-      const { data: row, error } = await admin
-        .from('sessions')
-        .insert({
-          mentor_id: mentor.id,
-          mentee_id: menteeId,
-          scheduled_at: when.toISOString(),
-          notes: notes || null,
-          status: 'scheduled',
-        })
-        .select('id')
-        .single()
-      if (error || !row) {
-        console.error('Session dry-run insert failed:', error?.message)
-        return NextResponse.json({ error: 'Could not save the session' }, { status: 500 })
+    // Booking semantics (event-first, rollback-on-insert-failure, dry-run) live
+    // in the shared bookSession() — also used by the mentee magic-link route.
+    const outcome = await bookSession(admin, {
+      mentor: {
+        id: mentor.id,
+        first_name: mentor.first_name,
+        last_name: mentor.last_name,
+        email: mentor.email,
+      },
+      menteeId,
+      menteeEmail,
+      menteeName,
+      whenISO: when.toISOString(),
+      notes,
+      dryRun,
+    })
+
+    if (!outcome.ok) {
+      switch (outcome.code) {
+        case 'not_connected':
+          return NextResponse.json(
+            { error: 'Connect your Google Calendar first' },
+            { status: 400 },
+          )
+        case 'reconnect':
+          return NextResponse.json(
+            { error: 'Please reconnect your Google Calendar' },
+            { status: 400 },
+          )
+        case 'google_failed':
+          return NextResponse.json(
+            { error: 'Could not create the calendar event' },
+            { status: 502 },
+          )
+        case 'slot_taken':
+          return NextResponse.json(
+            { error: 'That time was just booked — pick another' },
+            { status: 409 },
+          )
+        default:
+          return NextResponse.json({ error: 'Could not save the session' }, { status: 500 })
       }
-      console.log(
-        `[dry-run] session recorded, skipped Google event — mentor ${mentor.id}, mentee ${menteeId}`,
-      )
-      return NextResponse.json({ success: true, dryRun: true, sessionId: row.id })
-    }
-
-    // A connected, still-valid Google Calendar is required for a real booking.
-    let accessToken: string | null
-    try {
-      accessToken = await getMentorAccessToken(admin, mentor.id)
-    } catch (err) {
-      console.error('Mentor access token unavailable:', err)
-      return NextResponse.json(
-        { error: 'Please reconnect your Google Calendar' },
-        { status: 400 },
-      )
-    }
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Connect your Google Calendar first' },
-        { status: 400 },
-      )
-    }
-
-    // Create the event first (the external side-effect), then persist. If the
-    // insert then fails, roll the event back so we never leave an orphan.
-    let event
-    try {
-      event = await createCalendarEvent({
-        accessToken,
-        summary: `AP MED mentorship: ${menteeName} & ${mentor.first_name} ${mentor.last_name}`,
-        description: notes || 'Scheduled via AP MED Mentors.',
-        startISO: when.toISOString(),
-        attendeeEmails: [mentor.email, menteeEmail].filter(Boolean),
-      })
-    } catch (err) {
-      console.error('Calendar event create failed:', err)
-      return NextResponse.json(
-        { error: 'Could not create the calendar event' },
-        { status: 502 },
-      )
-    }
-
-    const { data: row, error: insErr } = await admin
-      .from('sessions')
-      .insert({
-        mentor_id: mentor.id,
-        mentee_id: menteeId,
-        scheduled_at: when.toISOString(),
-        google_event_id: event.eventId,
-        meet_link: event.meetLink,
-        notes: notes || null,
-        status: 'scheduled',
-      })
-      .select('id')
-      .single()
-
-    if (insErr || !row) {
-      try {
-        await deleteCalendarEvent({ accessToken, eventId: event.eventId })
-      } catch (delErr) {
-        console.error('Rollback of orphaned calendar event failed:', delErr)
-      }
-      console.error('Session insert failed:', insErr?.message)
-      return NextResponse.json({ error: 'Could not save the session' }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
-      sessionId: row.id,
-      meetLink: event.meetLink,
+      sessionId: outcome.sessionId,
+      meetLink: outcome.meetLink,
+      ...(outcome.dryRun ? { dryRun: true } : {}),
     })
   } catch (err) {
     console.error('Create session error:', err)

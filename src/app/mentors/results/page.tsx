@@ -14,6 +14,7 @@ export default function MatchResultsPage() {
   const [loaded, setLoaded] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
+  const [scheduleUrls, setScheduleUrls] = useState<Record<string, string>>({})
   const [testMode, setTestMode] = useState(false)
 
   useEffect(() => {
@@ -40,11 +41,16 @@ export default function MatchResultsPage() {
     try {
       // /api/notify resolves both parties from the DB by id — no mentee data
       // leaves the browser here.
-      await fetch(`/api/notify${testMode ? '?test=1' : ''}`, {
+      const res = await fetch(`/api/notify${testMode ? '?test=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mentorId: mentor.id, menteeId }),
       })
+      const data = await res.json().catch(() => ({}))
+      // Self-serve booking link, minted with the request (also emailed).
+      if (res.ok && typeof data.scheduleUrl === 'string') {
+        setScheduleUrls(prev => ({ ...prev, [mentor.id]: data.scheduleUrl }))
+      }
     } catch {
       // silent — UI already updated
     }
@@ -102,6 +108,7 @@ export default function MatchResultsPage() {
                   rank={i + 1}
                   featured
                   requested={requestedIds.has(mentor.id)}
+                  scheduleUrl={scheduleUrls[mentor.id]}
                   onRequest={() => handleRequest(mentor)}
                 />
               ))}
@@ -139,6 +146,7 @@ export default function MatchResultsPage() {
                     mentor={mentor}
                     featured={false}
                     requested={requestedIds.has(mentor.id)}
+                    scheduleUrl={scheduleUrls[mentor.id]}
                     onRequest={() => handleRequest(mentor)}
                   />
                 ))}
@@ -191,12 +199,13 @@ function SkeletonCard() {
 }
 
 function MatchCard({
-  mentor, rank, featured, requested, onRequest,
+  mentor, rank, featured, requested, scheduleUrl, onRequest,
 }: {
   mentor: ScoredPublicMentor
   rank?: number
   featured: boolean
   requested: boolean
+  scheduleUrl?: string
   onRequest: () => void
 }) {
   const matchColor =
@@ -284,6 +293,20 @@ function MatchCard({
         >
           {requested ? 'Requested ✓' : 'Request →'}
         </button>
+        {requested && scheduleUrl && (
+          <a
+            href={scheduleUrl}
+            className="sm:mt-2"
+            style={{
+              color: '#8a6a2f',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Pick a time →
+          </a>
+        )}
       </div>
     </div>
   )

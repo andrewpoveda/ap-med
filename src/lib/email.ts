@@ -60,10 +60,29 @@ export async function notifyMenteeOfRequest(params: {
   menteeEmail: string
   menteeFirstName: string
   mentorName: string
+  /** Self-serve booking link (server-built /schedule/<token> URL). */
+  scheduleUrl?: string
 }) {
-  const { menteeEmail, menteeFirstName, mentorName } = params
+  const { menteeEmail, menteeFirstName, mentorName, scheduleUrl } = params
   const safeFirst = escapeHtml(menteeFirstName)
   const safeMentor = escapeHtml(mentorName)
+  // Server-constructed URL, but run through the same guard as every href.
+  const safeSchedule = scheduleUrl ? safeUrl(scheduleUrl) : '#'
+  const scheduleBlock =
+    scheduleUrl && safeSchedule !== '#'
+      ? `
+    <p style="margin:0 0 24px;">
+      <a href="${escapeHtml(safeSchedule)}"
+         style="display:inline-block;background:#c8a96e;color:#1a1a2e;padding:10px 22px;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;">
+        Pick a time with ${safeMentor} &rarr;
+      </a>
+    </p>
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;font-size:13px;">
+      If your mentor has shared bookable hours, that link lets you grab a time
+      directly — a calendar invite with a Google Meet link goes to you both.
+      It stays valid for about two months.
+    </p>`
+      : ''
 
   const { error } = await resend.emails.send({
     from: 'AP MED Mentors <mentors@ap-med.org>',
@@ -83,6 +102,7 @@ export async function notifyMenteeOfRequest(params: {
       Hi ${safeFirst}, we've passed your request along to <strong style="color:#e2e8f0;">${safeMentor}</strong>.
       Mentors reply directly to you by email whenever they're able to take someone on.
     </p>
+    ${scheduleBlock}
     <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
       If you haven't heard back within about a week, just reply to this email and the AP MED team
       will help you connect with another mentor — no worries at all.

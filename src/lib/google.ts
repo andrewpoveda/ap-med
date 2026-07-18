@@ -9,14 +9,20 @@
 
 // openid+email so the token response's id_token carries the connected Google
 // address; calendar.events (not full calendar) is the least privilege needed to
-// create events with a Meet link.
+// create events with a Meet link; calendar.freebusy ("view your availability")
+// is the narrowest scope freebusy.query accepts — calendar.events does NOT
+// cover it (verified against Google's reference 2026-07-13). Anyone who
+// connected before freebusy was added must click the dashboard Reconnect link
+// once: prompt=consent + include_granted_scopes below re-grant the union and
+// the callback upsert replaces the stored refresh token.
 export const CALENDAR_SCOPES =
-  'openid email https://www.googleapis.com/auth/calendar.events'
+  'openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy'
 
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 const EVENTS_ENDPOINT =
   'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+const FREEBUSY_ENDPOINT = 'https://www.googleapis.com/calendar/v3/freeBusy'
 
 const TIMEOUT_MS = 10_000
 const EVENT_DURATION_MS = 30 * 60 * 1000 // default 30-minute sessions
@@ -210,6 +216,61 @@ export async function createCalendarEvent(params: {
     eventId: event.id,
     meetLink: videoEntry?.uri ?? event.hangoutLink ?? null,
   }
+}
+
+/**
+ * Thrown when Google's response means the stored grant can't serve this call
+ * (typically: a refresh token minted before calendar.freebusy joined
+ * CALENDAR_SCOPES gets 403 here). Callers treat it as "mentor must click
+ * Reconnect", distinct from "not connected" and from transient failures.
+ */
+export class GoogleReconnectNeededError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GoogleReconnectNeededError'
+  }
+}
+
+interface FreeBusyResponse {
+  calendars?: Record<
+    string,
+    { busy?: Array<{ start?: string; end?: string }>; errors?: unknown[] }
+  >
+}
+
+/** Busy intervals on the connected account's primary calendar. */
+export async function queryFreeBusy(params: {
+  accessToken: string
+  timeMinISO: string
+  timeMaxISO: string
+}): Promise<Array<{ start: string; end: string }>> {
+  const res = await googleFetch(FREEBUSY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      timeMin: params.timeMinISO,
+      timeMax: params.timeMaxISO,
+      items: [{ id: 'primary' }],
+    }),
+  })
+  if (res.status === 401 || res.status === 403) {
+    throw new GoogleReconnectNeededError(`Google freebusy refused: ${res.status}`)
+  }
+  if (!res.ok) {
+    throw new Error(`Google freebusy failed: ${res.status}`)
+  }
+  const json = (await res.json()) as FreeBusyResponse
+  const primary = json.calendars?.primary
+  if (!primary || (primary.errors && primary.errors.length > 0)) {
+    // Per-calendar errors usually also mean insufficient scope.
+    throw new GoogleReconnectNeededError('Google freebusy returned calendar errors')
+  }
+  return (primary.busy ?? []).flatMap(b =>
+    b.start && b.end ? [{ start: b.start, end: b.end }] : [],
+  )
 }
 
 /** Delete a calendar event (used when a session is cancelled). Best-effort. */

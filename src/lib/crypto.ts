@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
 /**
  * Symmetric encryption for the Google refresh token stored in
@@ -33,6 +33,24 @@ export function encryptToken(plaintext: string): string {
   const enc = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
   const tag = cipher.getAuthTag()
   return [iv.toString('base64'), tag.toString('base64'), enc.toString('base64')].join(':')
+}
+
+/**
+ * Mint a mentee scheduling-link token (migration 0005). The raw token goes
+ * into the link the mentee receives; only its SHA-256 hash is stored, so a
+ * leaked mentee_requests row never yields a bookable URL. 256 random bits —
+ * unguessable; the unique index on the hash makes lookup O(1). (No
+ * constant-time comparison ceremony needed: the attacker would have to
+ * predict 256 bits, and the lookup is an index probe, not a string compare.)
+ */
+export function mintScheduleToken(): { token: string; tokenHash: string } {
+  const token = randomBytes(32).toString('base64url')
+  return { token, tokenHash: hashScheduleToken(token) }
+}
+
+/** SHA-256 hex of a presented schedule token, for lookup against the DB. */
+export function hashScheduleToken(token: string): string {
+  return createHash('sha256').update(token, 'utf8').digest('hex')
 }
 
 /** Reverse of encryptToken. Throws on tampering (GCM auth tag mismatch). */
