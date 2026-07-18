@@ -66,6 +66,15 @@ export const resolveAdminSession = cache(
 )
 
 /**
+ * Cohort-level authorization on top of the admin gate: supers see every
+ * cohort; a cohort_admin sees only their own (a scoped admin with no cohort
+ * assigned sees nothing — fail closed on a misconfigured row).
+ */
+export function canAccessCohort(adminUser: AdminUser, cohortId: string): boolean {
+  return adminUser.role === 'super' || adminUser.cohort_id === cohortId
+}
+
+/**
  * Gate for the /admin segment. Anonymous → /login; signed-in non-admin → the
  * site 404 (the admin area should not be discoverable by probing). The layout
  * calls this, and every admin page must ALSO call it before fetching anything —
