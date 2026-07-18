@@ -6,13 +6,16 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser, linkMentorByEmail } from '@/lib/mentor-link'
 import {
+  getAvailability,
   getGoogleTokenRow,
   getUpcomingSessions,
   getRequestedMentees,
+  type MentorAvailability,
   type UpcomingSession,
   type RequestedMentee,
 } from '@/lib/sessions'
 import SignOutButton from './SignOutButton'
+import AvailabilityForm from './AvailabilityForm'
 import ScheduleSessionForm from './ScheduleSessionForm'
 import SessionsList from './SessionsList'
 
@@ -98,16 +101,19 @@ export default async function DashboardPage({
   let googleEmail: string | null = null
   let upcoming: UpcomingSession[] = []
   let mentees: RequestedMentee[] = []
+  let availability: MentorAvailability | null = null
   if (mentor) {
-    const [tokenRow, up, requested] = await Promise.all([
+    const [tokenRow, up, requested, avail] = await Promise.all([
       getGoogleTokenRow(admin, mentor.id),
       getUpcomingSessions(admin, mentor.id),
       getRequestedMentees(admin, mentor.id),
+      getAvailability(admin, mentor.id),
     ])
     connected = !!tokenRow
     googleEmail = tokenRow?.google_email ?? null
     upcoming = up
     mentees = requested
+    availability = avail
   }
 
   return (
@@ -184,6 +190,31 @@ export default async function DashboardPage({
                 </a>
               </>
             )}
+          </div>
+
+          <div style={cardStyle}>
+            <p style={eyebrowStyle}>Bookable hours</p>
+            {!connected && (
+              <p
+                style={{
+                  background: '#fdf6e3',
+                  border: '1px solid #e0c060',
+                  color: '#8a6d1f',
+                  borderRadius: '8px',
+                  padding: '0.6rem 0.9rem',
+                  fontSize: '0.85rem',
+                  margin: '0 0 1rem',
+                }}
+              >
+                Connect your Google Calendar above to activate online booking —
+                hours you set here are offered to mentees only once your busy
+                times can be checked.
+              </p>
+            )}
+            <AvailabilityForm
+              initialTimezone={availability?.timezone ?? null}
+              initialRules={availability?.rules ?? []}
+            />
           </div>
 
           {connected && (

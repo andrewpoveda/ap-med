@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { decryptToken } from '@/lib/crypto'
-import { refreshAccessToken } from '@/lib/google'
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  refreshAccessToken,
+} from '@/lib/google'
+import type { AvailabilityRule, BusyInterval } from '@/lib/availability'
 
 /** Serializable shape handed to the client dashboard components. */
 export type UpcomingSession = {
@@ -113,6 +118,196 @@ export async function getUpcomingSessions(
     status: row.status,
     menteeFirstName: firstNameOf(row.mentee),
   }))
+}
+
+export type MentorAvailability = {
+  timezone: string
+  rules: AvailabilityRule[]
+  slotMinutes: number
+}
+
+/** The mentor's bookable-hours row (migration 0005), or null if never set. */
+export async function getAvailability(
+  admin: SupabaseClient,
+  mentorId: string,
+): Promise<MentorAvailability | null> {
+  const { data, error } = await admin
+    .from('mentor_availability')
+    .select('timezone, rules, slot_minutes')
+    .eq('mentor_id', mentorId)
+    .maybeSingle()
+  if (error) {
+    console.error('getAvailability failed:', error.message)
+    return null
+  }
+  if (!data) return null
+  return {
+    timezone: String(data.timezone),
+    rules: Array.isArray(data.rules) ? (data.rules as AvailabilityRule[]) : [],
+    slotMinutes: typeof data.slot_minutes === 'number' ? data.slot_minutes : 30,
+  }
+}
+
+/** True if this pair already has an upcoming scheduled session (booking cap). */
+export async function hasUpcomingSession(
+  admin: SupabaseClient,
+  mentorId: string,
+  menteeId: string,
+): Promise<boolean> {
+  const { data, error } = await admin
+    .from('sessions')
+    .select('id')
+    .eq('mentor_id', mentorId)
+    .eq('mentee_id', menteeId)
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', new Date().toISOString())
+    .limit(1)
+  if (error) {
+    console.error('hasUpcomingSession check failed:', error.message)
+    // Fail closed: a DB error must not open the door to double-booking.
+    return true
+  }
+  return !!data && data.length > 0
+}
+
+/**
+ * This mentor's already-scheduled sessions as busy intervals — belt and braces
+ * on top of freebusy, covering sessions with no Google event (?test=1 rows).
+ */
+export async function getScheduledBusyIntervals(
+  admin: SupabaseClient,
+  mentorId: string,
+  windowStartISO: string,
+  windowEndISO: string,
+  slotMinutes: number,
+): Promise<BusyInterval[]> {
+  const { data, error } = await admin
+    .from('sessions')
+    .select('scheduled_at')
+    .eq('mentor_id', mentorId)
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', windowStartISO)
+    .lte('scheduled_at', windowEndISO)
+  if (error) {
+    console.error('getScheduledBusyIntervals failed:', error.message)
+    return []
+  }
+  return (data as Array<{ scheduled_at: string }>).map(row => {
+    const start = new Date(row.scheduled_at)
+    return {
+      start: start.toISOString(),
+      end: new Date(start.getTime() + slotMinutes * 60_000).toISOString(),
+    }
+  })
+}
+
+export type BookSessionOutcome =
+  | { ok: true; sessionId: string; meetLink: string | null; dryRun: boolean }
+  | {
+      ok: false
+      code: 'not_connected' | 'reconnect' | 'google_failed' | 'slot_taken' | 'db_failed'
+    }
+
+/**
+ * Book a session: create the Google Meet event (the external side-effect)
+ * first, then persist the row; if the insert fails the event is rolled back so
+ * we never leave an orphan invite. Shared by the mentor dashboard route
+ * (POST /api/sessions) and the mentee magic-link route
+ * (POST /api/schedule/[token]) so booking semantics can't drift.
+ *
+ * dryRun records the row and skips Google entirely (mirrors /api/notify).
+ * A unique-violation on sessions_mentor_slot_key (two bookings racing for the
+ * same slot — migration 0005) comes back as code 'slot_taken'.
+ */
+export async function bookSession(
+  admin: SupabaseClient,
+  params: {
+    mentor: { id: string; first_name: string; last_name: string; email: string }
+    menteeId: string
+    menteeEmail: string
+    menteeName: string
+    whenISO: string
+    notes: string
+    dryRun: boolean
+  },
+): Promise<BookSessionOutcome> {
+  const { mentor, menteeId, menteeEmail, menteeName, whenISO, notes, dryRun } = params
+
+  if (dryRun) {
+    const { data: row, error } = await admin
+      .from('sessions')
+      .insert({
+        mentor_id: mentor.id,
+        mentee_id: menteeId,
+        scheduled_at: whenISO,
+        notes: notes || null,
+        status: 'scheduled',
+      })
+      .select('id')
+      .single()
+    if (error || !row) {
+      if (error?.code === '23505') return { ok: false, code: 'slot_taken' }
+      console.error('Session dry-run insert failed:', error?.message)
+      return { ok: false, code: 'db_failed' }
+    }
+    console.log(
+      `[dry-run] session recorded, skipped Google event — mentor ${mentor.id}, mentee ${menteeId}`,
+    )
+    return { ok: true, sessionId: row.id, meetLink: null, dryRun: true }
+  }
+
+  // A connected, still-valid Google Calendar is required for a real booking.
+  let accessToken: string | null
+  try {
+    accessToken = await getMentorAccessToken(admin, mentor.id)
+  } catch (err) {
+    console.error('Mentor access token unavailable:', err)
+    return { ok: false, code: 'reconnect' }
+  }
+  if (!accessToken) {
+    return { ok: false, code: 'not_connected' }
+  }
+
+  let event
+  try {
+    event = await createCalendarEvent({
+      accessToken,
+      summary: `AP MED mentorship: ${menteeName} & ${mentor.first_name} ${mentor.last_name}`,
+      description: notes || 'Scheduled via AP MED Mentors.',
+      startISO: whenISO,
+      attendeeEmails: [mentor.email, menteeEmail].filter(Boolean),
+    })
+  } catch (err) {
+    console.error('Calendar event create failed:', err)
+    return { ok: false, code: 'google_failed' }
+  }
+
+  const { data: row, error: insErr } = await admin
+    .from('sessions')
+    .insert({
+      mentor_id: mentor.id,
+      mentee_id: menteeId,
+      scheduled_at: whenISO,
+      google_event_id: event.eventId,
+      meet_link: event.meetLink,
+      notes: notes || null,
+      status: 'scheduled',
+    })
+    .select('id')
+    .single()
+
+  if (insErr || !row) {
+    try {
+      await deleteCalendarEvent({ accessToken, eventId: event.eventId })
+    } catch (delErr) {
+      console.error('Rollback of orphaned calendar event failed:', delErr)
+    }
+    if (insErr?.code === '23505') return { ok: false, code: 'slot_taken' }
+    console.error('Session insert failed:', insErr?.message)
+    return { ok: false, code: 'db_failed' }
+  }
+
+  return { ok: true, sessionId: row.id, meetLink: event.meetLink, dryRun: false }
 }
 
 /** Mentees who have requested this mentor — the pool eligible to be scheduled. */

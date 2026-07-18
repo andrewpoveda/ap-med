@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { notifyMentorOfMatch, notifyMenteeOfRequest } from '@/lib/email'
 import { scoreMentor } from '@/lib/match'
+import { mintScheduleToken } from '@/lib/crypto'
+import { SCHEDULE_TOKEN_TTL_DAYS } from '@/lib/availability'
 import type { Mentor } from '@/types/mentor'
 
 function getSupabaseAdmin() {
@@ -71,9 +73,25 @@ export async function POST(request: Request) {
     // a second email. Deliberately not skipped in dry-run (mirrors the mentees
     // insert precedent): the rehearsal exercises the real path, only the emails
     // are skipped.
+    //
+    // The same insert mints the mentee's self-serve booking link (migration
+    // 0005): a 256-bit token whose hash rides on this row. Minting requires the
+    // same Turnstile-backed menteeId capability that gates requests, so the
+    // link adds no new abuse surface. Reusable until expiry — the one-upcoming-
+    // session cap in /api/schedule/[token] is what prevents calendar spam.
+    const { token: scheduleToken, tokenHash } = mintScheduleToken()
+    const tokenExpiresAt = new Date(
+      Date.now() + SCHEDULE_TOKEN_TTL_DAYS * 86_400_000,
+    ).toISOString()
+
     const { error: requestErr } = await supabase
       .from('mentee_requests')
-      .insert({ mentee_id: menteeId, mentor_id: mentorId })
+      .insert({
+        mentee_id: menteeId,
+        mentor_id: mentorId,
+        schedule_token_hash: tokenHash,
+        schedule_token_expires_at: tokenExpiresAt,
+      })
 
     if (requestErr) {
       if (requestErr.code === '23505') {
@@ -99,9 +117,14 @@ export async function POST(request: Request) {
     // matchPercent is recomputed from the two trusted DB rows, never taken from the client.
     const scoredMentor = { ...mentor, matchPercent: scoreMentor(mentor, mentee) }
 
+    // The raw token exists only in this response + the confirmation email —
+    // the DB holds its hash. Origin comes from the request (Cloudflare/Vercel
+    // enforce the public Host in prod), same approach as getRedirectUri().
+    const scheduleUrl = `${new URL(request.url).origin}/schedule/${scheduleToken}`
+
     if (dryRun) {
       console.log(`[dry-run] Skipped notify emails — mentor ${mentor.email}, mentee ${mentee.email}`)
-      return NextResponse.json({ success: true, dryRun: true })
+      return NextResponse.json({ success: true, dryRun: true, scheduleUrl })
     }
 
     // Core action: notify the mentor. On failure, release the dedupe slot so the
@@ -125,12 +148,13 @@ export async function POST(request: Request) {
         menteeEmail: mentee.email,
         menteeFirstName: mentee.full_name.split(' ')[0] || mentee.full_name,
         mentorName: `${mentor.first_name} ${mentor.last_name}`,
+        scheduleUrl,
       })
     } catch (err) {
       console.error('Mentee confirmation email failed (non-fatal):', err)
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, scheduleUrl })
   } catch (err) {
     console.error('Notify error:', err)
     return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 })
