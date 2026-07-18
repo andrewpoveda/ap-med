@@ -477,7 +477,7 @@ const radioCardStyle = (selected: boolean): React.CSSProperties => ({
   borderRadius: '8px',
   cursor: 'pointer',
   fontSize: '0.95rem',
-  color: selected ? '#ffffff' : '#4a4a5a',
+  color: selected ? '#8a6a2f' : '#4a4a5a',
   transition: 'all 0.15s',
 })
 
@@ -491,6 +491,6 @@ const checkCardStyle = (selected: boolean): React.CSSProperties => ({
   borderRadius: '8px',
   cursor: 'pointer',
   fontSize: '0.875rem',
-  color: selected ? '#ffffff' : '#4a4a5a',
+  color: selected ? '#8a6a2f' : '#4a4a5a',
   transition: 'all 0.15s',
 })
