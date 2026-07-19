@@ -186,6 +186,12 @@ export default async function AdminCohortsPage() {
                   >
                     Milestones →
                   </Link>
+                  <Link
+                    href={`/admin/cohorts/${cohort.id}/announcements`}
+                    style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
+                  >
+                    Announcements →
+                  </Link>
                 </p>
               </div>
             )

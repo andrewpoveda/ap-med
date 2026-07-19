@@ -194,6 +194,81 @@ export async function notifyCohortMatchActivated(params: {
   }
 }
 
+/**
+ * Cohort announcement blast (ascenso-prm.md §5.10) — the admin composes one
+ * subject/body and the send route resolves recipients from cohort membership.
+ * Sent as a Resend BATCH with one message per recipient (never a shared to/cc),
+ * so the cohort roster is never disclosed to the recipients. Batch is
+ * all-or-nothing at the API level: on success every recipient was accepted, on
+ * error none were — the caller rolls back the announcement row and retries.
+ * subject is pre-sanitized to a single line by the caller; body + subject +
+ * cohort name are all escaped here before entering the markup.
+ */
+export async function sendCohortAnnouncement(params: {
+  recipients: string[]
+  cohortName: string
+  subject: string
+  body: string
+}): Promise<{ sent: string[] }> {
+  const { recipients, cohortName, subject, body } = params
+  const html = buildAnnouncementHtml({ cohortName, subject, body })
+
+  const { error } = await resend.batch.send(
+    recipients.map((to) => ({
+      from: 'AP MED Mentors <mentors@ap-med.org>',
+      to,
+      replyTo: 'mentors@ap-med.org',
+      // Subject is plain text (not HTML); the caller has already collapsed any
+      // newlines out of it, so use the raw value, not the escaped one.
+      subject,
+      html,
+    })),
+  )
+
+  if (error) {
+    console.error('Announcement batch send failed:', error)
+    throw error
+  }
+  return { sent: recipients }
+}
+
+function buildAnnouncementHtml({
+  cohortName,
+  subject,
+  body,
+}: {
+  cohortName: string
+  subject: string
+  body: string
+}): string {
+  const safeCohort = escapeHtml(cohortName)
+  const safeSubject = escapeHtml(subject)
+  // Preserve the admin's paragraph breaks: escape first, then turn newlines
+  // into <br/> so no raw markup can be injected via the body.
+  const safeBody = escapeHtml(body).replace(/\r?\n/g, '<br/>')
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:system-ui,sans-serif;color:#e2e8f0;">
+  <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
+    <p style="color:#60a5fa;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">AP MED MENTORS · ${safeCohort}</p>
+    <h1 style="font-size:22px;font-weight:700;margin:0 0 20px;">${safeSubject}</h1>
+    <div style="color:#cbd5e1;font-size:15px;line-height:1.7;margin:0 0 24px;">${safeBody}</div>
+    <hr style="border:none;border-top:1px solid #1e2330;margin:24px 0;" />
+    <p style="color:#64748b;font-size:12px;line-height:1.6;">
+      You received this because you're part of ${safeCohort} on AP MED Mentors.
+      Questions any time? Just reply to this email and it reaches the AP MED team.
+      <br/><br/>
+      — Andrew, AP MED
+    </p>
+  </div>
+</body>
+</html>
+  `
+}
+
 function buildConversationStarters(
   mentee: MenteeInfo,
   specialtyOverlap: string[],
