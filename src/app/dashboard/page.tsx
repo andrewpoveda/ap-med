@@ -24,6 +24,7 @@ import {
   type MeetingLogView,
   type LoggableSession,
 } from '@/lib/meeting-logs'
+import { getGoalsForMatches, type GoalView } from '@/lib/goals'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
@@ -43,6 +44,7 @@ import SessionsList from './SessionsList'
 import MenteeSessionsList from './MenteeSessionsList'
 import CohortMemberPanel from './CohortMemberPanel'
 import MeetingLogSection from './MeetingLogSection'
+import GoalSection from './GoalSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -180,6 +182,7 @@ export default async function DashboardPage({
   let menteeSessions: MenteeUpcomingSession[] = []
   let meetingLogs: MeetingLogView[] = []
   let loggableSessions: Record<string, LoggableSession[]> = {}
+  let goals: GoalView[] = []
 
   let memberRef: CohortMemberRef | null = null
   if (mentor?.cohort_id) {
@@ -197,19 +200,20 @@ export default async function DashboardPage({
       getActiveMatchesForMember(admin, ref),
       getMemberOnboarding(admin, ref),
     ])
-    // Meeting logs (§5.8) need the resolved match ids, so they follow the match
-    // fetch. loggableSessions re-derives the member's active matches itself.
-    ;[meetingLogs, loggableSessions, menteeSessions] = await Promise.all([
-      getMeetingLogsForMatches(
-        admin,
-        ref.cohortId,
-        cohortMatches.map((m) => m.matchId),
-        { type: ref.type, memberId: ref.memberId },
-      ),
+    // Meeting logs (§5.8) and goals (§7.10) both need the resolved match ids, so
+    // they follow the match fetch. loggableSessions re-derives the member's
+    // active matches itself. All scoped to the member's OWN matches (§6.3 P0).
+    const ownMatchIds = cohortMatches.map((m) => m.matchId)
+    ;[meetingLogs, loggableSessions, menteeSessions, goals] = await Promise.all([
+      getMeetingLogsForMatches(admin, ref.cohortId, ownMatchIds, {
+        type: ref.type,
+        memberId: ref.memberId,
+      }),
       getLoggableSessionsForMember(admin, ref),
       ref.type === 'mentee'
         ? getUpcomingSessionsForMentee(admin, ref.memberId)
         : Promise.resolve<MenteeUpcomingSession[]>([]),
+      getGoalsForMatches(admin, ref.cohortId, ownMatchIds),
     ])
   }
 
@@ -294,6 +298,9 @@ export default async function DashboardPage({
                   logs={meetingLogs}
                   loggableSessions={loggableSessions}
                 />
+              )}
+              {meetingLogMatches.length > 0 && (
+                <GoalSection role="mentor" matches={meetingLogMatches} goals={goals} />
               )}
             </>
           )}
@@ -386,6 +393,9 @@ export default async function DashboardPage({
               logs={meetingLogs}
               loggableSessions={loggableSessions}
             />
+          )}
+          {meetingLogMatches.length > 0 && (
+            <GoalSection role="mentee" matches={meetingLogMatches} goals={goals} />
           )}
           <div style={cardStyle}>
             <p style={eyebrowStyle}>Upcoming sessions</p>
