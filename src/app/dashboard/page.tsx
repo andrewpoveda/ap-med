@@ -108,7 +108,11 @@ export default async function DashboardPage({
   if (!mentor && user.email) {
     const result = await linkMentorByEmail(admin, user.id, user.email)
     if (result.status === 'linked') {
-      mentor = await getMentorForUser(admin, user.id)
+      // Use the row returned by the link call directly. Re-reading via
+      // getMentorForUser here would hit Next.js request memoization and return
+      // the same empty result as the first call above, despite the just-written
+      // auth_user_id claim.
+      mentor = result.mentor
     }
   }
 

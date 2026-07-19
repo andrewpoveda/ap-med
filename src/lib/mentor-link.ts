@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Mentor } from '@/types/mentor'
 
 export type MentorLinkResult =
-  | { status: 'linked'; mentorId: string }
+  | { status: 'linked'; mentor: Mentor }
   | { status: 'no-profile' }
   | { status: 'conflict'; mentorId: string }
   | { status: 'error' }
@@ -26,10 +26,10 @@ export async function linkMentorByEmail(
 
   const { data: mentor, error } = await admin
     .from('mentor')
-    .select('id, auth_user_id')
+    .select('*')
     // ilike with no wildcards is a case-insensitive exact match.
     .ilike('email', normalized)
-    .maybeSingle()
+    .maybeSingle<Mentor>()
 
   if (error) {
     console.error('Mentor link lookup failed:', error.message)
@@ -52,7 +52,7 @@ export async function linkMentorByEmail(
       .eq('id', mentor.id)
       // Guard against a race: only claim while still unclaimed.
       .is('auth_user_id', null)
-      .select('id')
+      .select('*')
     if (updateErr) {
       console.error('Mentor link update failed:', updateErr.message)
       return { status: 'error' }
@@ -64,9 +64,15 @@ export async function linkMentorByEmail(
       console.error('Mentor link conflict — not overriding existing auth_user_id')
       return { status: 'conflict', mentorId: mentor.id }
     }
+    // Return the freshly-claimed row (auth_user_id now set) so the caller never
+    // re-reads via the request-memoized getMentorForUser query, which would
+    // still return the pre-claim empty result.
+    return { status: 'linked', mentor: claimed[0] as Mentor }
   }
 
-  return { status: 'linked', mentorId: mentor.id }
+  // Already claimed by this same user (idempotent re-run): the row from the
+  // lookup above already carries auth_user_id === userId.
+  return { status: 'linked', mentor }
 }
 
 /** The mentor row claimed by this auth user, or null if none is linked yet. */
