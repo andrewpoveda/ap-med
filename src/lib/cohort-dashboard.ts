@@ -33,8 +33,11 @@ export type MilestoneView = {
 }
 
 // Role-specific onboarding checklist (ascenso-prm.md §5.5–5.7). Account
-// activation is derived, not stored (§7.6) — see getMemberOnboarding.
-const MILESTONE_CATALOG: Record<CohortMemberType, { key: string; label: string }[]> = {
+// activation is derived, not stored (§7.6) — see getMemberOnboarding. Shared
+// with the item-7 admin milestone grid (page + write route) so the admin write
+// side and the member read side can never drift. Survey completion is derived
+// from survey_responses (§5.12) and deliberately NOT in this catalog.
+export const MILESTONE_CATALOG: Record<CohortMemberType, { key: string; label: string }[]> = {
   mentor: [
     { key: 'orientation', label: 'Orientation' },
     { key: 'mentor_training', label: 'Mentor training' },

@@ -180,6 +180,12 @@ export default async function AdminCohortsPage() {
                   >
                     Matching →
                   </Link>
+                  <Link
+                    href={`/admin/cohorts/${cohort.id}/milestones`}
+                    style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
+                  >
+                    Milestones →
+                  </Link>
                 </p>
               </div>
             )
