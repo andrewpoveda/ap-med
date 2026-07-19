@@ -23,12 +23,16 @@ type MenteeScoreInput = {
   help_with?: string[]
 }
 
+// Only the three scored tag columns — lets callers (e.g. the cohort matcher)
+// pass a partial select instead of a full Mentor row.
+export type MentorScoreInput = Pick<Mentor, 'specialty' | 'identity' | 'can_help_with'>
+
 /**
  * Weighted 0–100 match score between a mentor row and a mentee's preferences.
  * Kept in a shared module so both /api/match and /api/notify compute it
  * server-side from the trusted DB row — never from a client-supplied value.
  */
-export function scoreMentor(mentor: Mentor, mentee: MenteeScoreInput): number {
+export function scoreMentor(mentor: MentorScoreInput, mentee: MenteeScoreInput): number {
   const specialtyScore = scoreOverlap(mentee.interests ?? [], Array.isArray(mentor.specialty) ? mentor.specialty : [])
   const identityScore = scoreOverlap(mentee.identity ?? [], Array.isArray(mentor.identity) ? mentor.identity : [])
   const helpScore = scoreOverlap(mentee.help_with ?? [], Array.isArray(mentor.can_help_with) ? mentor.can_help_with : [])

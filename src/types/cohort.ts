@@ -31,6 +31,32 @@ export const TRACK_LABELS: Record<CohortTrack, string> = {
   attending_resident: 'Attending → Resident',
 }
 
+// Match lifecycle (ascenso-prm.md §5.4): the matcher only ever *proposes*;
+// `active` is reachable exclusively from `board_approved` — no auto-matching
+// goes live without an explicit board selection.
+export const MATCH_STATUSES = [
+  'proposed',
+  'board_approved',
+  'active',
+  'ended',
+] as const
+export type MatchStatus = (typeof MATCH_STATUSES)[number]
+
+// Row shape of cohort_matches (migration 0006). `score` is numeric in the DB;
+// PostgREST serializes it as a JSON number.
+export type CohortMatch = {
+  id: string
+  created_at: string
+  cohort_id: string
+  mentor_id: string
+  mentee_id: string
+  track: string
+  score: number | null
+  status: string
+  approved_by: string | null
+  approved_at: string | null
+}
+
 // Row shape of cohort_applications (migration 0006). `answers` is the
 // server-assembled jsonb from /api/cohort-applications — allowlisted keys only,
 // but treat values as untrusted strings when rendering.
