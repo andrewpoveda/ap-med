@@ -16,6 +16,14 @@ export type UpcomingSession = {
   menteeFirstName: string
 }
 
+/** Read-only upcoming session as shown on a cohort mentee's dashboard. */
+export type MenteeUpcomingSession = {
+  id: string
+  scheduledAt: string
+  meetLink: string | null
+  mentorName: string
+}
+
 export type RequestedMentee = {
   id: string
   firstName: string
@@ -117,6 +125,54 @@ export async function getUpcomingSessions(
     meetLink: row.meet_link,
     status: row.status,
     menteeFirstName: firstNameOf(row.mentee),
+  }))
+}
+
+type RawEmbeddedMentor =
+  | { first_name: string | null; last_name: string | null }
+  | { first_name: string | null; last_name: string | null }[]
+  | null
+
+function mentorNameOf(mentor: RawEmbeddedMentor): string {
+  const row = Array.isArray(mentor) ? mentor[0] : mentor
+  const name = `${row?.first_name ?? ''} ${row?.last_name ?? ''}`.trim()
+  return name || 'Your mentor'
+}
+
+/**
+ * Upcoming, still-scheduled sessions for a cohort MENTEE, soonest first —
+ * scoped to their own mentee_id. Read-only (a mentee can't cancel via
+ * /api/sessions, which is mentor-owner-gated), so it embeds the mentor's name
+ * for display rather than the mentee-side cancel controls.
+ */
+export async function getUpcomingSessionsForMentee(
+  admin: SupabaseClient,
+  menteeId: string,
+): Promise<MenteeUpcomingSession[]> {
+  const { data, error } = await admin
+    .from('sessions')
+    .select('id, scheduled_at, meet_link, mentor:mentor(first_name, last_name)')
+    .eq('mentee_id', menteeId)
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: true })
+  if (error) {
+    console.error('getUpcomingSessionsForMentee failed:', error.message)
+    return []
+  }
+
+  type RawRow = {
+    id: string
+    scheduled_at: string
+    meet_link: string | null
+    mentor: RawEmbeddedMentor
+  }
+
+  return (data as RawRow[]).map((row) => ({
+    id: row.id,
+    scheduledAt: row.scheduled_at,
+    meetLink: row.meet_link,
+    mentorName: mentorNameOf(row.mentor),
   }))
 }
 

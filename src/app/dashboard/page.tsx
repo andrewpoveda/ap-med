@@ -5,20 +5,36 @@ import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser, linkMentorByEmail } from '@/lib/mentor-link'
+import {
+  getCohortMenteeForUser,
+  linkCohortMenteeByEmail,
+  type LinkedCohortMentee,
+} from '@/lib/mentee-link'
+import {
+  getActiveMatchesForMember,
+  getMemberOnboarding,
+  getCohortName,
+  type ActiveMatchView,
+  type MilestoneView,
+} from '@/lib/cohort-dashboard'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
   getGoogleTokenRow,
   getUpcomingSessions,
+  getUpcomingSessionsForMentee,
   getRequestedMentees,
   type MentorAvailability,
   type UpcomingSession,
+  type MenteeUpcomingSession,
   type RequestedMentee,
 } from '@/lib/sessions'
 import SignOutButton from './SignOutButton'
 import AvailabilityForm from './AvailabilityForm'
 import ScheduleSessionForm from './ScheduleSessionForm'
 import SessionsList from './SessionsList'
+import MenteeSessionsList from './MenteeSessionsList'
+import CohortMemberPanel from './CohortMemberPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -86,11 +102,31 @@ export default async function DashboardPage({
   let mentor = await getMentorForUser(admin, user.id)
 
   // Fallback link attempt: covers a mentor row created (or its email corrected)
-  // after the user's first sign-in, so the auth callback never linked it.
+  // after the user's first sign-in, so the auth callback never linked it. Note
+  // getMentorForUser does NOT filter on `approved` — a cohort mentor row is
+  // approved=false by design and must still resolve for its own owner.
   if (!mentor && user.email) {
     const result = await linkMentorByEmail(admin, user.id, user.email)
     if (result.status === 'linked') {
       mentor = await getMentorForUser(admin, user.id)
+    }
+  }
+
+  // A user is a mentor OR a cohort mentee, never both — only look for a cohort
+  // mentee row when no mentor matched. The link + lookup are scoped to cohort
+  // mentees only; a general-platform (auth-less) mentee is never claimed.
+  let cohortMentee: LinkedCohortMentee | null = null
+  if (!mentor) {
+    cohortMentee = await getCohortMenteeForUser(admin, user.id)
+    // Fallback claim: covers a cohort mentee row created after the user's first
+    // sign-in (so the auth callback never linked it). linkCohortMenteeByEmail
+    // returns the resolved row directly — re-reading by auth_user_id here would
+    // be request-memoized against the (empty) lookup above and come back stale.
+    if (!cohortMentee && user.email) {
+      const result = await linkCohortMenteeByEmail(admin, user.id, user.email)
+      if (result.status === 'linked') {
+        cohortMentee = result.mentee
+      }
     }
   }
 
@@ -121,6 +157,45 @@ export default async function DashboardPage({
     availability = avail
   }
 
+  // Cohort context — resolved from the member's OWN row and scoped to it (P0
+  // §6.3). A cohort mentor gets its match/onboarding alongside the mentor tools
+  // above; a cohort mentee gets a dashboard of its own. Only status='active'
+  // matches are ever fetched — pre-activation pairings never reach a member.
+  let cohortName = ''
+  let cohortRole: 'mentor' | 'mentee' | null = null
+  let cohortMatches: ActiveMatchView[] = []
+  let cohortMilestones: MilestoneView[] = []
+  let menteeSessions: MenteeUpcomingSession[] = []
+  if (mentor?.cohort_id) {
+    const ref = { type: 'mentor' as const, memberId: mentor.id, cohortId: mentor.cohort_id }
+    cohortRole = 'mentor'
+    ;[cohortName, cohortMatches, cohortMilestones] = await Promise.all([
+      getCohortName(admin, mentor.cohort_id),
+      getActiveMatchesForMember(admin, ref),
+      getMemberOnboarding(admin, ref),
+    ])
+  } else if (cohortMentee) {
+    const ref = {
+      type: 'mentee' as const,
+      memberId: cohortMentee.id,
+      cohortId: cohortMentee.cohort_id,
+    }
+    cohortRole = 'mentee'
+    ;[cohortName, cohortMatches, cohortMilestones, menteeSessions] = await Promise.all([
+      getCohortName(admin, cohortMentee.cohort_id),
+      getActiveMatchesForMember(admin, ref),
+      getMemberOnboarding(admin, ref),
+      getUpcomingSessionsForMentee(admin, cohortMentee.id),
+    ])
+  }
+
+  const eyebrowLabel = cohortRole === 'mentee' ? 'Member Dashboard' : 'Mentor Dashboard'
+  const welcomeName = mentor
+    ? mentor.first_name
+    : cohortMentee
+      ? cohortMentee.full_name.trim().split(/\s+/)[0]
+      : null
+
   return (
     <section>
       <p
@@ -133,13 +208,13 @@ export default async function DashboardPage({
           marginBottom: '0.75rem',
         }}
       >
-        Mentor Dashboard
+        {eyebrowLabel}
       </p>
       <h1
         className="text-[#1a1a2e]"
         style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 400 }}
       >
-        {mentor ? `Welcome, ${mentor.first_name}` : 'Welcome'}
+        {welcomeName ? `Welcome, ${welcomeName}` : 'Welcome'}
       </h1>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -175,6 +250,14 @@ export default async function DashboardPage({
 
       {mentor ? (
         <div className="mt-8 space-y-6">
+          {cohortRole === 'mentor' && (
+            <CohortMemberPanel
+              cohortName={cohortName}
+              role="mentor"
+              matches={cohortMatches}
+              milestones={cohortMilestones}
+            />
+          )}
           <div style={cardStyle}>
             <p style={eyebrowStyle}>Google Calendar</p>
             {connected ? (
@@ -249,12 +332,25 @@ export default async function DashboardPage({
             <SessionsList sessions={upcoming} />
           </div>
         </div>
+      ) : cohortMentee ? (
+        <div className="mt-8 space-y-6">
+          <CohortMemberPanel
+            cohortName={cohortName}
+            role="mentee"
+            matches={cohortMatches}
+            milestones={cohortMilestones}
+          />
+          <div style={cardStyle}>
+            <p style={eyebrowStyle}>Upcoming sessions</p>
+            <MenteeSessionsList sessions={menteeSessions} />
+          </div>
+        </div>
       ) : (
         <div className="mt-8" style={cardStyle}>
           <p style={eyebrowStyle}>No linked profile</p>
           <p className="text-[#4a4a5a]" style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6 }}>
-            We couldn&apos;t find a mentor profile for <strong>{user.email}</strong>.
-            If you&apos;re an AP MED mentor, reach us at{' '}
+            We couldn&apos;t find an AP MED profile linked to <strong>{user.email}</strong>.
+            If you&apos;re an AP MED mentor or an Ascenso cohort member, reach us at{' '}
             <a href="mailto:apmedpodcast@gmail.com" style={{ color: '#8a6a2f' }}>
               apmedpodcast@gmail.com
             </a>{' '}
