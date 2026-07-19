@@ -16,7 +16,14 @@ import {
   getCohortName,
   type ActiveMatchView,
   type MilestoneView,
+  type CohortMemberRef,
 } from '@/lib/cohort-dashboard'
+import {
+  getMeetingLogsForMatches,
+  getLoggableSessionsForMember,
+  type MeetingLogView,
+  type LoggableSession,
+} from '@/lib/meeting-logs'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
@@ -35,6 +42,7 @@ import ScheduleSessionForm from './ScheduleSessionForm'
 import SessionsList from './SessionsList'
 import MenteeSessionsList from './MenteeSessionsList'
 import CohortMemberPanel from './CohortMemberPanel'
+import MeetingLogSection from './MeetingLogSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -170,28 +178,45 @@ export default async function DashboardPage({
   let cohortMatches: ActiveMatchView[] = []
   let cohortMilestones: MilestoneView[] = []
   let menteeSessions: MenteeUpcomingSession[] = []
+  let meetingLogs: MeetingLogView[] = []
+  let loggableSessions: Record<string, LoggableSession[]> = {}
+
+  let memberRef: CohortMemberRef | null = null
   if (mentor?.cohort_id) {
-    const ref = { type: 'mentor' as const, memberId: mentor.id, cohortId: mentor.cohort_id }
+    memberRef = { type: 'mentor', memberId: mentor.id, cohortId: mentor.cohort_id }
     cohortRole = 'mentor'
+  } else if (cohortMentee) {
+    memberRef = { type: 'mentee', memberId: cohortMentee.id, cohortId: cohortMentee.cohort_id }
+    cohortRole = 'mentee'
+  }
+
+  if (memberRef) {
+    const ref = memberRef
     ;[cohortName, cohortMatches, cohortMilestones] = await Promise.all([
-      getCohortName(admin, mentor.cohort_id),
+      getCohortName(admin, ref.cohortId),
       getActiveMatchesForMember(admin, ref),
       getMemberOnboarding(admin, ref),
     ])
-  } else if (cohortMentee) {
-    const ref = {
-      type: 'mentee' as const,
-      memberId: cohortMentee.id,
-      cohortId: cohortMentee.cohort_id,
-    }
-    cohortRole = 'mentee'
-    ;[cohortName, cohortMatches, cohortMilestones, menteeSessions] = await Promise.all([
-      getCohortName(admin, cohortMentee.cohort_id),
-      getActiveMatchesForMember(admin, ref),
-      getMemberOnboarding(admin, ref),
-      getUpcomingSessionsForMentee(admin, cohortMentee.id),
+    // Meeting logs (§5.8) need the resolved match ids, so they follow the match
+    // fetch. loggableSessions re-derives the member's active matches itself.
+    ;[meetingLogs, loggableSessions, menteeSessions] = await Promise.all([
+      getMeetingLogsForMatches(
+        admin,
+        ref.cohortId,
+        cohortMatches.map((m) => m.matchId),
+        { type: ref.type, memberId: ref.memberId },
+      ),
+      getLoggableSessionsForMember(admin, ref),
+      ref.type === 'mentee'
+        ? getUpcomingSessionsForMentee(admin, ref.memberId)
+        : Promise.resolve<MenteeUpcomingSession[]>([]),
     ])
   }
+
+  const meetingLogMatches = cohortMatches.map((m) => ({
+    matchId: m.matchId,
+    partnerName: m.partnerName,
+  }))
 
   const eyebrowLabel = cohortRole === 'mentee' ? 'Member Dashboard' : 'Mentor Dashboard'
   const welcomeName = mentor
@@ -255,12 +280,22 @@ export default async function DashboardPage({
       {mentor ? (
         <div className="mt-8 space-y-6">
           {cohortRole === 'mentor' && (
-            <CohortMemberPanel
-              cohortName={cohortName}
-              role="mentor"
-              matches={cohortMatches}
-              milestones={cohortMilestones}
-            />
+            <>
+              <CohortMemberPanel
+                cohortName={cohortName}
+                role="mentor"
+                matches={cohortMatches}
+                milestones={cohortMilestones}
+              />
+              {meetingLogMatches.length > 0 && (
+                <MeetingLogSection
+                  role="mentor"
+                  matches={meetingLogMatches}
+                  logs={meetingLogs}
+                  loggableSessions={loggableSessions}
+                />
+              )}
+            </>
           )}
           <div style={cardStyle}>
             <p style={eyebrowStyle}>Google Calendar</p>
@@ -344,6 +379,14 @@ export default async function DashboardPage({
             matches={cohortMatches}
             milestones={cohortMilestones}
           />
+          {meetingLogMatches.length > 0 && (
+            <MeetingLogSection
+              role="mentee"
+              matches={meetingLogMatches}
+              logs={meetingLogs}
+              loggableSessions={loggableSessions}
+            />
+          )}
           <div style={cardStyle}>
             <p style={eyebrowStyle}>Upcoming sessions</p>
             <MenteeSessionsList sessions={menteeSessions} />
