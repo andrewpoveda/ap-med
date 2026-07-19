@@ -167,12 +167,18 @@ export default async function AdminCohortsPage() {
                     'No applications yet.'
                   )}
                 </p>
-                <p style={{ margin: '0.75rem 0 0' }}>
+                <p className="flex flex-wrap gap-4" style={{ margin: '0.75rem 0 0' }}>
                   <Link
                     href={`/admin/cohorts/${cohort.id}/applications`}
                     style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
                   >
                     Review applications →
+                  </Link>
+                  <Link
+                    href={`/admin/cohorts/${cohort.id}/matching`}
+                    style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
+                  >
+                    Matching →
                   </Link>
                 </p>
               </div>

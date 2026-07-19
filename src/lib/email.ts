@@ -125,6 +125,75 @@ export async function notifyMenteeOfRequest(params: {
   }
 }
 
+/**
+ * Cohort match activation email (ascenso-prm.md §5.4) — one per party, sent by
+ * the admin activate route after board approval. All recipient/partner fields
+ * are resolved server-side from DB rows by the caller; everything interpolated
+ * into the HTML is escaped here. replyTo is the partner, so replying starts the
+ * actual mentorship conversation.
+ */
+export async function notifyCohortMatchActivated(params: {
+  recipientEmail: string
+  recipientName: string
+  recipientRole: 'mentor' | 'mentee'
+  partnerName: string
+  partnerEmail: string
+  cohortName: string
+}) {
+  const { recipientEmail, recipientName, recipientRole, partnerName, partnerEmail, cohortName } = params
+  const partnerLabel = recipientRole === 'mentor' ? 'mentee' : 'mentor'
+  const safeFirst = escapeHtml(recipientName.trim().split(/\s+/)[0])
+  const safePartner = escapeHtml(partnerName)
+  const safePartnerEmail = escapeHtml(partnerEmail)
+  const safeCohort = escapeHtml(cohortName)
+
+  const { error } = await resend.emails.send({
+    from: 'AP MED Mentors <mentors@ap-med.org>',
+    to: recipientEmail,
+    replyTo: partnerEmail,
+    // Subject is plain text (not HTML) — use the raw values, not escaped ones.
+    subject: `You've been matched with ${partnerName} — ${cohortName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:system-ui,sans-serif;color:#e2e8f0;">
+  <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
+    <p style="color:#60a5fa;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">AP MED MENTORS · ${safeCohort}</p>
+    <h1 style="font-size:24px;font-weight:700;margin:0 0 8px;">Your match is confirmed</h1>
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
+      Hi ${safeFirst}, the ${safeCohort} board has matched you with your ${partnerLabel},
+      <strong style="color:#e2e8f0;">${safePartner}</strong>.
+    </p>
+    <div style="background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:24px;margin-bottom:24px;">
+      <h2 style="font-size:16px;font-weight:700;margin:0 0 4px;">${safePartner}</h2>
+      <p style="color:#94a3b8;font-size:14px;margin:0;">Your ${partnerLabel} · <a href="mailto:${safePartnerEmail}" style="color:#60a5fa;">${safePartnerEmail}</a></p>
+    </div>
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
+      ${partnerLabel === 'mentee' ? 'They received this same introduction, so feel free to reach out first — a short hello and a time to meet is all it takes to get started.' : 'Your mentor received this same introduction. Go ahead and say hello — suggest a couple of times that work for a first conversation.'}
+    </p>
+    <a href="mailto:${safePartnerEmail}" style="display:inline-block;background:#60a5fa;color:#0f1117;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:24px;">
+      Email ${safePartner} →
+    </a>
+    <hr style="border:none;border-top:1px solid #1e2330;margin:24px 0;" />
+    <p style="color:#64748b;font-size:12px;line-height:1.6;">
+      You received this because you're part of ${safeCohort} on AP MED Mentors.
+      Questions any time? Reply to this email or reach us at mentors@ap-med.org.
+      <br/><br/>
+      — Andrew, AP MED
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  })
+
+  if (error) {
+    console.error(`Failed to send match activation email to ${recipientEmail}:`, error)
+    throw error
+  }
+}
+
 function buildConversationStarters(
   mentee: MenteeInfo,
   specialtyOverlap: string[],
