@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { linkMentorByEmail } from '@/lib/mentor-link'
+import { linkCohortMenteeByEmail } from '@/lib/mentee-link'
 
 /**
  * OAuth callback for the mentor "Sign in with Google" flow. Supabase redirects
@@ -37,11 +38,18 @@ export async function GET(request: Request) {
   if (user?.email) {
     try {
       const admin = getSupabaseAdmin()
-      await linkMentorByEmail(admin, user.id, user.email)
+      // A signed-in user is a mentor OR a cohort mentee, not both. Try the
+      // mentor link first; only if no mentor row matches do we attempt the
+      // cohort-mentee claim (scoped to cohort mentees only — a general
+      // auth-less mentee is never claimed). The dashboard re-attempts both.
+      const mentorResult = await linkMentorByEmail(admin, user.id, user.email)
+      if (mentorResult.status === 'no-profile') {
+        await linkCohortMenteeByEmail(admin, user.id, user.email)
+      }
     } catch (err) {
       // Best-effort here — the dashboard re-attempts linking and reports
       // status. Never fail the sign-in over a linking error.
-      console.error('Mentor linking during callback failed (non-fatal):', err)
+      console.error('Member linking during callback failed (non-fatal):', err)
     }
   }
 
