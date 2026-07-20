@@ -25,6 +25,7 @@ import {
   type LoggableSession,
 } from '@/lib/meeting-logs'
 import { getGoalsForMatches, type GoalView } from '@/lib/goals'
+import { getBookingInfoForMember, type MatchBookingInfo } from '@/lib/cohort-sessions'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
@@ -45,6 +46,7 @@ import MenteeSessionsList from './MenteeSessionsList'
 import CohortMemberPanel from './CohortMemberPanel'
 import MeetingLogSection from './MeetingLogSection'
 import GoalSection from './GoalSection'
+import CohortBookingSection, { type BookingMatch } from './CohortBookingSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -183,6 +185,7 @@ export default async function DashboardPage({
   let meetingLogs: MeetingLogView[] = []
   let loggableSessions: Record<string, LoggableSession[]> = {}
   let goals: GoalView[] = []
+  let bookingInfo: Record<string, MatchBookingInfo> = {}
 
   let memberRef: CohortMemberRef | null = null
   if (mentor?.cohort_id) {
@@ -204,7 +207,7 @@ export default async function DashboardPage({
     // they follow the match fetch. loggableSessions re-derives the member's
     // active matches itself. All scoped to the member's OWN matches (§6.3 P0).
     const ownMatchIds = cohortMatches.map((m) => m.matchId)
-    ;[meetingLogs, loggableSessions, menteeSessions, goals] = await Promise.all([
+    ;[meetingLogs, loggableSessions, menteeSessions, goals, bookingInfo] = await Promise.all([
       getMeetingLogsForMatches(admin, ref.cohortId, ownMatchIds, {
         type: ref.type,
         memberId: ref.memberId,
@@ -214,6 +217,11 @@ export default async function DashboardPage({
         ? getUpcomingSessionsForMentee(admin, ref.memberId)
         : Promise.resolve<MenteeUpcomingSession[]>([]),
       getGoalsForMatches(admin, ref.cohortId, ownMatchIds),
+      // Booking (§7.11) re-derives the member's active matches from their own
+      // side (partner ids never leave the server) and computes the mentor's open
+      // slots per match — freebusy is skipped for pairs already at their
+      // one-upcoming-session cap.
+      getBookingInfoForMember(admin, ref),
     ])
   }
 
@@ -221,6 +229,15 @@ export default async function DashboardPage({
     matchId: m.matchId,
     partnerName: m.partnerName,
   }))
+
+  // Combine each active match's partner name with its booking state; only
+  // matches with computed booking info are offered.
+  const bookingMatches: BookingMatch[] = cohortMatches
+    .map((m) => {
+      const info = bookingInfo[m.matchId]
+      return info ? { matchId: m.matchId, partnerName: m.partnerName, info } : null
+    })
+    .filter((m): m is BookingMatch => m !== null)
 
   const eyebrowLabel = cohortRole === 'mentee' ? 'Member Dashboard' : 'Mentor Dashboard'
   const welcomeName = mentor
@@ -291,6 +308,9 @@ export default async function DashboardPage({
                 matches={cohortMatches}
                 milestones={cohortMilestones}
               />
+              {bookingMatches.length > 0 && (
+                <CohortBookingSection role="mentor" matches={bookingMatches} />
+              )}
               {meetingLogMatches.length > 0 && (
                 <MeetingLogSection
                   role="mentor"
@@ -386,6 +406,9 @@ export default async function DashboardPage({
             matches={cohortMatches}
             milestones={cohortMilestones}
           />
+          {bookingMatches.length > 0 && (
+            <CohortBookingSection role="mentee" matches={bookingMatches} />
+          )}
           {meetingLogMatches.length > 0 && (
             <MeetingLogSection
               role="mentee"
