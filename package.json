@@ -19,6 +19,7 @@
     "posthog-js": "^1.386.6",
     "react": "^19.1.2",
     "react-dom": "^19.1.2",
+    "recharts": "^3.9.2",
     "resend": "^6.12.4"
   },
   "devDependencies": {

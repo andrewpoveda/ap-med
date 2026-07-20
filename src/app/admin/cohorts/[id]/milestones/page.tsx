@@ -232,6 +232,10 @@ export default async function CohortMilestonesPage({
         ·{' '}
         <Link href={`/admin/cohorts/${cohort.id}/announcements`} style={{ color: '#8a6a2f' }}>
           Announcements →
+        </Link>{' '}
+        ·{' '}
+        <Link href={`/admin/cohorts/${cohort.id}/analytics`} style={{ color: '#8a6a2f' }}>
+          Analytics →
         </Link>
       </p>
       <p className="text-[#6b6b6b]" style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', maxWidth: '46rem' }}>
