@@ -192,6 +192,12 @@ export default async function AdminCohortsPage() {
                   >
                     Announcements →
                   </Link>
+                  <Link
+                    href={`/admin/cohorts/${cohort.id}/analytics`}
+                    style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
+                  >
+                    Analytics →
+                  </Link>
                 </p>
               </div>
             )
