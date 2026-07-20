@@ -232,6 +232,89 @@ export async function sendCohortAnnouncement(params: {
   return { sent: recipients }
 }
 
+/**
+ * Daily digest batch (ascenso-prm.md §5.9) — one personalized email per member
+ * with ALL of their pending items, sent by the cron route after the cooldown +
+ * budget guards. Recipients/items are computed server-side from DB rows
+ * (src/lib/digest.ts); every interpolated value is escaped here. Same Resend
+ * batch semantics as announcements: one message per recipient, all-or-nothing
+ * at the API level, so the caller logs email_log rows only on success.
+ */
+export async function sendCohortDigests(
+  recipients: {
+    email: string
+    firstName: string
+    cohortName: string
+    items: { text: string }[]
+  }[],
+): Promise<void> {
+  const { error } = await resend.batch.send(
+    recipients.map((recipient) => ({
+      from: 'AP MED Mentors <mentors@ap-med.org>',
+      to: recipient.email,
+      replyTo: 'mentors@ap-med.org',
+      // Subject is plain text (not HTML) — raw values, not escaped ones.
+      subject: `Your ${recipient.cohortName} check-in — ${recipient.items.length} ${
+        recipient.items.length === 1 ? 'item' : 'items'
+      } waiting`,
+      html: buildDigestHtml(recipient),
+    })),
+  )
+  if (error) {
+    console.error('Digest batch send failed:', error)
+    throw error
+  }
+}
+
+function buildDigestHtml({
+  firstName,
+  cohortName,
+  items,
+}: {
+  firstName: string
+  cohortName: string
+  items: { text: string }[]
+}): string {
+  const safeFirst = escapeHtml(firstName)
+  const safeCohort = escapeHtml(cohortName)
+  const itemsHtml = items
+    .map(
+      (item) =>
+        `<li style="margin:0 0 10px;color:#cbd5e1;font-size:14px;line-height:1.6;">${escapeHtml(item.text)}</li>`,
+    )
+    .join('')
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:system-ui,sans-serif;color:#e2e8f0;">
+  <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
+    <p style="color:#60a5fa;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">AP MED MENTORS · ${safeCohort}</p>
+    <h1 style="font-size:22px;font-weight:700;margin:0 0 8px;">Your mentorship check-in</h1>
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
+      Hi ${safeFirst}, a few things in ${safeCohort} are waiting on you:
+    </p>
+    <div style="background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+      <ul style="margin:0;padding-left:18px;">${itemsHtml}</ul>
+    </div>
+    <a href="https://www.ap-med.org/dashboard" style="display:inline-block;background:#60a5fa;color:#0f1117;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:24px;">
+      Open your dashboard →
+    </a>
+    <hr style="border:none;border-top:1px solid #1e2330;margin:24px 0;" />
+    <p style="color:#64748b;font-size:12px;line-height:1.6;">
+      You received this because you're part of ${safeCohort} on AP MED Mentors.
+      We send at most one check-in a week (plus a heads-up the day before a
+      scheduled session). Questions any time? Just reply to this email.
+      <br/><br/>
+      — Andrew, AP MED
+    </p>
+  </div>
+</body>
+</html>
+  `
+}
+
 function buildAnnouncementHtml({
   cohortName,
   subject,
