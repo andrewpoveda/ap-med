@@ -5,7 +5,9 @@ import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getCohortAnalytics } from '@/lib/cohort-analytics'
+import { EXPORT_TABLES, EXPORT_LABELS } from '@/lib/cohort-export'
 import MeetingsChart from './MeetingsChart'
+import ReportToolbar from './ReportToolbar'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,7 +68,7 @@ function StatTile({
   sub?: ReactNode
 }) {
   return (
-    <div style={cardStyle}>
+    <div className="report-card" style={cardStyle}>
       <p
         className="text-[#6b6b6b]"
         style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}
@@ -117,6 +119,39 @@ function SectionHeading({ children }: { children: ReactNode }) {
   )
 }
 
+// Print fallback for the meetings-per-month chart. recharts' ResponsiveContainer
+// doesn't lay out reliably for @media print (it measures via ResizeObserver), so
+// the printed report shows this static table of the same monthly data instead
+// (the chart is screen-only). A table is also the most legible form on paper.
+function MonthlyMeetingsTable({
+  data,
+}: {
+  data: { month: string; label: string; count: number }[]
+}) {
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: '32rem' }}>
+      <thead>
+        <tr className="text-[#6b6b6b]" style={{ borderBottom: '1px solid #e8e4dc' }}>
+          <th style={{ ...thStyle, textAlign: 'left' }}>Month</th>
+          <th style={{ ...thStyle, textAlign: 'right' }}>Meetings</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((m) => (
+          <tr key={m.month} style={{ borderTop: '1px solid #f0ede6' }}>
+            <td className="text-[#1a1a2e]" style={{ padding: '0.35rem 0.75rem 0.35rem 0', fontSize: '0.85rem' }}>
+              {m.label}
+            </td>
+            <td className="text-[#1a1a2e]" style={{ textAlign: 'right', padding: '0.35rem 0', fontSize: '0.85rem' }}>
+              {m.count}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 export default async function CohortAnalyticsPage({
   params,
 }: {
@@ -163,21 +198,49 @@ export default async function CohortAnalyticsPage({
       ? (meetingTotals.thisMonth / meetingTotals.activePairs).toFixed(1)
       : null
 
+  const generatedAt = new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+  const exportLinks = EXPORT_TABLES.map((table) => ({ table, label: EXPORT_LABELS[table] }))
+
   return (
     <>
-      <p style={{ margin: 0 }}>
+      <p className="no-print" style={{ margin: 0 }}>
         <Link href="/admin" style={{ color: '#8a6a2f', fontSize: '0.85rem' }}>
           ← Cohorts
         </Link>
       </p>
-      <h1
-        className="text-[#1a1a2e]"
-        style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 400, marginTop: '0.5rem' }}
-      >
-        Analytics
-      </h1>
-      <p className="text-[#6b6b6b]" style={{ margin: '0.4rem 0 0', fontSize: '0.9rem' }}>
-        {cohort.name} · {cohort.org} ·{' '}
+
+      {/* Report header — the printed board artifact leads with this. */}
+      <header style={{ marginTop: '0.5rem' }}>
+        <p
+          style={{
+            color: '#c8a96e',
+            fontSize: '0.75rem',
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+            margin: 0,
+          }}
+        >
+          Engagement report
+        </p>
+        <h1
+          className="text-[#1a1a2e]"
+          style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 400, marginTop: '0.25rem' }}
+        >
+          {cohort.name}
+        </h1>
+        <p className="text-[#6b6b6b]" style={{ margin: '0.4rem 0 0', fontSize: '0.9rem' }}>
+          {cohort.org} · Status: {(cohort.status as string).replace(/_/g, ' ')} · Generated {generatedAt}
+        </p>
+      </header>
+
+      {/* Section nav — screen only, not part of the printed report. */}
+      <p className="no-print text-[#6b6b6b]" style={{ margin: '0.6rem 0 0', fontSize: '0.9rem' }}>
         <Link href={`/admin/cohorts/${cohort.id}/applications`} style={{ color: '#8a6a2f' }}>
           Review applications →
         </Link>{' '}
@@ -194,6 +257,8 @@ export default async function CohortAnalyticsPage({
           Announcements →
         </Link>
       </p>
+
+      <ReportToolbar cohortId={cohort.id as string} exports={exportLinks} />
 
       {errors.length > 0 && (
         <div
@@ -256,11 +321,16 @@ export default async function CohortAnalyticsPage({
       </div>
 
       {/* Meetings per month */}
-      <div style={{ ...cardStyle, marginTop: '1.5rem' }}>
+      <div className="report-card" style={{ ...cardStyle, marginTop: '1.5rem' }}>
         <SectionHeading>Meetings logged per month</SectionHeading>
         {hasMeetingData ? (
           <>
-            <MeetingsChart data={meetingsByMonth} />
+            <div className="screen-only">
+              <MeetingsChart data={meetingsByMonth} />
+            </div>
+            <div className="print-only">
+              <MonthlyMeetingsTable data={meetingsByMonth} />
+            </div>
             <p className="text-[#6b6b6b]" style={{ margin: '0.75rem 0 0', fontSize: '0.85rem' }}>
               <strong className="text-[#1a1a2e]">{meetingTotals.total}</strong> total ·{' '}
               <strong className="text-[#1a1a2e]">{meetingTotals.thisMonth}</strong> this month
@@ -278,7 +348,7 @@ export default async function CohortAnalyticsPage({
       </div>
 
       {/* Meetings per pair */}
-      <div style={{ ...cardStyle, marginTop: '1.5rem' }}>
+      <div className="report-card" style={{ ...cardStyle, marginTop: '1.5rem' }}>
         <SectionHeading>Meetings per pair</SectionHeading>
         {pairs.length === 0 ? (
           <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -350,7 +420,7 @@ export default async function CohortAnalyticsPage({
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         }}
       >
-        <div style={cardStyle}>
+        <div className="report-card" style={cardStyle}>
           <SectionHeading>Milestone completion</SectionHeading>
           {milestones.total === 0 ? (
             <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -384,7 +454,7 @@ export default async function CohortAnalyticsPage({
           )}
         </div>
 
-        <div style={cardStyle}>
+        <div className="report-card" style={cardStyle}>
           <SectionHeading>Goals</SectionHeading>
           {goals.active + goals.done + goals.dropped === 0 ? (
             <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -419,7 +489,7 @@ export default async function CohortAnalyticsPage({
       </div>
 
       {/* Zero-activity members */}
-      <div style={{ ...cardStyle, marginTop: '1.5rem' }}>
+      <div className="report-card" style={{ ...cardStyle, marginTop: '1.5rem' }}>
         <SectionHeading>No activity in {activityWindowDays} days</SectionHeading>
         <p className="text-[#6b6b6b]" style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.82rem', maxWidth: '46rem' }}>
           Members in an active pair with no logged meeting, goal update, booked

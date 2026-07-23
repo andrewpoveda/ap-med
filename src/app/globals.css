@@ -63,3 +63,49 @@ a:not([class*="text-"]):hover {
   margin-bottom: 1.25em;
   color: var(--global-text-color);
 }
+
+/* Print / "Save as PDF" support for the annual report (ascenso-prm.md §5.14).
+   `.print-only` is hidden on screen and revealed for print; `.no-print` and
+   `.screen-only` are the inverse. The recharts chart (a `.screen-only`
+   ResponsiveContainer) does not lay out reliably for print, so the analytics
+   page pairs it with a `.print-only` static table of the same monthly data. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  .no-print,
+  .screen-only {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  /* Global chrome that shouldn't appear on the board's printout. */
+  nav,
+  footer {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  /* Let the report use the full page width and the printer's own margins. */
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  @page {
+    margin: 1.4cm;
+  }
+  /* Keep each report card intact across page breaks. */
+  .report-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
