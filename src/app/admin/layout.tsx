@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <section>
       <div
-        className="flex flex-wrap items-center justify-between gap-3"
+        className="no-print flex flex-wrap items-center justify-between gap-3"
         style={{ borderBottom: '1px solid #e8e4dc', paddingBottom: '1rem' }}
       >
         <p
