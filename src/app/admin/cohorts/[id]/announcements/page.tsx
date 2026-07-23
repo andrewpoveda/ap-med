@@ -145,6 +145,10 @@ export default async function CohortAnnouncementsPage({
         ·{' '}
         <Link href={`/admin/cohorts/${cohort.id}/analytics`} style={{ color: '#8a6a2f' }}>
           Analytics →
+        </Link>{' '}
+        ·{' '}
+        <Link href={`/admin/cohorts/${cohort.id}/surveys`} style={{ color: '#8a6a2f' }}>
+          Surveys →
         </Link>
       </p>
 

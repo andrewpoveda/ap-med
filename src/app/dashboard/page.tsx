@@ -26,6 +26,7 @@ import {
 } from '@/lib/meeting-logs'
 import { getGoalsForMatches, type GoalView } from '@/lib/goals'
 import { getBookingInfoForMember, type MatchBookingInfo } from '@/lib/cohort-sessions'
+import { getMemberSurveys, type MemberSurveyView } from '@/lib/surveys'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
@@ -47,6 +48,7 @@ import CohortMemberPanel from './CohortMemberPanel'
 import MeetingLogSection from './MeetingLogSection'
 import GoalSection from './GoalSection'
 import CohortBookingSection, { type BookingMatch } from './CohortBookingSection'
+import SurveySection from './SurveySection'
 
 export const dynamic = 'force-dynamic'
 
@@ -186,6 +188,7 @@ export default async function DashboardPage({
   let loggableSessions: Record<string, LoggableSession[]> = {}
   let goals: GoalView[] = []
   let bookingInfo: Record<string, MatchBookingInfo> = {}
+  let openSurveys: MemberSurveyView[] = []
 
   let memberRef: CohortMemberRef | null = null
   if (mentor?.cohort_id) {
@@ -198,10 +201,14 @@ export default async function DashboardPage({
 
   if (memberRef) {
     const ref = memberRef
-    ;[cohortName, cohortMatches, cohortMilestones] = await Promise.all([
+    // Surveys (§5.12) are cohort-wide — scoped to the member's cohort + id, not
+    // to a match — so they resolve alongside the match/onboarding fetch, not
+    // after it like the match-scoped reads below.
+    ;[cohortName, cohortMatches, cohortMilestones, openSurveys] = await Promise.all([
       getCohortName(admin, ref.cohortId),
       getActiveMatchesForMember(admin, ref),
       getMemberOnboarding(admin, ref),
+      getMemberSurveys(admin, ref),
     ])
     // Meeting logs (§5.8) and goals (§7.10) both need the resolved match ids, so
     // they follow the match fetch. loggableSessions re-derives the member's
@@ -308,6 +315,7 @@ export default async function DashboardPage({
                 matches={cohortMatches}
                 milestones={cohortMilestones}
               />
+              {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
               {bookingMatches.length > 0 && (
                 <CohortBookingSection role="mentor" matches={bookingMatches} />
               )}
@@ -406,6 +414,7 @@ export default async function DashboardPage({
             matches={cohortMatches}
             milestones={cohortMilestones}
           />
+          {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
           {bookingMatches.length > 0 && (
             <CohortBookingSection role="mentee" matches={bookingMatches} />
           )}
