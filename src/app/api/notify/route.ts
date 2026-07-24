@@ -2,6 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { notifyMentorOfMatch, notifyMenteeOfRequest } from '@/lib/email'
 import { scoreMentor } from '@/lib/match'
 import { mintScheduleToken } from '@/lib/crypto'
@@ -18,6 +19,26 @@ function getSupabaseAdmin() {
 }
 
 const MAX_NOTES = 2000
+
+// Record an actual send in email_log so the account-global 90/day soft cap
+// (shared by /api/cron/digest and /api/admin/announcements) accounts for
+// general-platform traffic too, not just Ascenso's own sends. Same shape as the
+// cohort match-activation route; cohort_id is null here (public request flow,
+// non-cohort mentors/mentees — migration 0006). The send already happened, so a
+// failed log line is server-side noise, never a client error.
+async function logMatchNotify(
+  supabase: SupabaseClient,
+  recipientEmail: string,
+  refId: string,
+) {
+  const { error } = await supabase.from('email_log').insert({
+    cohort_id: null,
+    kind: 'match_notify',
+    recipient_email: recipientEmail,
+    ref_id: refId,
+  })
+  if (error) console.error('email_log insert failed:', error.message)
+}
 
 export async function POST(request: Request) {
   try {
@@ -90,7 +111,7 @@ export async function POST(request: Request) {
       Date.now() + SCHEDULE_TOKEN_TTL_DAYS * 86_400_000,
     ).toISOString()
 
-    const { error: requestErr } = await supabase
+    const { data: requestRow, error: requestErr } = await supabase
       .from('mentee_requests')
       .insert({
         mentee_id: menteeId,
@@ -98,12 +119,14 @@ export async function POST(request: Request) {
         schedule_token_hash: tokenHash,
         schedule_token_expires_at: tokenExpiresAt,
       })
+      .select('id')
+      .single()
 
-    if (requestErr) {
-      if (requestErr.code === '23505') {
+    if (requestErr || !requestRow) {
+      if (requestErr?.code === '23505') {
         return NextResponse.json({ error: 'Already requested' }, { status: 409 })
       }
-      console.error('mentee_requests insert failed:', requestErr.message)
+      console.error('mentee_requests insert failed:', requestErr?.message)
       return NextResponse.json({ error: 'Failed to record request' }, { status: 500 })
     }
 
@@ -146,6 +169,8 @@ export async function POST(request: Request) {
       console.error('Mentor notification failed:', err)
       return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 })
     }
+    // Reaching here means the mentor send succeeded — record it against the cap.
+    await logMatchNotify(supabase, mentor.email, requestRow.id)
 
     // Secondary action: confirm to the mentee. Never fail the request over this —
     // the mentor has already been notified, which is the action the user asked for.
@@ -156,6 +181,7 @@ export async function POST(request: Request) {
         mentorName: `${mentor.first_name} ${mentor.last_name}`,
         scheduleUrl,
       })
+      await logMatchNotify(supabase, mentee.email, requestRow.id)
     } catch (err) {
       console.error('Mentee confirmation email failed (non-fatal):', err)
     }
