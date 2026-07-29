@@ -10,6 +10,15 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Only the authenticated areas need session refresh. Keeping the matcher
   // tight avoids adding cookie/auth work to the public site or the
-  // service-role /api routes.
-  matcher: ['/dashboard', '/dashboard/:path*', '/admin', '/admin/:path*'],
+  // service-role /api routes. /ascenso/dashboard is the mentee magic-link
+  // surface — same refresh need, different auth strategy; the rest of /ascenso
+  // (landing page, apply form) is public and stays out.
+  matcher: [
+    '/dashboard',
+    '/dashboard/:path*',
+    '/ascenso/dashboard',
+    '/ascenso/dashboard/:path*',
+    '/admin',
+    '/admin/:path*',
+  ],
 }

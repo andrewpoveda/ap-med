@@ -194,6 +194,64 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Ascenso — the one entry point to the LMSA-NE cohort from the public
+          site. Without it /ascenso and /ascenso/apply are reachable only by
+          pasting the URL. */}
+      <section
+        style={{
+          background: "#f5efe2",
+          border: `1px solid ${GOLD}`,
+          borderRadius: "12px",
+          padding: "2.5rem",
+        }}
+      >
+        <p style={{ ...eyebrowStyle, marginBottom: "1rem" }}>
+          Partnered with LMSA-NE
+        </p>
+        <h2
+          style={{
+            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontWeight: 400,
+            fontSize: "2rem",
+            lineHeight: 1.15,
+            color: "#1a1a2e",
+            margin: 0,
+          }}
+        >
+          Ascenso: mentorship for the whole year
+        </h2>
+        <p
+          style={{
+            color: "#4a4a5a",
+            fontSize: "1rem",
+            lineHeight: 1.7,
+            margin: "1rem 0 0",
+            maxWidth: "62ch",
+          }}
+        >
+          Ascenso is a structured mentorship cohort run with the Latino Medical
+          Student Association — Northeast. Applications are reviewed by the
+          program board, pairs are matched across four tracks from premed to
+          resident, and mentors and mentees meet on a regular cadence through the
+          program year.
+        </p>
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            flexWrap: "wrap",
+            marginTop: "1.75rem",
+          }}
+        >
+          <Link href="/ascenso" style={goldButton}>
+            About Ascenso
+          </Link>
+          <Link href="/ascenso/apply" style={ghostButton}>
+            Apply Now
+          </Link>
+        </div>
+      </section>
+
       {/* Podcast CTA */}
       <section className="text-center">
         <p style={{ ...eyebrowStyle, marginBottom: "1rem" }}>The AP MED Podcast</p>

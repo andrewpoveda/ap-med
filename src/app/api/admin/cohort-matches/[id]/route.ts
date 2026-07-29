@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { notifyCohortMatchActivated } from '@/lib/email'
+import { createMenteeSignInLink } from '@/lib/ascenso-auth'
 import { isValidEmail } from '@/lib/validate'
 import type { AdminUser } from '@/lib/admin'
 import type { CohortMatch } from '@/types/cohort'
@@ -38,8 +39,11 @@ export async function PATCH(
       return approveMatch(admin, adminUser, match)
     }
     if (action === 'activate') {
-      const dryRun = new URL(request.url).searchParams.get('test') === '1'
-      return activateMatch(admin, match, dryRun)
+      const url = new URL(request.url)
+      const dryRun = url.searchParams.get('test') === '1'
+      // Server-derived origin — the mentee's sign-in link must never be built
+      // from a client-supplied host.
+      return activateMatch(admin, match, dryRun, url.origin)
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (err) {
@@ -149,6 +153,7 @@ async function activateMatch(
   admin: SupabaseClient,
   match: CohortMatch,
   dryRun: boolean,
+  origin: string,
 ) {
   if (match.status !== 'board_approved') {
     return NextResponse.json(
@@ -237,11 +242,22 @@ async function activateMatch(
 
   if (dryRun) {
     // Mirrors /api/notify ?test=1: the status flip is real, the sends are
-    // skipped, and nothing lands in email_log (it records actual sends only).
+    // skipped, no auth user is created, and nothing lands in email_log (it
+    // records actual sends only).
     console.log(
       `[dry-run] Skipped match activation emails — mentor ${mentor.id}, mentee ${mentee.id}`,
     )
     return NextResponse.json({ success: true, status: 'active', dryRun: true })
+  }
+
+  // Mentee account (magic link): activation is the moment a mentee first needs
+  // a way in, so their auth user is created here and the one-time sign-in URL
+  // rides along in their own copy of the email. Best-effort — a null link just
+  // drops the second CTA; it never blocks the introduction. The mentor gets no
+  // link: they sign in with Google at /login.
+  const menteeAccountUrl = await createMenteeSignInLink(admin, mentee.email, origin)
+  if (!menteeAccountUrl) {
+    console.error('Match activation: mentee sign-in link unavailable, sending without it')
   }
 
   const results = await Promise.allSettled([
@@ -260,6 +276,7 @@ async function activateMatch(
       partnerName: mentorName,
       partnerEmail: mentor.email,
       cohortName: cohort.name,
+      ...(menteeAccountUrl ? { accountUrl: menteeAccountUrl } : {}),
     }),
   ])
   const [mentorSend, menteeSend] = results

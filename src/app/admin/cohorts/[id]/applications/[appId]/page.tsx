@@ -57,6 +57,42 @@ function asText(value: unknown): string {
   return typeof value === 'string' && value.trim() ? value : '—'
 }
 
+/**
+ * A structured tag array from `answers`, rendered as chips. These are the
+ * matcher's actual inputs (identity 40% · specialty 35% · mentorship needs 25%)
+ * and carry over to the member row on approval, so the board sees exactly what
+ * the candidate scores will be built from. Values were allowlisted to the
+ * canonical vocabulary at intake, but they're still rendered as text — never
+ * markup.
+ */
+function TagField({ label, value }: { label: string; value: unknown }) {
+  const tags = Array.isArray(value) ? value.filter((v) => typeof v === 'string') : []
+  return (
+    <Field label={label}>
+      {tags.length === 0 ? (
+        '—'
+      ) : (
+        <span className="flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              style={{
+                background: '#f5f2ec',
+                border: '1px solid #e8e4dc',
+                borderRadius: '999px',
+                padding: '0.1rem 0.6rem',
+                fontSize: '0.8rem',
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </span>
+      )}
+    </Field>
+  )
+}
+
 export default async function ApplicationDetailPage({
   params,
 }: {
@@ -142,6 +178,23 @@ export default async function ApplicationDetailPage({
           <Field label="Email">{app.email}</Field>
           <Field label="Institution">{asText(answers.institution)}</Field>
           <Field label="Current position">{asText(answers.current_position)}</Field>
+          {app.role === 'mentor' ? (
+            <>
+              <TagField label="Specialties" value={answers.specialty} />
+              <TagField label="Can help with" value={answers.can_help_with} />
+            </>
+          ) : (
+            <>
+              <TagField label="Specialties of interest" value={answers.preferred_specialty} />
+              <TagField label="Wants support with" value={answers.help_with} />
+            </>
+          )}
+          {typeof answers.help_with_other === 'string' && answers.help_with_other.trim() && (
+            // Free text from the "Other" support area. Not a matching tag —
+            // shown so the board can read it and weigh it by hand.
+            <Field label="Other support area">{asText(answers.help_with_other)}</Field>
+          )}
+          <TagField label="Identity / background" value={answers.identity} />
           <Field label="Motivation">
             <span style={{ whiteSpace: 'pre-wrap' }}>{asText(answers.motivation)}</span>
           </Field>

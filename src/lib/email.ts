@@ -131,6 +131,12 @@ export async function notifyMenteeOfRequest(params: {
  * are resolved server-side from DB rows by the caller; everything interpolated
  * into the HTML is escaped here. replyTo is the partner, so replying starts the
  * actual mentorship conversation.
+ *
+ * `accountUrl` is the mentee's one-time magic-link sign-in URL (src/lib/
+ * ascenso-auth.ts), rendered as a second CTA beside "Email <partner>". It is a
+ * bearer credential for that mentee's account, so the caller passes it ONLY on
+ * the mentee's own copy of this email — never the mentor's, which would hand
+ * one member a way into another's dashboard.
  */
 export async function notifyCohortMatchActivated(params: {
   recipientEmail: string
@@ -139,13 +145,37 @@ export async function notifyCohortMatchActivated(params: {
   partnerName: string
   partnerEmail: string
   cohortName: string
+  accountUrl?: string
 }) {
-  const { recipientEmail, recipientName, recipientRole, partnerName, partnerEmail, cohortName } = params
+  const { recipientEmail, recipientName, recipientRole, partnerName, partnerEmail, cohortName, accountUrl } = params
   const partnerLabel = recipientRole === 'mentor' ? 'mentee' : 'mentor'
   const safeFirst = escapeHtml(recipientName.trim().split(/\s+/)[0])
   const safePartner = escapeHtml(partnerName)
   const safePartnerEmail = escapeHtml(partnerEmail)
   const safeCohort = escapeHtml(cohortName)
+
+  // Server-constructed URL, but run through the same href guard as every other
+  // link in this file. Belt and braces: only ever set for the mentee.
+  const safeAccountUrl =
+    accountUrl && recipientRole === 'mentee' ? safeUrl(accountUrl) : '#'
+  const accountBlock =
+    safeAccountUrl !== '#'
+      ? `
+    <a href="${escapeHtml(safeAccountUrl)}" style="display:inline-block;background:#c8a96e;color:#1a1a2e;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
+      Create Your Account &rarr;
+    </a>`
+      : ''
+  const accountNote =
+    safeAccountUrl !== '#'
+      ? `
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;font-size:13px;">
+      Your ${safeCohort} dashboard is where you'll see the meetings your mentor
+      logs, track the goals you set together, and book sessions with them. The
+      link above signs you in without a password and works once — if it's
+      expired by the time you get to it, you can send yourself a fresh one from
+      the dashboard.
+    </p>`
+      : ''
 
   const { error } = await resend.emails.send({
     from: 'AP MED Mentors <mentors@ap-med.org>',
@@ -172,9 +202,10 @@ export async function notifyCohortMatchActivated(params: {
     <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
       ${partnerLabel === 'mentee' ? 'They received this same introduction, so feel free to reach out first — a short hello and a time to meet is all it takes to get started.' : 'Your mentor received this same introduction. Go ahead and say hello — suggest a couple of times that work for a first conversation.'}
     </p>
-    <a href="mailto:${safePartnerEmail}" style="display:inline-block;background:#60a5fa;color:#0f1117;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:24px;">
+    <a href="mailto:${safePartnerEmail}" style="display:inline-block;background:#60a5fa;color:#0f1117;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
       Email ${safePartner} →
-    </a>
+    </a>${accountBlock}
+    ${accountNote}
     <hr style="border:none;border-top:1px solid #1e2330;margin:24px 0;" />
     <p style="color:#64748b;font-size:12px;line-height:1.6;">
       You received this because you're part of ${safeCohort} on AP MED Mentors.
@@ -190,6 +221,71 @@ export async function notifyCohortMatchActivated(params: {
 
   if (error) {
     console.error(`Failed to send match activation email to ${recipientEmail}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Ascenso mentee sign-in link — the "I lost / expired my link" path for the
+ * magic-link flow, sent by /api/ascenso/signin-link.
+ *
+ * `signInUrl` is a bearer credential for this mentee's account, so the caller
+ * must resolve the recipient from the cohort mentee row it looked up by email,
+ * never from the address the browser submitted. That is what keeps this from
+ * becoming a way to mail someone else's sign-in link to a chosen inbox.
+ */
+export async function sendAscensoSignInLink(params: {
+  recipientEmail: string
+  recipientName: string
+  cohortName: string
+  signInUrl: string
+}) {
+  const { recipientEmail, recipientName, cohortName, signInUrl } = params
+  const safeFirst = escapeHtml(recipientName.trim().split(/\s+/)[0] || 'there')
+  const safeCohort = escapeHtml(cohortName)
+  // Server-constructed URL, but run through the same guard as every href.
+  const safeSignIn = escapeHtml(safeUrl(signInUrl))
+
+  const { error } = await resend.emails.send({
+    from: 'AP MED Mentors <mentors@ap-med.org>',
+    to: recipientEmail,
+    replyTo: 'mentors@ap-med.org',
+    // Subject is plain text (not HTML) — use the raw value, not the escaped one.
+    subject: `Your ${cohortName} sign-in link`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:system-ui,sans-serif;color:#e2e8f0;">
+  <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
+    <p style="color:#60a5fa;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">AP MED MENTORS · ${safeCohort}</p>
+    <h1 style="font-size:24px;font-weight:700;margin:0 0 8px;">Here's your way back in</h1>
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
+      Hi ${safeFirst}, use the button below to sign in to your ${safeCohort}
+      dashboard. No password needed.
+    </p>
+    <a href="${safeSignIn}" style="display:inline-block;background:#c8a96e;color:#1a1a2e;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:24px;">
+      Sign in &rarr;
+    </a>
+    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;font-size:13px;">
+      This link works once and expires shortly. If it's already stale by the time
+      you tap it, just request another from the dashboard.
+    </p>
+    <hr style="border:none;border-top:1px solid #1e2330;margin:24px 0;" />
+    <p style="color:#64748b;font-size:12px;line-height:1.6;">
+      If you didn't ask for this link, you can ignore this email — nothing has
+      changed on your account. Questions any time? Just reply.
+      <br/><br/>
+      — Andrew, AP MED
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  })
+
+  if (error) {
+    console.error(`Failed to send Ascenso sign-in link to ${recipientEmail}:`, error)
     throw error
   }
 }

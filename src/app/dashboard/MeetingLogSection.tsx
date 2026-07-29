@@ -15,6 +15,12 @@ import {
  * booked session marked held — plus the pair's logged-meetings list. Shown to
  * both cohort mentors and mentees; the write route re-verifies the acting member
  * is a party to the match, so nothing here is a security boundary.
+ *
+ * `readOnly` drops the entry form and keeps the list — the shape the Ascenso
+ * mentee dashboard uses, where the mentor does the logging and the mentee reads
+ * it. It is presentation only: /api/meeting-logs still accepts writes from
+ * either party (a mentee logging a meeting is legitimate, just not this
+ * surface's job), so this is not an authorization control.
  */
 
 type MatchOption = { matchId: string; partnerName: string }
@@ -93,11 +99,13 @@ export default function MeetingLogSection({
   matches,
   logs,
   loggableSessions,
+  readOnly = false,
 }: {
   role: 'mentor' | 'mentee'
   matches: MatchOption[]
   logs: MeetingLogView[]
   loggableSessions: Record<string, LoggableSession[]>
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const partnerNoun = role === 'mentor' ? 'mentee' : 'mentor'
@@ -154,6 +162,29 @@ export default function MeetingLogSection({
       setError('Could not log the meeting. Please try again.')
       setSubmitting(false)
     }
+  }
+
+  if (readOnly) {
+    return (
+      <div style={cardStyle}>
+        <p style={eyebrowStyle}>Meeting log</p>
+        <p
+          className="text-[#6b6b6b]"
+          style={{ margin: '0 0 1.25rem', fontSize: '0.9rem', lineHeight: 1.6 }}
+        >
+          Every meeting your {partnerNoun} records shows up here — calls, hallway
+          chats, async check-ins, and sessions booked through AP MED.
+        </p>
+        {logs.length === 0 ? (
+          <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.9rem' }}>
+            No meetings logged yet. Once you and your {partnerNoun} meet, it&apos;ll
+            appear here.
+          </p>
+        ) : (
+          <LoggedMeetings logs={logs} />
+        )}
+      </div>
+    )
   }
 
   return (
@@ -309,70 +340,77 @@ export default function MeetingLogSection({
             No meetings logged yet. Your first one will appear here.
           </p>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-3">
-            {logs.map((log) => {
-              const meta = [
-                log.durationMinutes ? `${log.durationMinutes} min` : null,
-                log.mode ? MEETING_MODE_LABELS[log.mode] : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')
-              const who = log.loggedBySelf
-                ? 'you'
-                : log.loggedByType === 'admin'
-                  ? 'an admin'
-                  : `your ${log.loggedByType}`
-              return (
-                <li
-                  key={log.id}
-                  style={{
-                    border: '1px solid #e8e4dc',
-                    borderRadius: '8px',
-                    padding: '0.85rem 1rem',
-                  }}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[#1a1a2e]" style={{ fontWeight: 500 }}>
-                      {formatDate(log.metAt)}
-                    </span>
-                    {log.fromSession && (
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 600,
-                          color: '#8a6a2f',
-                          background: '#f7f0e2',
-                          border: '1px solid #e6d6ac',
-                          borderRadius: '999px',
-                          padding: '0.1rem 0.5rem',
-                        }}
-                      >
-                        Booked session
-                      </span>
-                    )}
-                    {meta && (
-                      <span className="text-[#6b6b6b]" style={{ fontSize: '0.85rem' }}>
-                        {meta}
-                      </span>
-                    )}
-                  </div>
-                  {log.notes && (
-                    <p
-                      className="text-[#4a4a5a]"
-                      style={{ margin: '0.4rem 0 0', fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}
-                    >
-                      {log.notes}
-                    </p>
-                  )}
-                  <p className="text-[#9a948a]" style={{ margin: '0.4rem 0 0', fontSize: '0.75rem' }}>
-                    Logged by {who}
-                  </p>
-                </li>
-              )
-            })}
-          </ul>
+          <LoggedMeetings logs={logs} />
         )}
       </div>
     </div>
+  )
+}
+
+/** The pair's logged meetings — shared by the writable and read-only views. */
+function LoggedMeetings({ logs }: { logs: MeetingLogView[] }) {
+  return (
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-3">
+      {logs.map((log) => {
+        const meta = [
+          log.durationMinutes ? `${log.durationMinutes} min` : null,
+          log.mode ? MEETING_MODE_LABELS[log.mode] : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        const who = log.loggedBySelf
+          ? 'you'
+          : log.loggedByType === 'admin'
+            ? 'an admin'
+            : `your ${log.loggedByType}`
+        return (
+          <li
+            key={log.id}
+            style={{
+              border: '1px solid #e8e4dc',
+              borderRadius: '8px',
+              padding: '0.85rem 1rem',
+            }}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[#1a1a2e]" style={{ fontWeight: 500 }}>
+                {formatDate(log.metAt)}
+              </span>
+              {log.fromSession && (
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    color: '#8a6a2f',
+                    background: '#f7f0e2',
+                    border: '1px solid #e6d6ac',
+                    borderRadius: '999px',
+                    padding: '0.1rem 0.5rem',
+                  }}
+                >
+                  Booked session
+                </span>
+              )}
+              {meta && (
+                <span className="text-[#6b6b6b]" style={{ fontSize: '0.85rem' }}>
+                  {meta}
+                </span>
+              )}
+            </div>
+            {log.notes && (
+              <p
+                className="text-[#4a4a5a]"
+                style={{ margin: '0.4rem 0 0', fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}
+              >
+                {log.notes}
+              </p>
+            )}
+            <p className="text-[#9a948a]" style={{ margin: '0.4rem 0 0', fontSize: '0.75rem' }}>
+              Logged by {who}
+            </p>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
