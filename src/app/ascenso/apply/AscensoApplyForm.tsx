@@ -447,6 +447,11 @@ export default function AscensoApplyForm({
                 type="checkbox"
                 checked={form.help_with.includes(item)}
                 onChange={() => toggleArrayField('help_with', item)}
+                // The specialty list above also ends in "Other", so out of
+                // visual context (screen reader, control-by-control tabbing)
+                // the two are indistinguishable. Still contains the visible
+                // word, so the accessible name matches the label.
+                aria-label={item === HELP_WITH_OTHER ? 'Other support area' : undefined}
                 style={{ accentColor: '#c8a96e' }}
               />
               {item}
