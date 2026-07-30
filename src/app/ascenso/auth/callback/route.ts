@@ -6,14 +6,16 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { linkCohortMenteeByEmail } from '@/lib/mentee-link'
 
 /**
- * Magic-link callback for the Ascenso MENTEE flow — the landing point of the
- * "Create Your Account" CTA in the match-confirmation email.
+ * DEPRECATED (superseded Jul 30 2026) — magic-link callback for the Ascenso
+ * MENTEE flow. Still live so links already in inboxes keep working; no new ones
+ * are issued. Mentees now sign in with Google at /login like everyone else, and
+ * /auth/callback lands them on /ascenso/dashboard — the same place this route
+ * ends. See the removal checklist in src/lib/ascenso-auth.ts.
  *
- * Deliberately NOT /auth/callback. That route is the mentor Google OAuth flow
- * and exchanges an OAuth `code`; this one redeems a Supabase OTP `token_hash`
- * and always lands on /ascenso/dashboard. Keeping them separate means neither
- * auth strategy can be driven through the other's entry point, and a change to
- * the mentor sign-in can't quietly alter how mentees get in.
+ * Deliberately NOT /auth/callback. That route exchanges an OAuth `code`; this one
+ * redeems a Supabase OTP `token_hash`. Keeping them separate means neither auth
+ * strategy can be driven through the other's entry point — which matters more now
+ * that one is on its way out: retiring this route can't affect the OAuth flow.
  *
  * verifyOtp sets the @supabase/ssr session cookies server-side, so the mentee
  * arrives at the dashboard already signed in. The token is single-use and

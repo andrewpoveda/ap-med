@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server'
 import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { notifyCohortMatchActivated } from '@/lib/email'
-import { createMenteeSignInLink } from '@/lib/ascenso-auth'
 import { isValidEmail } from '@/lib/validate'
 import type { AdminUser } from '@/lib/admin'
 import type { CohortMatch } from '@/types/cohort'
@@ -41,8 +40,8 @@ export async function PATCH(
     if (action === 'activate') {
       const url = new URL(request.url)
       const dryRun = url.searchParams.get('test') === '1'
-      // Server-derived origin — the mentee's sign-in link must never be built
-      // from a client-supplied host.
+      // Server-derived origin — the sign-in link in the activation email must
+      // never be built from a client-supplied host.
       return activateMatch(admin, match, dryRun, url.origin)
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -242,23 +241,20 @@ async function activateMatch(
 
   if (dryRun) {
     // Mirrors /api/notify ?test=1: the status flip is real, the sends are
-    // skipped, no auth user is created, and nothing lands in email_log (it
-    // records actual sends only).
+    // skipped, and nothing lands in email_log (it records actual sends only).
     console.log(
       `[dry-run] Skipped match activation emails — mentor ${mentor.id}, mentee ${mentee.id}`,
     )
     return NextResponse.json({ success: true, status: 'active', dryRun: true })
   }
 
-  // Mentee account (magic link): activation is the moment a mentee first needs
-  // a way in, so their auth user is created here and the one-time sign-in URL
-  // rides along in their own copy of the email. Best-effort — a null link just
-  // drops the second CTA; it never blocks the introduction. The mentor gets no
-  // link: they sign in with Google at /login.
-  const menteeAccountUrl = await createMenteeSignInLink(admin, mentee.email, origin)
-  if (!menteeAccountUrl) {
-    console.error('Match activation: mentee sign-in link unavailable, sending without it')
-  }
+  // Both parties get the same "sign in with Google" CTA: /login resolves mentor
+  // vs. cohort mentee from the verified email and routes each to their own
+  // dashboard. Activation no longer mints a magic link or pre-creates the
+  // mentee's auth user — Google sign-in does both on first use — so there is no
+  // credential in either copy of this email and no expiry racing the recipient.
+  // Server-derived origin, so the link can never point at a client-supplied host.
+  const loginUrl = new URL('/login', origin).toString()
 
   const results = await Promise.allSettled([
     notifyCohortMatchActivated({
@@ -268,6 +264,7 @@ async function activateMatch(
       partnerName: menteeName,
       partnerEmail: mentee.email,
       cohortName: cohort.name,
+      loginUrl,
     }),
     notifyCohortMatchActivated({
       recipientEmail: mentee.email,
@@ -276,7 +273,7 @@ async function activateMatch(
       partnerName: mentorName,
       partnerEmail: mentor.email,
       cohortName: cohort.name,
-      ...(menteeAccountUrl ? { accountUrl: menteeAccountUrl } : {}),
+      loginUrl,
     }),
   ])
   const [mentorSend, menteeSend] = results

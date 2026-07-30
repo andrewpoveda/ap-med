@@ -9,11 +9,18 @@ import { getCohortName } from '@/lib/cohort-dashboard'
 import { isValidEmail } from '@/lib/validate'
 
 /**
- * Re-request an Ascenso mentee sign-in link.
+ * DEPRECATED (superseded Jul 30 2026) — re-request an Ascenso mentee magic-link
+ * sign-in. Mentees now sign in with Google at /login, and match-confirmation
+ * emails no longer carry a magic link, so this is the last issuer of them.
  *
- * The magic link in the match-confirmation email expires on Supabase's OTP
- * schedule (about an hour), so without this route that email is the mentee's
- * only door and it closes overnight. Public and unauthenticated by necessity —
+ * It stays live for the mentees who signed in by emailed link before the switch,
+ * or who are still holding an older match email: those links expire on Supabase's
+ * OTP schedule (about an hour), so without this route their only door closes
+ * overnight and they're locked out mid-program. Retire it together with the rest
+ * of the magic-link path (checklist in src/lib/ascenso-auth.ts) once email_log
+ * shows no recent kind='signin_link' rows.
+ *
+ * Public and unauthenticated by necessity —
  * the whole point is that the caller can't sign in — so it carries the same
  * posture as the other public write routes plus two extra constraints:
  *

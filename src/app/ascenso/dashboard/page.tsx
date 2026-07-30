@@ -28,17 +28,19 @@ import GoalSection from '@/app/dashboard/GoalSection'
 import CohortBookingSection, { type BookingMatch } from '@/app/dashboard/CohortBookingSection'
 import MenteeSessionsList from '@/app/dashboard/MenteeSessionsList'
 import SurveySection from '@/app/dashboard/SurveySection'
+import LoginButton from '@/app/login/LoginButton'
 import SignInLinkForm from './SignInLinkForm'
 
 /**
- * The Ascenso MENTEE dashboard — the landing point of the magic-link flow
- * (/ascenso/auth/callback), and deliberately its own route.
+ * The Ascenso MENTEE dashboard — where /auth/callback sends a Google sign-in that
+ * resolves to a cohort mentee row, and still the landing point of the legacy
+ * magic-link callback (/ascenso/auth/callback).
  *
- * /dashboard is the mentor surface: it's reached by Google OAuth from /login and
- * carries mentor tooling (calendar connection, bookable hours, session
- * scheduling). Neither this page nor the magic-link callback touches that route
- * or its sign-in, so the two auth strategies stay independent — a change to
- * either one can't silently reshape the other.
+ * It stays its own route because the surfaces differ, not because the auth does:
+ * /dashboard carries mentor tooling (calendar connection, bookable hours, session
+ * scheduling) that a mentee has no use for. Both roles now come through one
+ * Google sign-in and one callback, which branches on which member table holds the
+ * verified email (src/lib/account-role.ts).
  *
  * Sections, per the mentee's side of the program:
  *   - meeting log, READ-ONLY: the mentor records meetings, the mentee reads them
@@ -94,8 +96,9 @@ export default async function AscensoDashboardPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Signed out: no redirect to /login — that's the mentor's Google flow. The
-  // mentee's way in is a fresh magic link, so offer it right here.
+  // Signed out: offer Google right here rather than bouncing to /login, so the
+  // mentee signs in on the page they were trying to reach. Same button, same
+  // /auth/callback — which routes cohort mentees back here.
   if (!user) {
     return (
       <Shell>
@@ -106,8 +109,29 @@ export default async function AscensoDashboardPage({
             className="text-[#4a4a5a]"
             style={{ margin: '0 0 1.25rem', fontSize: '0.95rem', lineHeight: 1.6 }}
           >
-            Ascenso mentees sign in with a one-time link — no password. Enter the
-            email address on your application and we&apos;ll send you one.
+            Ascenso members sign in with Google — the same sign-in mentors use. Use
+            the Google account for the email address on your application. We use it
+            only to confirm that address; no access to your Gmail, Drive, or
+            Calendar is requested.
+          </p>
+          <LoginButton />
+        </div>
+
+        {/*
+          LEGACY magic-link path. New match emails send the Google CTA above, but
+          a mentee who signed in by emailed link before the switch — or who is
+          holding an older email — must not be locked out, so this stays live.
+          See the deprecation note in src/lib/ascenso-auth.ts before removing it.
+        */}
+        <div className="mt-4" style={cardStyle}>
+          <p style={eyebrowStyle}>Signed in by email link before?</p>
+          <p
+            className="text-[#4a4a5a]"
+            style={{ margin: '0 0 1.25rem', fontSize: '0.95rem', lineHeight: 1.6 }}
+          >
+            Earlier Ascenso sign-ins used a one-time email link instead of Google.
+            That still works — enter your application email and we&apos;ll send a
+            fresh one. If you can, use Google above: it doesn&apos;t expire.
           </p>
           <SignInLinkForm />
         </div>

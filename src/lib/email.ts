@@ -132,11 +132,12 @@ export async function notifyMenteeOfRequest(params: {
  * into the HTML is escaped here. replyTo is the partner, so replying starts the
  * actual mentorship conversation.
  *
- * `accountUrl` is the mentee's one-time magic-link sign-in URL (src/lib/
- * ascenso-auth.ts), rendered as a second CTA beside "Email <partner>". It is a
- * bearer credential for that mentee's account, so the caller passes it ONLY on
- * the mentee's own copy of this email — never the mentor's, which would hand
- * one member a way into another's dashboard.
+ * `loginUrl` is the shared /login page, rendered as a second CTA beside "Email
+ * <partner>" for BOTH parties — mentors and mentees sign in through the same
+ * Google flow, which routes each to their own dashboard. Unlike the magic link it
+ * replaced, this URL is not a credential: it carries no token, grants nothing on
+ * its own, and is safe in either party's copy of the email. It is also the only
+ * place a mentor is told where to sign in, so it isn't optional dressing.
  */
 export async function notifyCohortMatchActivated(params: {
   recipientEmail: string
@@ -145,9 +146,10 @@ export async function notifyCohortMatchActivated(params: {
   partnerName: string
   partnerEmail: string
   cohortName: string
-  accountUrl?: string
+  /** Server-built absolute URL of /login (never a client-supplied host). */
+  loginUrl: string
 }) {
-  const { recipientEmail, recipientName, recipientRole, partnerName, partnerEmail, cohortName, accountUrl } = params
+  const { recipientEmail, recipientName, recipientRole, partnerName, partnerEmail, cohortName, loginUrl } = params
   const partnerLabel = recipientRole === 'mentor' ? 'mentee' : 'mentor'
   const safeFirst = escapeHtml(recipientName.trim().split(/\s+/)[0])
   const safePartner = escapeHtml(partnerName)
@@ -155,25 +157,30 @@ export async function notifyCohortMatchActivated(params: {
   const safeCohort = escapeHtml(cohortName)
 
   // Server-constructed URL, but run through the same href guard as every other
-  // link in this file. Belt and braces: only ever set for the mentee.
-  const safeAccountUrl =
-    accountUrl && recipientRole === 'mentee' ? safeUrl(accountUrl) : '#'
+  // link in this file.
+  const safeLoginUrl = safeUrl(loginUrl)
   const accountBlock =
-    safeAccountUrl !== '#'
+    safeLoginUrl !== '#'
       ? `
-    <a href="${escapeHtml(safeAccountUrl)}" style="display:inline-block;background:#c8a96e;color:#1a1a2e;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
-      Create Your Account &rarr;
+    <a href="${escapeHtml(safeLoginUrl)}" style="display:inline-block;background:#c8a96e;color:#1a1a2e;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
+      Sign in with Google &rarr;
     </a>`
       : ''
+  const dashboardPurpose =
+    recipientRole === 'mentee'
+      ? `you'll see the meetings your mentor logs, track the goals you set
+      together, and book sessions with them`
+      : `you'll log your meetings, track the goals you set together, and open
+      bookable hours so your mentee can pick a time`
   const accountNote =
-    safeAccountUrl !== '#'
+    safeLoginUrl !== '#'
       ? `
     <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;font-size:13px;">
-      Your ${safeCohort} dashboard is where you'll see the meetings your mentor
-      logs, track the goals you set together, and book sessions with them. The
-      link above signs you in without a password and works once — if it's
-      expired by the time you get to it, you can send yourself a fresh one from
-      the dashboard.
+      Your ${safeCohort} dashboard is where ${dashboardPurpose}. Sign in at
+      <a href="${escapeHtml(safeLoginUrl)}" style="color:#60a5fa;">${escapeHtml(safeLoginUrl)}</a>
+      with the Google account for this email address — no password to set up. We
+      use Google only to confirm it's you; we ask for no access to your Gmail,
+      Drive, or Calendar.
     </p>`
       : ''
 

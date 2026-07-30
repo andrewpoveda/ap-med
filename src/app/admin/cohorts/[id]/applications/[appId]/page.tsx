@@ -4,14 +4,16 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { safeUrl, isHttpUrl } from '@/lib/url'
 import {
   TRACK_LABELS,
+  asPreviousSubmission,
   type CohortApplication,
   type CohortTrack,
 } from '@/types/cohort'
 import { STATUS_CHIP_STYLES, NEUTRAL_CHIP } from '../chips'
 import ReviewActions from './ReviewActions'
+import SubmissionFields from './SubmissionFields'
+import SubmissionTabs from './SubmissionTabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,45 +55,12 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function asText(value: unknown): string {
-  return typeof value === 'string' && value.trim() ? value : '—'
-}
-
-/**
- * A structured tag array from `answers`, rendered as chips. These are the
- * matcher's actual inputs (identity 40% · specialty 35% · mentorship needs 25%)
- * and carry over to the member row on approval, so the board sees exactly what
- * the candidate scores will be built from. Values were allowlisted to the
- * canonical vocabulary at intake, but they're still rendered as text — never
- * markup.
- */
-function TagField({ label, value }: { label: string; value: unknown }) {
-  const tags = Array.isArray(value) ? value.filter((v) => typeof v === 'string') : []
-  return (
-    <Field label={label}>
-      {tags.length === 0 ? (
-        '—'
-      ) : (
-        <span className="flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              style={{
-                background: '#f5f2ec',
-                border: '1px solid #e8e4dc',
-                borderRadius: '999px',
-                padding: '0.1rem 0.6rem',
-                fontSize: '0.8rem',
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </span>
-      )}
-    </Field>
-  )
-}
+const shortDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 
 export default async function ApplicationDetailPage({
   params,
@@ -128,7 +97,9 @@ export default async function ApplicationDetailPage({
   }
 
   const chip = STATUS_CHIP_STYLES[app.status] ?? NEUTRAL_CHIP
-  const linkedin = typeof answers.linkedin_url === 'string' ? answers.linkedin_url : ''
+  // Null unless they applied more than once (migration 0007). Narrowed rather
+  // than cast: it's plain jsonb, and rows written before 0007 have nothing here.
+  const previous = asPreviousSubmission(app.previous_submission)
 
   return (
     <>

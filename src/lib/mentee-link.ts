@@ -26,11 +26,17 @@ export type CohortMenteeLinkResult =
  *   thesis (ascenso-prm.md §2) and must NEVER be claimed by a Google sign-in —
  *   both the lookup and the update carry `.not('cohort_id','is',null)`.
  *
- * mentees has no email uniqueness (the public form allows resubmission and dup
- * emails are legal), so unlike the mentor path we fetch all cohort candidates:
+ * Since migration 0007 (mentees_cohort_email_key) at most ONE cohort row can
+ * carry a given email, so the "which row is theirs?" ambiguity this function
+ * used to resolve by recency is gone at the database level. The multi-row
+ * handling below is kept as defence in depth — the index is partial and a future
+ * schema change could widen it — but in practice `rows` now holds 0 or 1 entry:
  * a row already claimed by THIS user wins (idempotent re-sign-in), else the
- * newest unclaimed cohort row is claimed. If every cohort row for the email is
- * already claimed by someone else, that's a 'conflict' for Andrew to resolve.
+ * unclaimed row is claimed. A row claimed by someone else is a 'conflict' for
+ * Andrew to resolve, never an override.
+ *
+ * General-platform rows (cohort_id IS NULL) are still free to share an email and
+ * are never claim targets — both queries carry `.not('cohort_id','is',null)`.
  *
  * Requires the service-role admin client: mentees is RLS-locked and `email` is
  * a server-only column.
@@ -101,6 +107,34 @@ export async function linkCohortMenteeByEmail(
   // cohort_id / full_name are unchanged by the claim, so the pre-claim row is
   // an accurate view of the now-linked mentee.
   return { status: 'linked', mentee: asMentee(unclaimed) }
+}
+
+/**
+ * Whether ANY cohort mentee row carries this email — a read-only probe that
+ * never claims. Used by the role resolver (src/lib/account-role.ts) to detect
+ * the one case its mentor-first precedence hides: a single address on both a
+ * mentor row and a cohort mentee row, where the mentee row would otherwise
+ * never link and no one would know.
+ */
+export async function cohortMenteeExistsForEmail(
+  admin: SupabaseClient,
+  email: string,
+): Promise<boolean> {
+  const normalized = email.trim().toLowerCase()
+  if (!normalized) return false
+
+  const { count, error } = await admin
+    .from('mentees')
+    .select('id', { count: 'exact', head: true })
+    // Same scoping as the claim above: cohort mentees only.
+    .ilike('email', normalized)
+    .not('cohort_id', 'is', null)
+
+  if (error) {
+    console.error('Cohort mentee existence probe failed:', error.message)
+    return false
+  }
+  return (count ?? 0) > 0
 }
 
 /**

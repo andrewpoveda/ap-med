@@ -211,9 +211,11 @@ async function promoteMentee(
   application: CohortApplication,
   email: string,
 ): Promise<PromoteResult> {
-  // Unlike mentor, mentees has no effective email uniqueness (the public form
-  // allows resubmission), so fetch all candidates: prefer a row already in this
-  // cohort (idempotent retry), then the newest unclaimed general-platform row.
+  // General-platform rows still have no email uniqueness — /api/mentees inserts
+  // one per matcher submission — so fetch all candidates: prefer a row already
+  // in this cohort (idempotent retry), then the newest unclaimed general row.
+  // COHORT rows are unique per email since 0007, so `inCohort` below can match
+  // at most one and the insert at the end can no longer create a second.
   const { data: rows, error } = await admin
     .from('mentees')
     .select('id, cohort_id')
@@ -267,6 +269,17 @@ async function promoteMentee(
     .single()
 
   if (insertError || !created) {
+    // mentees_cohort_email_key (migration 0007): one cohort mentee row per
+    // email. Reaching here with a violation means this address already has a
+    // cohort row that the claim path above declined to take — another cohort's,
+    // or one lost in a race. That's the same situation promoteMentor reports as
+    // a conflict, and the route turns it into a 409 the board can act on;
+    // before 0007 it silently created a second row that no sign-in could ever
+    // resolve to.
+    if (insertError?.code === '23505') {
+      console.error('Mentee promotion conflict — email already on a cohort mentee row')
+      return { status: 'conflict' }
+    }
     console.error('Mentee promotion insert failed:', insertError?.message)
     return { status: 'error' }
   }

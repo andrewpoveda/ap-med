@@ -1,16 +1,31 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Ascenso mentee accounts — magic-link auth, deliberately separate from the
- * mentor Google OAuth flow.
+ * DEPRECATED (superseded Jul 30 2026) — the magic-link path for Ascenso mentee
+ * accounts. Kept working, no longer the way in.
  *
- * Cohort MENTORS sign in at /login with Google (the mentor thesis: a mentor
- * already has a profile and a calendar to connect). Cohort MENTEES are students
- * who never opted into anything but an application, so their account is created
- * FOR them at match activation and reached by a link in that email — no password,
- * no OAuth consent, no second identity to remember. The two strategies never
- * share a route: /auth/callback is Google-only, /ascenso/auth/callback is
- * magic-link-only.
+ * Mentees now sign in with Google at /login, the same door as mentors, per the
+ * PRM's original decision (§2 "Cohort accounts", Jul 12 2026: both cohort roles
+ * authenticate through the existing OAuth + claim-by-email pattern). Match
+ * activation stopped minting these links, so the ONLY remaining caller is
+ * /api/ascenso/signin-link — the Turnstile-gated "email me a link" form on the
+ * signed-out /ascenso/dashboard. That exists purely so a mentee who signed in by
+ * link before the switch, or who is still holding an older match email, isn't
+ * locked out mid-program.
+ *
+ * REMOVAL, once no one depends on it: delete this file, /ascenso/auth/callback,
+ * /api/ascenso/signin-link, sendAscensoSignInLink (src/lib/email.ts), the legacy
+ * card + SignInLinkForm on /ascenso/dashboard, its link_expired / missing_token
+ * banners, and the 'signin_link' email_log kind. Check email_log for recent
+ * kind='signin_link' rows first — that table is the record of who is still using
+ * it. Nothing else reads these; the OAuth path shares none of it.
+ *
+ * The original rationale, for the record: a mentee never opted into anything but
+ * an application, so an account created FOR them and reached by one emailed link
+ * asked less of them than OAuth consent. In practice it cost more than it saved —
+ * a credential in an inbox, a one-hour expiry, a resend form to keep it usable,
+ * and a second auth strategy to reason about — while Google sign-in a mentee
+ * already has does the same job with no expiry.
  *
  * WHY hashed_token and not the returned action_link: generateLink's action_link
  * points at Supabase's own /auth/v1/verify, which completes the session with a

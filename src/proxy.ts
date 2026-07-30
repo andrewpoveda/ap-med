@@ -10,9 +10,11 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Only the authenticated areas need session refresh. Keeping the matcher
   // tight avoids adding cookie/auth work to the public site or the
-  // service-role /api routes. /ascenso/dashboard is the mentee magic-link
-  // surface — same refresh need, different auth strategy; the rest of /ascenso
-  // (landing page, apply form) is public and stays out.
+  // service-role /api routes. /ascenso/dashboard is the cohort mentee surface —
+  // same Google session as /dashboard since the sign-in flows were unified, just
+  // a different dashboard; the rest of /ascenso (landing page, apply form) is
+  // public and stays out. /login is public too: it reads the session on the
+  // no-account state but never needs it refreshed.
   matcher: [
     '/dashboard',
     '/dashboard/:path*',
