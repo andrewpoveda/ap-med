@@ -140,7 +140,13 @@ export default function AscensoApplyForm({
       alert('Please select your track.')
       return
     }
-    if (!form.full_name.trim() || !form.email.trim() || !form.institution.trim() || !form.motivation.trim()) {
+    if (
+      !form.full_name.trim() ||
+      !form.email.trim() ||
+      !form.institution.trim() ||
+      !form.current_position.trim() ||
+      !form.motivation.trim()
+    ) {
       alert('Please fill out all required fields.')
       return
     }
@@ -382,10 +388,7 @@ export default function AscensoApplyForm({
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>
-            {isMentor ? 'Current role' : 'Current stage / year'}{' '}
-            <span style={{ color: '#9a948a' }}>(optional)</span>
-          </label>
+          <label style={labelStyle}>{isMentor ? 'Current role *' : 'Current stage / year *'}</label>
           <input
             style={inputStyle}
             placeholder={isMentor ? 'PGY-2, Internal Medicine' : 'MS2 / Junior, Biology'}
