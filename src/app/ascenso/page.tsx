@@ -31,18 +31,6 @@ const goldButton: React.CSSProperties = {
   display: 'inline-block',
 }
 
-const ghostButton: React.CSSProperties = {
-  background: 'transparent',
-  color: '#1a1a2e',
-  padding: '0.8rem 1.75rem',
-  borderRadius: '8px',
-  fontWeight: 600,
-  fontSize: '0.95rem',
-  textDecoration: 'none',
-  display: 'inline-block',
-  border: '1px solid rgba(26,26,46,0.25)',
-}
-
 const serifHeading: React.CSSProperties = {
   fontFamily: "'Instrument Serif', Georgia, serif",
   fontWeight: 400,
@@ -51,8 +39,9 @@ const serifHeading: React.CSSProperties = {
 
 // Program mission, as written by the LMSA-NE board. Kept verbatim — this is the
 // board's own language for what Ascenso is, not marketing copy to reword.
+// "Latinx" (here and in "Why it exists") is the board's own revision.
 const ABOUT_PARAGRAPHS = [
-  'Ascenso is a structured, longitudinal mentorship initiative of LMSA Northeast, created in partnership with AP MED, a mentorship and storytelling platform dedicated to uplifting Latino and underrepresented voices in medicine.',
+  'Ascenso is a structured, longitudinal mentorship initiative of LMSA Northeast, created in partnership with AP MED, a mentorship and storytelling platform dedicated to uplifting Latinx and underrepresented voices in medicine.',
   'The project was created to address a common challenge in mentorship: relationships are often formed through networking events or matching programs but lose momentum without continued structure, guidance, and follow-up.',
   'Ascenso focuses not only on creating thoughtful mentor-mentee matches, but also on supporting what happens after the match. Participants receive structured onboarding, mentor or mentee training, ongoing program support, opportunities for community engagement, and resources to help them build meaningful and lasting mentorship relationships.',
 ]
@@ -100,8 +89,8 @@ const HOW_IT_WORKS = [
     body: 'The board pairs you within your track using shared specialty interest and background, then makes the introduction by email.',
   },
   {
-    title: 'Meet all year',
-    body: 'Pairs meet regularly through the program year, with goals, session booking, and meeting tracking built into AP MED.',
+    title: 'Build the Relationship',
+    body: 'Pairs stay engaged throughout the program with goal-setting, session scheduling, and a shared AP MED dashboard designed to support the mentorship relationship.',
   },
 ]
 
@@ -130,8 +119,7 @@ export default function AscensoPage() {
             margin: 0,
           }}
         >
-          Ascenso: a mentorship cohort built to{' '}
-          <em style={{ fontStyle: 'italic', color: GOLD }}>go the distance</em>
+          Ascenso: Mentorship Beyond the Match
         </h1>
         <p
           style={{
@@ -142,19 +130,12 @@ export default function AscensoPage() {
             lineHeight: 1.7,
           }}
         >
-          Ascenso is a structured mentorship program run by the Latino Medical
-          Student Association — Northeast on AP MED. Where the open directory is
-          built for a single connection whenever you need one, Ascenso is built
-          for the year: a board-reviewed application, a deliberate match, and a
-          mentor who stays with you from one milestone to the next.
+          A mentorship initiative built to go the distance.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-4">
           <Link href="/ascenso/apply" style={goldButton}>
             Apply to Ascenso
-          </Link>
-          <Link href="/mentors" style={ghostButton}>
-            Browse open mentors
           </Link>
         </div>
       </section>
@@ -163,11 +144,18 @@ export default function AscensoPage() {
         <h2 style={{ ...serifHeading, fontSize: '2rem', lineHeight: 1.15, margin: '0 0 1.5rem' }}>
           About Ascenso
         </h2>
-        <div className="space-y-4" style={{ maxWidth: '640px' }}>
-          {ABOUT_PARAGRAPHS.map((paragraph) => (
+        {/* Paragraph spacing lives in the inline style, not a space-y class:
+            the inline `margin` on each <p> would override the class rule. */}
+        <div style={{ maxWidth: '640px' }}>
+          {ABOUT_PARAGRAPHS.map((paragraph, index) => (
             <p
               key={paragraph.slice(0, 40)}
-              style={{ color: '#4a4a5a', fontSize: '1rem', lineHeight: 1.7, margin: 0 }}
+              style={{
+                color: '#4a4a5a',
+                fontSize: '1rem',
+                lineHeight: 1.7,
+                margin: index === 0 ? 0 : '1.25rem 0 0',
+              }}
             >
               {paragraph}
             </p>
@@ -180,7 +168,7 @@ export default function AscensoPage() {
           Why it exists
         </h2>
         <p style={{ color: '#4a4a5a', fontSize: '1rem', lineHeight: 1.7, maxWidth: '640px', margin: 0 }}>
-          Latino and underrepresented students rarely lack ambition — they lack
+          Latinx and underrepresented students rarely lack ambition — they lack
           the person one step ahead who can tell them what the next step actually
           costs. Ascenso&apos;s goal is to close that gap on purpose rather than by
           luck: pairs are matched within a track by shared specialty interest and
