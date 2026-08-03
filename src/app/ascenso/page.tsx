@@ -15,7 +15,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Ascenso — LMSA-NE Mentorship Cohort | AP MED',
   description:
-    'Ascenso is a structured, board-reviewed mentorship cohort run by LMSA-NE on AP MED, pairing premed students, med students, and residents across four tracks for a full program year.',
+    "Ascenso is LMSA-NE's longitudinal mentorship initiative on AP MED — board-reviewed applications, thoughtful matching, and support beyond the match.",
 }
 
 const GOLD = '#c8a96e'

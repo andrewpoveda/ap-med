@@ -66,13 +66,17 @@ export default async function Page() {
         </h1>
         <p style={{ color: '#6b6b6b', maxWidth: '480px', lineHeight: 1.6 }}>
           The Ascenso cohort isn&apos;t accepting applications at the moment. Check back
-          soon, or explore AP MED&apos;s open mentor directory in the meantime.
+          soon for the next cycle.
         </p>
+        {/* Points back to the Ascenso landing page rather than the open mentor
+            directory: per the LMSA-NE board, the Ascenso funnel shouldn't surface
+            the general AP MED pathway, since having both reads as one confusing
+            option. Same reason the landing page dropped its "Browse open mentors" CTA. */}
         <Link
-          href="/mentors"
+          href="/ascenso"
           style={{ marginTop: '2rem', color: '#c8a96e', textDecoration: 'none', fontSize: '0.9rem' }}
         >
-          Browse mentors →
+          Learn about Ascenso →
         </Link>
       </div>
     )
