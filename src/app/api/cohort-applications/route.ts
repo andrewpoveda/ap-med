@@ -145,6 +145,7 @@ export async function POST(request: Request) {
   const answers = {
     institution: cap(data.institution, LIMITS.name),
     current_position: cap(data.current_position, LIMITS.name),
+    current_location: cap(data.current_location, LIMITS.name),
     motivation: cap(data.motivation, LIMITS.text),
     experience_goals: cap(data.experience_goals, LIMITS.text),
     linkedin_url: linkedinUrl,
