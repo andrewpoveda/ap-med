@@ -7,6 +7,8 @@ import {
   IDENTITY_OPTIONS,
   ASCENSO_HELP_WITH_OPTIONS,
   HELP_WITH_OTHER,
+  ASCENSO_PREVIOUS_MENTOR_OPTIONS,
+  ASCENSO_MENTEE_CAPACITY_OPTIONS,
 } from '@/data/tags'
 
 type Role = 'mentor' | 'mentee'
@@ -35,6 +37,23 @@ type ApplicationFormData = {
   help_with: string[]
   help_with_other: string
   identity: string[]
+  // Board additions for the 2026–27 cycle. Free text and single-selects only —
+  // none of these are matcher inputs; they're read by the board at review.
+  //
+  // Role-scoped, and asked of one side only: a mentee's goals / prior
+  // mentorship, a mentor's capacity / what they're prepared to support. Like
+  // `track` and the tag arrays above, they reset on a role switch so a
+  // half-filled mentee answer can't ride along on a mentor submission.
+  goals_milestones: string
+  previous_mentor: string
+  previous_mentor_notes: string
+  mentee_capacity: string
+  prepared_to_support: string
+  // Acknowledgments. The first two read identically to both sides; the third is
+  // ONE checkbox whose wording changes with the role — never two on screen.
+  agrees_surveys: boolean
+  agrees_conduct: boolean
+  agrees_participation: boolean
 }
 
 // Track values match cohort_applications.track (ascenso-prm.md §4). Labels are
@@ -85,6 +104,14 @@ export default function AscensoApplyForm({
     help_with: [],
     help_with_other: '',
     identity: [],
+    goals_milestones: '',
+    previous_mentor: '',
+    previous_mentor_notes: '',
+    mentee_capacity: '',
+    prepared_to_support: '',
+    agrees_surveys: false,
+    agrees_conduct: false,
+    agrees_participation: false,
   })
 
   // One terminal state instead of a boolean per outcome: applying again with an
@@ -105,6 +132,13 @@ export default function AscensoApplyForm({
     // and "what I can offer" becomes "what I need"), so a stale selection would
     // silently mean the wrong thing — reset them. Identity asks the same
     // question either way, so it survives a role switch.
+    //
+    // The 2026–27 board questions are asked of one side only, so they clear too:
+    // whichever pair is now hidden would otherwise submit answers the applicant
+    // can no longer see. `agrees_participation` clears for the same reason —
+    // its wording differs per role, so a box ticked as a mentee is not consent
+    // to the mentor sentence. The other two acknowledgments read the same to
+    // both sides and survive, like identity.
     setForm(prev =>
       prev.role === role
         ? prev
@@ -115,6 +149,12 @@ export default function AscensoApplyForm({
             specialty: [],
             help_with: [],
             help_with_other: '',
+            goals_milestones: '',
+            previous_mentor: '',
+            previous_mentor_notes: '',
+            mentee_capacity: '',
+            prepared_to_support: '',
+            agrees_participation: false,
           },
     )
   }
@@ -179,8 +219,27 @@ export default function AscensoApplyForm({
       alert('Please describe your "Other" support area, or deselect Other.')
       return
     }
+    // Role-scoped board questions. Only the side that can see the field is held
+    // to it — the other side's copy is blank by construction (setRole clears it)
+    // and is dropped server-side anyway.
+    if (!isMentor && !form.goals_milestones.trim()) {
+      alert('Please share one to three goals or milestones for your first year in Ascenso.')
+      return
+    }
+    if (!isMentor && !form.previous_mentor) {
+      alert('Please tell us whether you’ve previously had a mentor.')
+      return
+    }
+    if (isMentor && !form.mentee_capacity) {
+      alert('Please tell us how many mentees you’re willing to mentor this program year.')
+      return
+    }
     if (!form.can_commit) {
       alert('Please confirm you can commit to regular meetings for the program year.')
+      return
+    }
+    if (!form.agrees_surveys || !form.agrees_conduct || !form.agrees_participation) {
+      alert('Please confirm each acknowledgment before submitting.')
       return
     }
     if (!turnstileToken.current) {
@@ -305,23 +364,10 @@ export default function AscensoApplyForm({
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
           Apply to {cohortName}
         </h1>
-        <p style={{ color: '#6b6b6b', marginBottom: '1rem', lineHeight: 1.6 }}>
+        <p style={{ color: '#6b6b6b', marginBottom: '2.5rem', lineHeight: 1.6 }}>
           Ascenso is a structured, board-reviewed mentorship cohort run by LMSA-NE on AP MED.
           Pairs are matched across four tracks — premed through resident — and meet regularly
           throughout the program year. Applications take about 5 minutes.
-        </p>
-
-        <p
-          style={{
-            color: '#6b6b6b',
-            fontSize: '0.875rem',
-            marginBottom: '2.5rem',
-            lineHeight: 1.6,
-          }}
-        >
-          Your application information is shared with the Ascenso board (LMSA-NE and AP MED) for
-          review and matching purposes only. It won&apos;t be used for any other purpose or shared
-          outside the program without your consent.
         </p>
 
         <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
@@ -573,9 +619,115 @@ export default function AscensoApplyForm({
           onChange={e => setForm(prev => ({ ...prev, experience_goals: e.target.value }))}
         />
 
+        {isMentor ? (
+          <>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 1.25rem' }}>
+              How many mentees would you be willing to mentor during the 2026–27 program
+              year? *
+            </h2>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                marginBottom: '2.5rem',
+              }}
+            >
+              {ASCENSO_MENTEE_CAPACITY_OPTIONS.map(option => (
+                <label key={option} style={radioCardStyle(form.mentee_capacity === option)}>
+                  <input
+                    type="radio"
+                    name="mentee_capacity"
+                    value={option}
+                    checked={form.mentee_capacity === option}
+                    onChange={() => setForm(prev => ({ ...prev, mentee_capacity: option }))}
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  {option}
+                </label>
+              ))}
+            </div>
+
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem' }}>
+              Are there particular mentee goals, interests, or needs that you feel especially
+              prepared to support?{' '}
+              <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>
+                (optional)
+              </span>
+            </h2>
+
+            <textarea
+              style={{ ...inputStyle, height: '110px', resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="e.g. First-generation students applying to research-heavy programs…"
+              value={form.prepared_to_support}
+              onChange={e => setForm(prev => ({ ...prev, prepared_to_support: e.target.value }))}
+            />
+          </>
+        ) : (
+          <>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 0.5rem' }}>
+              What are one to three goals or milestones you hope to work toward during your
+              first year in Ascenso? *
+            </h2>
+            <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
+              Examples: completing a medical school application, finding a research
+              opportunity, exploring a specialty, preparing for residency applications,
+              improving professional communication, building a stronger professional network.
+            </p>
+
+            <textarea
+              style={{ ...inputStyle, height: '110px', resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="e.g. Submit a strong medical school application, find a research mentor, and decide between two specialties…"
+              value={form.goals_milestones}
+              onChange={e => setForm(prev => ({ ...prev, goals_milestones: e.target.value }))}
+            />
+
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 1.25rem' }}>
+              Have you previously had a mentor? *
+            </h2>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                marginBottom: '1.5rem',
+              }}
+            >
+              {ASCENSO_PREVIOUS_MENTOR_OPTIONS.map(option => (
+                <label key={option} style={radioCardStyle(form.previous_mentor === option)}>
+                  <input
+                    type="radio"
+                    name="previous_mentor"
+                    value={option}
+                    checked={form.previous_mentor === option}
+                    onChange={() => setForm(prev => ({ ...prev, previous_mentor: option }))}
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  {option}
+                </label>
+              ))}
+            </div>
+
+            <label style={labelStyle}>
+              Is there anything from a previous mentorship experience that you would like
+              Ascenso to consider? <span style={{ color: '#9a948a' }}>(optional)</span>
+            </label>
+            <textarea
+              style={{ ...inputStyle, height: '90px', resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="What worked, what didn’t, or anything the board should know…"
+              value={form.previous_mentor_notes}
+              onChange={e =>
+                setForm(prev => ({ ...prev, previous_mentor_notes: e.target.value }))
+              }
+            />
+          </>
+        )}
+
         <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
 
-        <label style={{ ...checkCardStyle(form.can_commit), marginBottom: '1.5rem' }}>
+        <label style={{ ...checkCardStyle(form.can_commit), marginBottom: '0.5rem' }}>
           <input
             type="checkbox"
             checked={form.can_commit}
@@ -585,6 +737,59 @@ export default function AscensoApplyForm({
           I can commit to regular monthly meetings with my {isMentor ? 'mentee' : 'mentor'} for
           the full program year. *
         </label>
+
+        <label style={{ ...checkCardStyle(form.agrees_surveys), marginBottom: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={form.agrees_surveys}
+            onChange={e => setForm(prev => ({ ...prev, agrees_surveys: e.target.checked }))}
+            style={{ accentColor: '#c8a96e' }}
+          />
+          I agree to complete brief midpoint and end-of-year feedback surveys to help LMSA
+          Northeast evaluate and improve Ascenso. *
+        </label>
+
+        <label style={{ ...checkCardStyle(form.agrees_conduct), marginBottom: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={form.agrees_conduct}
+            onChange={e => setForm(prev => ({ ...prev, agrees_conduct: e.target.checked }))}
+            style={{ accentColor: '#c8a96e' }}
+          />
+          I agree to maintain respectful communication, appropriate professional boundaries,
+          and confidentiality throughout my participation in Ascenso. *
+        </label>
+
+        {/* One checkbox, two wordings — the mentor sentence names their mentee and
+            mentorship activities, the mentee sentence names their mentor and their
+            goals. isMentor picks exactly one, so both can never be on screen. */}
+        <label style={{ ...checkCardStyle(form.agrees_participation), marginBottom: '1.5rem' }}>
+          <input
+            type="checkbox"
+            checked={form.agrees_participation}
+            onChange={e =>
+              setForm(prev => ({ ...prev, agrees_participation: e.target.checked }))
+            }
+            style={{ accentColor: '#c8a96e' }}
+          />
+          {isMentor
+            ? 'I understand that Ascenso requires consistent and active participation throughout the program year, including regular communication with my mentee, required training, program check-ins, and agreed-upon mentorship activities. *'
+            : 'I understand that Ascenso requires consistent and active participation throughout the program year, including regular communication with my mentor, required training, program check-ins, and follow-through on agreed-upon goals. *'}
+        </label>
+
+        <p
+          style={{
+            color: '#6b6b6b',
+            fontSize: '0.875rem',
+            lineHeight: 1.6,
+            marginBottom: '1.5rem',
+          }}
+        >
+          Application information will be reviewed only by authorized Ascenso reviewers and
+          designated members of LMSA Northeast leadership for application review, matching,
+          communication, and evaluation. Information will not be made public without the
+          applicant&apos;s permission.
+        </p>
 
         <div style={{ marginBottom: '1.5rem' }}>
           <Turnstile
