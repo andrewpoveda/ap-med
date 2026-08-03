@@ -218,7 +218,7 @@ export default function Home() {
             margin: 0,
           }}
         >
-          Ascenso: mentorship for the whole year
+          Ascenso: Mentorship Beyond the Match
         </h2>
         <p
           style={{
@@ -229,11 +229,11 @@ export default function Home() {
             maxWidth: "62ch",
           }}
         >
-          Ascenso is a structured mentorship cohort run with the Latino Medical
-          Student Association — Northeast. Applications are reviewed by the
-          program board, pairs are matched across four tracks from premed to
-          resident, and mentors and mentees meet on a regular cadence through the
-          program year.
+          Ascenso is a structured, longitudinal mentorship initiative of the
+          Latino Medical Student Association — Northeast, hosted through AP MED.
+          Through a board-reviewed application, thoughtful matching, structured
+          guidance, and continued support, Ascenso is designed to help mentorship
+          relationships grow from one milestone to the next.
         </p>
         <div
           style={{
