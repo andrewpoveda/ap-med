@@ -305,10 +305,23 @@ export default function AscensoApplyForm({
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
           Apply to {cohortName}
         </h1>
-        <p style={{ color: '#6b6b6b', marginBottom: '2.5rem', lineHeight: 1.6 }}>
+        <p style={{ color: '#6b6b6b', marginBottom: '1rem', lineHeight: 1.6 }}>
           Ascenso is a structured, board-reviewed mentorship cohort run by LMSA-NE on AP MED.
           Pairs are matched across four tracks — premed through resident — and meet regularly
           throughout the program year. Applications take about 5 minutes.
+        </p>
+
+        <p
+          style={{
+            color: '#6b6b6b',
+            fontSize: '0.875rem',
+            marginBottom: '2.5rem',
+            lineHeight: 1.6,
+          }}
+        >
+          Your application information is shared with the Ascenso board (LMSA-NE and AP MED) for
+          review and matching purposes only. It won&apos;t be used for any other purpose or shared
+          outside the program without your consent.
         </p>
 
         <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
