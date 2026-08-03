@@ -106,11 +106,26 @@ export default function SubmissionFields({
         <>
           <TagField label="Specialties" value={answers.specialty} />
           <TagField label="Can help with" value={answers.can_help_with} />
+          {/* Collected for the board to weigh by hand — the matcher still pairs
+              one mentee per mentor regardless of what this says. */}
+          <Field label="Mentees willing to take">{asText(answers.mentee_capacity)}</Field>
+          <Field label="Especially prepared to support">
+            <span style={{ whiteSpace: 'pre-wrap' }}>{asText(answers.prepared_to_support)}</span>
+          </Field>
         </>
       ) : (
         <>
           <TagField label="Specialties of interest" value={answers.preferred_specialty} />
           <TagField label="Wants support with" value={answers.help_with} />
+          <Field label="First-year goals / milestones">
+            <span style={{ whiteSpace: 'pre-wrap' }}>{asText(answers.goals_milestones)}</span>
+          </Field>
+          <Field label="Previous mentor">{asText(answers.previous_mentor)}</Field>
+          <Field label="Notes on previous mentorship">
+            <span style={{ whiteSpace: 'pre-wrap' }}>
+              {asText(answers.previous_mentor_notes)}
+            </span>
+          </Field>
         </>
       )}
       {typeof answers.help_with_other === 'string' && answers.help_with_other.trim() && (
@@ -143,6 +158,25 @@ export default function SubmissionFields({
         {answers.can_commit === true
           ? 'Confirmed — regular meetings for the program year'
           : 'Not confirmed'}
+      </Field>
+      <Field label="Acknowledgments">
+        {/* Required at submit, so on a current row these all read Confirmed.
+            They're still shown one by one because an application taken before
+            these were added simply has no key here, and "Not confirmed" on an
+            older submission means "never asked", not "declined". */}
+        <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+          <li>
+            Feedback surveys: {answers.agrees_surveys === true ? 'Confirmed' : 'Not confirmed'}
+          </li>
+          <li>
+            Conduct &amp; confidentiality:{' '}
+            {answers.agrees_conduct === true ? 'Confirmed' : 'Not confirmed'}
+          </li>
+          <li>
+            Active participation:{' '}
+            {answers.agrees_participation === true ? 'Confirmed' : 'Not confirmed'}
+          </li>
+        </ul>
       </Field>
     </div>
   )

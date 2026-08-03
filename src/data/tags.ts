@@ -84,3 +84,36 @@ export const ASCENSO_HELP_WITH_OPTIONS = [
 // phrasing would never match another's. Same treatment as the "Other" specialty
 // on the general mentee form.
 export const HELP_WITH_OTHER = 'Other'
+
+// ---------------------------------------------------------------------------
+// Ascenso application single-selects (LMSA-NE board additions, 2026–27 cycle).
+//
+// Unlike everything above, these are NOT matcher vocabularies — nothing scores
+// them. They live here for the other reason this file exists: the apply form and
+// the intake route must allowlist against the same list, and a third private
+// copy is what lets an option silently drift out of the permitted set and get
+// dropped at insert.
+// ---------------------------------------------------------------------------
+
+// Mentee: prior mentorship experience. "Prefer not to answer" is a real choice,
+// which is what makes asking for an answer safe to require.
+export const ASCENSO_PREVIOUS_MENTOR_OPTIONS = [
+  'Yes, and it was a positive experience',
+  'Yes, but the relationship was limited or inconsistent',
+  'No, this would be my first formal mentorship experience',
+  'Prefer not to answer',
+]
+
+// Mentor: how many mentees they'd take for the program year.
+//
+// COLLECTION ONLY — deliberately. Nothing reads this to size a mentor's load:
+// the matcher (src/lib/match.ts) and the admin matching surface still assume one
+// active mentee per mentor, and whether 2+ is workable is an open program
+// question the board hasn't settled. This is an answer the board reads while
+// deciding that, not a capacity the system acts on. Wiring it into matching or
+// the cohort dashboard needs that decision first.
+export const ASCENSO_MENTEE_CAPACITY_OPTIONS = [
+  'One',
+  'Possibly two, depending on need',
+  'Two',
+]

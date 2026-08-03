@@ -11,6 +11,8 @@ import {
   IDENTITY_OPTIONS,
   ASCENSO_HELP_WITH_OPTIONS,
   HELP_WITH_OTHER,
+  ASCENSO_PREVIOUS_MENTOR_OPTIONS,
+  ASCENSO_MENTEE_CAPACITY_OPTIONS,
 } from '@/data/tags'
 
 // Ascenso cohort application intake (ascenso-prm.md §5.1/5.2). Public but
@@ -48,6 +50,19 @@ function pickTags(value: unknown, allowed: string[]): string[] {
     if (out.length >= 40) break
   }
   return out
+}
+
+/**
+ * A single-choice answer, hardened to its fixed option list. Same posture as
+ * pickTags: the applicant picked from radio buttons, so anything off-list is a
+ * stale client or a hand-crafted request. Drops to '' rather than 400-ing —
+ * these are review-only answers, and none is worth failing a real application
+ * over. Stored verbatim because the board reads the sentence, not a code.
+ */
+function pickOne(value: unknown, allowed: string[]): string {
+  if (typeof value !== 'string') return ''
+  const choice = value.trim()
+  return allowed.includes(choice) ? choice : ''
 }
 
 export async function POST(request: Request) {
@@ -136,14 +151,27 @@ export async function POST(request: Request) {
     can_commit: data.can_commit === true,
     identity,
     help_with_other: helpWithOther,
+    // Acknowledgments (2026–27). Asked of both sides; `agrees_participation` is
+    // one checkbox with role-specific wording, so which sentence was agreed to
+    // is read off the row's own `role`.
+    agrees_surveys: data.agrees_surveys === true,
+    agrees_conduct: data.agrees_conduct === true,
+    agrees_participation: data.agrees_participation === true,
     ...(role === 'mentor'
       ? {
           specialty: pickTags(data.specialty, SPECIALTIES),
           can_help_with: supportNeeds,
+          // Survey answer only — nothing sizes a mentor's load off this. See
+          // ASCENSO_MENTEE_CAPACITY_OPTIONS in src/data/tags.ts.
+          mentee_capacity: pickOne(data.mentee_capacity, ASCENSO_MENTEE_CAPACITY_OPTIONS),
+          prepared_to_support: cap(data.prepared_to_support, LIMITS.text),
         }
       : {
           preferred_specialty: pickTags(data.preferred_specialty, SPECIALTIES),
           help_with: supportNeeds,
+          goals_milestones: cap(data.goals_milestones, LIMITS.text),
+          previous_mentor: pickOne(data.previous_mentor, ASCENSO_PREVIOUS_MENTOR_OPTIONS),
+          previous_mentor_notes: cap(data.previous_mentor_notes, LIMITS.text),
         }),
   }
 
