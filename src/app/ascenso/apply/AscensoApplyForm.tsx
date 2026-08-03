@@ -20,6 +20,7 @@ type ApplicationFormData = {
   email: string
   institution: string
   current_position: string
+  current_location: string
   motivation: string
   experience_goals: string
   linkedin_url: string
@@ -96,6 +97,7 @@ export default function AscensoApplyForm({
     email: '',
     institution: '',
     current_position: '',
+    current_location: '',
     motivation: '',
     experience_goals: '',
     linkedin_url: '',
@@ -190,6 +192,7 @@ export default function AscensoApplyForm({
       !form.email.trim() ||
       !form.institution.trim() ||
       !form.current_position.trim() ||
+      !form.current_location.trim() ||
       !form.motivation.trim()
     ) {
       alert('Please fill out all required fields.')
@@ -473,6 +476,16 @@ export default function AscensoApplyForm({
             placeholder={isMentor ? 'PGY-2, Internal Medicine' : 'MS2 / Junior, Biology'}
             value={form.current_position}
             onChange={e => setForm(prev => ({ ...prev, current_position: e.target.value }))}
+          />
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>Current city and state *</label>
+          <input
+            style={inputStyle}
+            placeholder="Newark, NJ"
+            value={form.current_location}
+            onChange={e => setForm(prev => ({ ...prev, current_location: e.target.value }))}
           />
         </div>
 

@@ -102,6 +102,7 @@ export default function SubmissionFields({
       {email !== undefined && <Field label="Email">{email}</Field>}
       <Field label="Institution">{asText(answers.institution)}</Field>
       <Field label="Current position">{asText(answers.current_position)}</Field>
+      <Field label="Current location">{asText(answers.current_location)}</Field>
       {role === 'mentor' ? (
         <>
           <TagField label="Specialties" value={answers.specialty} />
