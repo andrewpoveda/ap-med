@@ -20,10 +20,22 @@ export function proxy(request: NextRequest) {
 
 // 👇 fill in with your actual public-facing Ascenso routes (landing + apply pages)
 const ASCENSO_PUBLIC_PATHS = ['/ascenso']
-
 export const config = {
   // Only the authenticated areas need session refresh. Keeping the matcher
   // tight avoids adding cookie/auth work to the public site or the
-  // service-role /api routes.
-  matcher: ['/dashboard', '/dashboard/:path*', '/admin', '/admin/:path*', '/ascenso', '/ascenso/:path*'],
+  // service-role /api routes. /ascenso/dashboard is the cohort mentee surface —
+  // same Google session as /dashboard since the sign-in flows were unified, just
+  // a different dashboard; the rest of /ascenso (landing page, apply form) is
+  // public and stays out — except while ASCENSO_PUBLIC=false, when the proxy
+  // function above needs to run on those routes to redirect them home.
+  // /login is public too: it reads the session on the no-account state but
+  // never needs it refreshed.
+  matcher: [
+    '/dashboard',
+    '/dashboard/:path*',
+    '/ascenso',
+    '/ascenso/:path*',
+    '/admin',
+    '/admin/:path*',
+  ],
 }

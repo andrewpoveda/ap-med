@@ -129,7 +129,7 @@ export default async function CohortApplicationsPage({
   let query = admin
     .from('cohort_applications')
     .select(
-      'id, created_at, cohort_id, role, track, full_name, email, status, member_id, answers, reviewed_by, reviewed_at, review_notes',
+      'id, created_at, cohort_id, role, track, full_name, email, status, member_id, answers, reviewed_by, reviewed_at, review_notes, previous_submission, updated_at',
     )
     .eq('cohort_id', cohortId)
     .order('created_at', { ascending: false })
@@ -227,6 +227,24 @@ export default async function CohortApplicationsPage({
                   day: 'numeric',
                   year: 'numeric',
                 })}
+                {/*
+                  Flagged in the list because the detail page is the only place
+                  the earlier version exists — without a marker here, a reviewer
+                  has no reason to open the tab and would never know there was a
+                  first draft.
+                */}
+                {app.updated_at && (
+                  <>
+                    {' · '}
+                    <span style={{ color: '#8a6d1f', fontWeight: 600 }}>
+                      updated{' '}
+                      {new Date(app.updated_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </>
+                )}
               </p>
             </Link>
           ))}

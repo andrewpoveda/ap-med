@@ -4,14 +4,16 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { safeUrl, isHttpUrl } from '@/lib/url'
 import {
   TRACK_LABELS,
+  asPreviousSubmission,
   type CohortApplication,
   type CohortTrack,
 } from '@/types/cohort'
 import { STATUS_CHIP_STYLES, NEUTRAL_CHIP } from '../chips'
 import ReviewActions from './ReviewActions'
+import SubmissionFields from './SubmissionFields'
+import SubmissionTabs from './SubmissionTabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,9 +55,12 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function asText(value: unknown): string {
-  return typeof value === 'string' && value.trim() ? value : '—'
-}
+const shortDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 
 export default async function ApplicationDetailPage({
   params,
@@ -92,7 +97,9 @@ export default async function ApplicationDetailPage({
   }
 
   const chip = STATUS_CHIP_STYLES[app.status] ?? NEUTRAL_CHIP
-  const linkedin = typeof answers.linkedin_url === 'string' ? answers.linkedin_url : ''
+  // Null unless they applied more than once (migration 0007). Narrowed rather
+  // than cast: it's plain jsonb, and rows written before 0007 have nothing here.
+  const previous = asPreviousSubmission(app.previous_submission)
 
   return (
     <>
@@ -130,43 +137,55 @@ export default async function ApplicationDetailPage({
       </div>
       <p className="text-[#6b6b6b]" style={{ margin: '0.4rem 0 0', fontSize: '0.9rem' }}>
         {app.role} · {TRACK_LABELS[app.track as CohortTrack] ?? app.track} · applied{' '}
-        {new Date(app.created_at).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })}
+        {shortDate(app.created_at)}
+        {app.updated_at && ` · updated ${shortDate(app.updated_at)}`}
       </p>
 
       <div className="mt-8 space-y-6">
-        <div style={cardStyle} className="space-y-5">
-          <Field label="Email">{app.email}</Field>
-          <Field label="Institution">{asText(answers.institution)}</Field>
-          <Field label="Current position">{asText(answers.current_position)}</Field>
-          <Field label="Motivation">
-            <span style={{ whiteSpace: 'pre-wrap' }}>{asText(answers.motivation)}</span>
-          </Field>
-          <Field label="Experience & goals">
-            <span style={{ whiteSpace: 'pre-wrap' }}>{asText(answers.experience_goals)}</span>
-          </Field>
-          <Field label="LinkedIn">
-            {isHttpUrl(linkedin) ? (
-              <a
-                href={safeUrl(linkedin)}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#8a6a2f' }}
-              >
-                {linkedin}
-              </a>
-            ) : (
-              '—'
-            )}
-          </Field>
-          <Field label="Commitment">
-            {answers.can_commit === true
-              ? 'Confirmed — regular meetings for the program year'
-              : 'Not confirmed'}
-          </Field>
+        <div style={cardStyle}>
+          {previous ? (
+            <SubmissionTabs
+              previousLabel={`Previous${
+                previous.submitted_at ? ` · ${shortDate(previous.submitted_at)}` : ''
+              }`}
+              current={<SubmissionFields role={app.role} email={app.email} answers={answers} />}
+              previous={
+                <div className="space-y-5">
+                  <p
+                    style={{
+                      background: '#fdf6e3',
+                      border: '1px solid #e0c060',
+                      color: '#8a6d1f',
+                      borderRadius: '8px',
+                      padding: '0.6rem 0.9rem',
+                      fontSize: '0.85rem',
+                      margin: 0,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Superseded version — the applicant replaced it
+                    {previous.superseded_at ? ` on ${shortDate(previous.superseded_at)}` : ''}.
+                    The board reviews the current version; this is kept so you can see what
+                    changed.
+                  </p>
+                  {/*
+                    Name and track are passed here but not on the current tab:
+                    the header already shows the current ones, and on this tab
+                    they're the point — a track change between submissions is
+                    exactly the kind of thing worth noticing.
+                  */}
+                  <SubmissionFields
+                    role={app.role}
+                    answers={previous.answers}
+                    fullName={previous.full_name}
+                    track={previous.track}
+                  />
+                </div>
+              }
+            />
+          ) : (
+            <SubmissionFields role={app.role} email={app.email} answers={answers} />
+          )}
         </div>
 
         {(app.reviewed_at || app.review_notes) && (
@@ -175,11 +194,7 @@ export default async function ApplicationDetailPage({
               {app.reviewed_at && (
                 <p style={{ margin: 0 }}>
                   Reviewed{reviewerName ? ` by ${reviewerName}` : ''} on{' '}
-                  {new Date(app.reviewed_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {shortDate(app.reviewed_at)}
                 </p>
               )}
               {app.review_notes && (

@@ -57,7 +57,26 @@ export type CohortMatch = {
   approved_at: string | null
 }
 
-// Row shape of cohort_applications (migration 0006). `answers` is the
+/**
+ * The version of an application that a resubmission replaced (migration 0007).
+ * Exactly one is kept — a third submission overwrites the second — so this is a
+ * "what did they say last time" record, not an audit log.
+ *
+ * Everything in here came out of the DB as untrusted jsonb: the shape is what
+ * /api/cohort-applications writes, but a reader must still treat every value as
+ * possibly missing or the wrong type. See asPreviousSubmission below.
+ */
+export type PreviousSubmission = {
+  full_name: string
+  track: string
+  answers: Record<string, unknown>
+  /** When the superseded version was submitted. */
+  submitted_at: string | null
+  /** When it was replaced. */
+  superseded_at: string | null
+}
+
+// Row shape of cohort_applications (migrations 0006, 0007). `answers` is the
 // server-assembled jsonb from /api/cohort-applications — allowlisted keys only,
 // but treat values as untrusted strings when rendering.
 export type CohortApplication = {
@@ -74,4 +93,30 @@ export type CohortApplication = {
   reviewed_at: string | null
   review_notes: string | null
   member_id: string | null
+  /** Null until the applicant resubmits (migration 0007). */
+  previous_submission: PreviousSubmission | null
+  /** When the CURRENT version was submitted; null if never resubmitted. */
+  updated_at: string | null
+}
+
+/**
+ * Narrow a raw `previous_submission` jsonb value to something renderable, or
+ * null. Rows written before 0007 have no column value at all, and the column is
+ * plain jsonb with no DB-level shape check, so this never assumes a field is
+ * present or a string.
+ */
+export function asPreviousSubmission(value: unknown): PreviousSubmission | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const raw = value as Record<string, unknown>
+  const answers = raw.answers
+  return {
+    full_name: typeof raw.full_name === 'string' ? raw.full_name : '',
+    track: typeof raw.track === 'string' ? raw.track : '',
+    answers:
+      answers && typeof answers === 'object' && !Array.isArray(answers)
+        ? (answers as Record<string, unknown>)
+        : {},
+    submitted_at: typeof raw.submitted_at === 'string' ? raw.submitted_at : null,
+    superseded_at: typeof raw.superseded_at === 'string' ? raw.superseded_at : null,
+  }
 }

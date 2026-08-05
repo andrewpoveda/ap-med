@@ -330,10 +330,13 @@ export default async function CohortMatchingPage({
       </h2>
       <p className="text-[#6b6b6b]" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', maxWidth: '46rem' }}>
         Scores are profile overlap (identity 40% · specialty 35% · mentorship
-        needs 25%). Members who haven&apos;t filled in preferences yet score 100%
-        by default, so until profiles carry data the score is a placeholder, not
-        a signal — pairs marked &ldquo;no preference data&rdquo; are ranked by
-        name, not by fit.
+        needs 25%), computed from the structured answers on each member&apos;s
+        approved application — both sides answer all three, so every weight
+        compares two real answers. Overlap is measured against what the MENTEE
+        asked for, so a mentor carrying extra tags is never penalised for them.
+        A member with no preferences on file still scores 100% by default; those
+        pairs are marked &ldquo;no preference data&rdquo; and ranked by name, not
+        by fit.
       </p>
       {tracklessCount > 0 && (
         <p className="text-[#8a6d1f]" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem' }}>

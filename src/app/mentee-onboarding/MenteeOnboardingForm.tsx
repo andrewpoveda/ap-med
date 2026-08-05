@@ -1,5 +1,6 @@
 'use client'
 import { SPECIALTIES } from "@/data/specialties"
+import { IDENTITY_OPTIONS, HELP_WITH_OPTIONS } from "@/data/tags"
 import { useState, useEffect, useRef } from 'react'
 import { Turnstile } from "@marsidev/react-turnstile"
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -27,18 +28,11 @@ const STAGES = [
   'Other',
 ]
 
-const IDENTITIES = [
-  'First-generation', 'Latino / Hispanic', 'Black / African American',
-  'Asian / Pacific Islander', 'Native American', 'Low-income background',
-  'LGBTQ+', 'International / IMG', 'Non-traditional student', 'Prefer not to say',
-]
-
-const HELP_WITH = [
-  'General guidance', 'Personal statement review', 'Application advice',
-  'Mock interviews', 'MCAT advice', 'Research guidance',
-  'Clinical / shadowing advice', 'Specialty exploration',
-  'Identity mentorship', 'Residency application',
-]
+// Identity + help-with options come from the shared canonical lists
+// (src/data/tags.ts) so this form, the mentor form, and the Ascenso cohort
+// application all emit identical strings — see IDENTITY_OPTIONS import.
+const IDENTITIES = IDENTITY_OPTIONS
+const HELP_WITH = HELP_WITH_OPTIONS
 
 const OTHER_SPECIALTY = 'Other'
 const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)

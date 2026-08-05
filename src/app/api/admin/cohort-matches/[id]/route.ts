@@ -38,8 +38,11 @@ export async function PATCH(
       return approveMatch(admin, adminUser, match)
     }
     if (action === 'activate') {
-      const dryRun = new URL(request.url).searchParams.get('test') === '1'
-      return activateMatch(admin, match, dryRun)
+      const url = new URL(request.url)
+      const dryRun = url.searchParams.get('test') === '1'
+      // Server-derived origin — the sign-in link in the activation email must
+      // never be built from a client-supplied host.
+      return activateMatch(admin, match, dryRun, url.origin)
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (err) {
@@ -149,6 +152,7 @@ async function activateMatch(
   admin: SupabaseClient,
   match: CohortMatch,
   dryRun: boolean,
+  origin: string,
 ) {
   if (match.status !== 'board_approved') {
     return NextResponse.json(
@@ -244,6 +248,14 @@ async function activateMatch(
     return NextResponse.json({ success: true, status: 'active', dryRun: true })
   }
 
+  // Both parties get the same "sign in with Google" CTA: /login resolves mentor
+  // vs. cohort mentee from the verified email and routes each to their own
+  // dashboard. Activation no longer mints a magic link or pre-creates the
+  // mentee's auth user — Google sign-in does both on first use — so there is no
+  // credential in either copy of this email and no expiry racing the recipient.
+  // Server-derived origin, so the link can never point at a client-supplied host.
+  const loginUrl = new URL('/login', origin).toString()
+
   const results = await Promise.allSettled([
     notifyCohortMatchActivated({
       recipientEmail: mentor.email,
@@ -252,6 +264,7 @@ async function activateMatch(
       partnerName: menteeName,
       partnerEmail: mentee.email,
       cohortName: cohort.name,
+      loginUrl,
     }),
     notifyCohortMatchActivated({
       recipientEmail: mentee.email,
@@ -260,6 +273,7 @@ async function activateMatch(
       partnerName: mentorName,
       partnerEmail: mentor.email,
       cohortName: cohort.name,
+      loginUrl,
     }),
   ])
   const [mentorSend, menteeSend] = results

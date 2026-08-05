@@ -3,7 +3,18 @@
 import { useState } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
-export default function SignOutButton() {
+/**
+ * `redirectTo` / `label` exist for the no-account state on /login, where signing
+ * out is how you get back to Google's account chooser to try a different
+ * address — landing on the home page there would just hide the sign-in again.
+ */
+export default function SignOutButton({
+  redirectTo = '/',
+  label = 'Sign out',
+}: {
+  redirectTo?: string
+  label?: string
+} = {}) {
   const [loading, setLoading] = useState(false)
 
   async function signOut() {
@@ -11,7 +22,7 @@ export default function SignOutButton() {
     const supabase = createSupabaseBrowserClient()
     await supabase.auth.signOut()
     // Full navigation so the server re-reads the (now cleared) session cookie.
-    window.location.assign('/')
+    window.location.assign(redirectTo)
   }
 
   return (
@@ -29,7 +40,7 @@ export default function SignOutButton() {
         cursor: loading ? 'default' : 'pointer',
       }}
     >
-      {loading ? 'Signing out…' : 'Sign out'}
+      {loading ? 'Signing out…' : label}
     </button>
   )
 }

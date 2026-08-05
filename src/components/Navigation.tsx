@@ -60,6 +60,29 @@ export default function Navigation() {
               )
             )}
           </div>
+          {/*
+            Sign in sits OUTSIDE the scrolling list, pinned beside the logo, for
+            two reasons. Discoverability: until now nothing on the site pointed at
+            /login — only the link in a match email — so a mentor who lost that
+            email had nowhere to click; a sixth item inside a list that already
+            overflows on mobile would have scrolled out of sight and fixed
+            nothing. And it isn't a content page like the others, it's the way
+            back into an account.
+
+            Labelled for neither role on purpose: /login is one door for mentors
+            and Ascenso cohort members alike, so "Mentor Login" would read as
+            "not for me" to half the people who need it.
+          */}
+          <Link
+            href="/login"
+            className={`text-sm font-medium transition-colors whitespace-nowrap shrink-0 rounded-lg border px-3 py-1.5 ${
+              pathname === "/login"
+                ? "border-[var(--global-theme-color)] text-[var(--global-theme-color)]"
+                : "border-[#e8e4dc] text-[#6b6b6b] hover:border-[var(--global-theme-color)] hover:text-[var(--global-theme-color)]"
+            }`}
+          >
+            Sign In
+          </Link>
         </div>
       </div>
     </nav>

@@ -3,6 +3,10 @@
 import { useState, useRef } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { SPECIALTIES } from "@/data/specialties";
+// Identity + help-with options come from the shared canonical lists
+// (src/data/tags.ts), same reason as SPECIALTIES: the matcher scores overlap by
+// exact string equality across all three intake forms.
+import { IDENTITY_OPTIONS, HELP_WITH_OPTIONS } from "@/data/tags";
 
 type FormData = {
   firstName: string;
@@ -27,19 +31,6 @@ type FormData = {
   notes: string;
 };
 
-const IDENTITY_OPTIONS = [
-  "First-generation",
-  "Latino / Hispanic",
-  "Black / African American",
-  "Asian / Pacific Islander",
-  "Native American",
-  "Low-income background",
-  "LGBTQ+",
-  "International / IMG",
-  "Non-traditional student",
-  "Prefer not to say",
-];
-
 const STAGE_OPTIONS = [
   "Pre-med / Undergrad",
   "Post-bacc",
@@ -54,18 +45,7 @@ const STAGE_OPTIONS = [
 // so the mentor + mentee forms emit identical strings — see SPECIALTIES import.
 const SPECIALTY_OPTIONS = SPECIALTIES;
 
-const HELP_OPTIONS = [
-  "General guidance",
-  "Personal statement review",
-  "Application advice",
-  "Mock interviews",
-  "MCAT advice",
-  "Research guidance",
-  "Clinical / shadowing advice",
-  "Specialty exploration",
-  "Identity mentorship",
-  "Residency application",
-];
+const HELP_OPTIONS = HELP_WITH_OPTIONS;
 
 const CONTACT_OPTIONS = ["Email", "LinkedIn", "Scheduling link", "AP MED form only"];
 
