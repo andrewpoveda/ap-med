@@ -51,6 +51,11 @@ const eyebrowStyle: React.CSSProperties = {
 };
 
 export default function Home() {
+  // Same gate as the proxy: ASCENSO_PUBLIC=false pulls the public Ascenso
+  // surfaces while LMSA-NE reviews. The proxy redirects /ascenso itself; this
+  // hides the only link to it, so the section and the route disappear together.
+  const ascensoPublic = process.env.ASCENSO_PUBLIC !== "false";
+
   return (
     <div className="space-y-28">
       {/* Hero */}
@@ -197,60 +202,62 @@ export default function Home() {
       {/* Ascenso — the one entry point to the LMSA-NE cohort from the public
           site. Without it /ascenso and /ascenso/apply are reachable only by
           pasting the URL. */}
-      <section
-        style={{
-          background: "#f5efe2",
-          border: `1px solid ${GOLD}`,
-          borderRadius: "12px",
-          padding: "2.5rem",
-        }}
-      >
-        <p style={{ ...eyebrowStyle, marginBottom: "1rem" }}>
-          Partnered with LMSA-NE
-        </p>
-        <h2
+      {ascensoPublic && (
+        <section
           style={{
-            fontFamily: "'Instrument Serif', Georgia, serif",
-            fontWeight: 400,
-            fontSize: "2rem",
-            lineHeight: 1.15,
-            color: "#1a1a2e",
-            margin: 0,
+            background: "#f5efe2",
+            border: `1px solid ${GOLD}`,
+            borderRadius: "12px",
+            padding: "2.5rem",
           }}
         >
-          Ascenso: Mentorship Beyond the Match
-        </h2>
-        <p
-          style={{
-            color: "#4a4a5a",
-            fontSize: "1rem",
-            lineHeight: 1.7,
-            margin: "1rem 0 0",
-            maxWidth: "62ch",
-          }}
-        >
-          Ascenso is a structured, longitudinal mentorship initiative of the
-          Latino Medical Student Association — Northeast, hosted through AP MED.
-          Through a board-reviewed application, thoughtful matching, structured
-          guidance, and continued support, Ascenso is designed to help mentorship
-          relationships grow from one milestone to the next.
-        </p>
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            flexWrap: "wrap",
-            marginTop: "1.75rem",
-          }}
-        >
-          <Link href="/ascenso" style={goldButton}>
-            About Ascenso
-          </Link>
-          <Link href="/ascenso/apply" style={ghostButton}>
-            Apply Now
-          </Link>
-        </div>
-      </section>
+          <p style={{ ...eyebrowStyle, marginBottom: "1rem" }}>
+            Partnered with LMSA-NE
+          </p>
+          <h2
+            style={{
+              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontWeight: 400,
+              fontSize: "2rem",
+              lineHeight: 1.15,
+              color: "#1a1a2e",
+              margin: 0,
+            }}
+          >
+            Ascenso: Mentorship Beyond the Match
+          </h2>
+          <p
+            style={{
+              color: "#4a4a5a",
+              fontSize: "1rem",
+              lineHeight: 1.7,
+              margin: "1rem 0 0",
+              maxWidth: "62ch",
+            }}
+          >
+            Ascenso is a structured, longitudinal mentorship initiative of the
+            Latino Medical Student Association — Northeast, hosted through AP
+            MED. Through a board-reviewed application, thoughtful matching,
+            structured guidance, and continued support, Ascenso is designed to
+            help mentorship relationships grow from one milestone to the next.
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              flexWrap: "wrap",
+              marginTop: "1.75rem",
+            }}
+          >
+            <Link href="/ascenso" style={goldButton}>
+              About Ascenso
+            </Link>
+            <Link href="/ascenso/apply" style={ghostButton}>
+              Apply Now
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Podcast CTA */}
       <section className="text-center">
