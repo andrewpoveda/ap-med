@@ -5,6 +5,28 @@ import { safeUrl } from '@/lib/url'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 /**
+ * The site palette, mirrored from the `:root` block in src/app/globals.css.
+ * Email inline styles can't read CSS variables, so these literals have to be
+ * kept in sync with that file by hand — change one, change both.
+ */
+const brand = {
+  /** Page backdrop behind the card — globals' --global-hover-color. */
+  canvas: '#f0ece4',
+  /** The content card itself — --global-card-bg. */
+  card: '#ffffff',
+  /** Inset panels on top of the card — --global-bg-color. */
+  panel: '#faf8f4',
+  border: '#e8e4dc',
+  gold: '#c8a96e',
+  ink: '#1a1a2e',
+  muted: '#6b6b6b',
+} as const
+
+const bodyFont = "'Inter','Segoe UI',Calibri,Arial,sans-serif"
+/** Stand-in for the site's Instrument Serif, which no mail client will have. */
+const headingFont = "Georgia,'Times New Roman',serif"
+
+/**
  * Escape a string for safe insertion into HTML text OR a quoted attribute value.
  * Must run on every mentee-supplied field before it enters the email markup,
  * otherwise a crafted note/name/url can inject markup into the mentor's inbox.
@@ -162,7 +184,7 @@ export async function notifyCohortMatchActivated(params: {
   const accountBlock =
     safeLoginUrl !== '#'
       ? `
-    <a href="${escapeHtml(safeLoginUrl)}" style="display:inline-block;background:#c8a96e;color:#1a1a2e;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
+    <a href="${escapeHtml(safeLoginUrl)}" style="display:inline-block;background:${brand.card};color:${brand.ink};border:1px solid ${brand.ink};border-radius:8px;padding:11px 27px;font-weight:600;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
       Sign in with Google &rarr;
     </a>`
       : ''
@@ -175,9 +197,9 @@ export async function notifyCohortMatchActivated(params: {
   const accountNote =
     safeLoginUrl !== '#'
       ? `
-    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;font-size:13px;">
+    <p style="color:${brand.muted};margin:0 0 24px;line-height:1.6;font-size:13px;">
       Your ${safeCohort} dashboard is where ${dashboardPurpose}. Sign in at
-      <a href="${escapeHtml(safeLoginUrl)}" style="color:#60a5fa;">${escapeHtml(safeLoginUrl)}</a>
+      <a href="${escapeHtml(safeLoginUrl)}" style="color:${brand.gold};">${escapeHtml(safeLoginUrl)}</a>
       with the Google account for this email address — no password to set up. We
       use Google only to confirm it's you; we ask for no access to your Gmail,
       Drive, or Calendar.
@@ -193,33 +215,39 @@ export async function notifyCohortMatchActivated(params: {
     html: `
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8" /></head>
-<body style="margin:0;padding:0;background:#0f1117;font-family:system-ui,sans-serif;color:#e2e8f0;">
-  <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
-    <p style="color:#60a5fa;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">AP MED MENTORS · ${safeCohort}</p>
-    <h1 style="font-size:24px;font-weight:700;margin:0 0 8px;">Your match is confirmed</h1>
-    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
-      Hi ${safeFirst}, the ${safeCohort} board has matched you with your ${partnerLabel},
-      <strong style="color:#e2e8f0;">${safePartner}</strong>.
-    </p>
-    <div style="background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:24px;margin-bottom:24px;">
-      <h2 style="font-size:16px;font-weight:700;margin:0 0 4px;">${safePartner}</h2>
-      <p style="color:#94a3b8;font-size:14px;margin:0;">Your ${partnerLabel} · <a href="mailto:${safePartnerEmail}" style="color:#60a5fa;">${safePartnerEmail}</a></p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+</head>
+<body style="margin:0;padding:0;background:${brand.canvas};font-family:${bodyFont};color:${brand.ink};color-scheme:light only;">
+  <div style="max-width:580px;margin:0 auto;padding:32px 16px;">
+    <div style="background:${brand.card};border:1px solid ${brand.border};border-radius:16px;padding:40px 32px;">
+      <p style="color:${brand.gold};font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 10px;">AP MED MENTORS · ${safeCohort}</p>
+      <h1 style="font-family:${headingFont};font-size:30px;font-weight:400;line-height:1.2;color:${brand.ink};margin:0 0 12px;">Your match is confirmed</h1>
+      <p style="color:${brand.muted};margin:0 0 24px;line-height:1.7;">
+        Hi ${safeFirst}, the ${safeCohort} board has matched you with your ${partnerLabel},
+        <strong style="color:${brand.ink};">${safePartner}</strong>.
+      </p>
+      <div style="background:${brand.panel};border:1px solid ${brand.border};border-radius:12px;padding:24px;margin-bottom:24px;">
+        <h2 style="font-family:${headingFont};font-size:19px;font-weight:400;color:${brand.ink};margin:0 0 4px;">${safePartner}</h2>
+        <p style="color:${brand.muted};font-size:14px;margin:0;">Your ${partnerLabel} · <a href="mailto:${safePartnerEmail}" style="color:${brand.gold};">${safePartnerEmail}</a></p>
+      </div>
+      <p style="color:${brand.muted};margin:0 0 24px;line-height:1.7;">
+        ${partnerLabel === 'mentee' ? 'They received this same introduction, so feel free to reach out first — a short hello and a time to meet is all it takes to get started.' : 'Your mentor received this same introduction. Go ahead and say hello — suggest a couple of times that work for a first conversation.'}
+      </p>
+      <a href="mailto:${safePartnerEmail}" style="display:inline-block;background:${brand.gold};color:${brand.ink};border:1px solid ${brand.gold};border-radius:8px;padding:11px 27px;font-weight:600;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
+        Email ${safePartner} →
+      </a>${accountBlock}
+      ${accountNote}
+      <hr style="border:none;border-top:1px solid ${brand.border};margin:24px 0;" />
+      <p style="color:${brand.muted};font-size:12px;line-height:1.7;">
+        You received this because you're part of ${safeCohort} on AP MED Mentors.
+        Questions any time? Reply to this email or reach us at mentors@ap-med.org.
+        <br/><br/>
+        — Andrew, AP MED
+      </p>
     </div>
-    <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
-      ${partnerLabel === 'mentee' ? 'They received this same introduction, so feel free to reach out first — a short hello and a time to meet is all it takes to get started.' : 'Your mentor received this same introduction. Go ahead and say hello — suggest a couple of times that work for a first conversation.'}
-    </p>
-    <a href="mailto:${safePartnerEmail}" style="display:inline-block;background:#60a5fa;color:#0f1117;border-radius:8px;padding:12px 28px;font-weight:700;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">
-      Email ${safePartner} →
-    </a>${accountBlock}
-    ${accountNote}
-    <hr style="border:none;border-top:1px solid #1e2330;margin:24px 0;" />
-    <p style="color:#64748b;font-size:12px;line-height:1.6;">
-      You received this because you're part of ${safeCohort} on AP MED Mentors.
-      Questions any time? Reply to this email or reach us at mentors@ap-med.org.
-      <br/><br/>
-      — Andrew, AP MED
-    </p>
   </div>
 </body>
 </html>
