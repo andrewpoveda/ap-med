@@ -1,16 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { isAscensoVisible } from '@/lib/app-settings'
 
 /**
  * Public Ascenso landing page — the discoverable front door for the cohort.
  *
  * /ascenso/apply already existed but was reachable only by pasting the raw URL;
  * this page (plus the homepage section that links here) is what makes the apply
- * flow findable. Deliberately static: no cohort lookup, so it can't 500 on a DB
- * hiccup and needs no service-role client on a public marketing surface. The
- * apply page itself is the one that resolves the open cohort and shows the
- * applications-closed state.
+ * flow findable. The page body still does no cohort lookup — the apply page is
+ * the one that resolves the open cohort and owns the applications-closed state.
+ *
+ * No longer static, though: it reads app_settings.ascenso_visible per request
+ * and redirects home when the cohort is hidden. That read fails closed, so a DB
+ * hiccup costs a redirect rather than a 500.
  */
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Ascenso — LMSA-NE Mentorship Cohort | AP MED',
@@ -94,7 +100,12 @@ const HOW_IT_WORKS = [
   },
 ]
 
-export default function AscensoPage() {
+export default async function AscensoPage() {
+  // Hidden → send visitors home, the same 307 the proxy used to serve. The
+  // homepage panel and the sitemap entries drop out on the same flag, so there
+  // is never a live link pointing at this redirect.
+  if (!(await isAscensoVisible())) redirect('/')
+
   return (
     <div className="space-y-20">
       <section>

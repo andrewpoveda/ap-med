@@ -1,12 +1,17 @@
 import type { MetadataRoute } from 'next'
+import { isAscensoVisible } from '@/lib/app-settings'
 
 const BASE_URL = 'https://ap-med.org'
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  // Same gate as the proxy and the homepage section: with ASCENSO_PUBLIC=false
-  // the /ascenso routes redirect to /, so pointing crawlers at them would only
-  // advertise a redirect while LMSA-NE reviews.
-  const ascensoPublic = process.env.ASCENSO_PUBLIC !== 'false'
+// Dynamic for the same reason as the homepage: a prerendered sitemap would bake
+// the flag in at build time and keep advertising /ascenso after it was hidden.
+export const dynamic = 'force-dynamic'
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Same gate as the homepage panel and the two /ascenso pages: while Ascenso
+  // is hidden those routes redirect to /, so pointing crawlers at them would
+  // only advertise a redirect.
+  const ascensoPublic = await isAscensoVisible()
   const ascensoEntries: MetadataRoute.Sitemap = ascensoPublic
     ? [
         { url: `${BASE_URL}/ascenso`, changeFrequency: 'monthly', priority: 0.8 },

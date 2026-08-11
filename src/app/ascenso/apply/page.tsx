@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { isAscensoVisible } from '@/lib/app-settings'
 import AscensoApplyForm from './AscensoApplyForm'
 
 export const dynamic = 'force-dynamic'
@@ -15,6 +17,11 @@ export const metadata: Metadata = {
 // service-role client (cohorts is RLS-locked) and hands its id to the client
 // form. No open cohort → applications-closed state.
 export default async function Page() {
+  // Discoverability gate, checked before the cohort lookup — see /ascenso.
+  // Distinct from the applications-closed state below: this flag hides the page
+  // entirely, cohorts.status decides whether the form accepts submissions.
+  if (!(await isAscensoVisible())) redirect('/')
+
   let cohort: { id: string; name: string } | null = null
 
   try {

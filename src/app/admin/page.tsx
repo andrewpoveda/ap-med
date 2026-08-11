@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { requireAdminSession } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { readAscensoVisibility } from '@/lib/app-settings'
+import AscensoVisibilityToggle from './AscensoVisibilityToggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,6 +68,12 @@ export default async function AdminCohortsPage() {
   const { adminUser } = await requireAdminSession()
   const admin = getSupabaseAdmin()
 
+  // Site-wide switch, so it only renders for supers — matching the route, which
+  // 404s a cohort_admin. Read here rather than inside the client component so
+  // the service-role client never crosses the boundary.
+  const isSuper = adminUser.role === 'super'
+  const ascensoVisibility = isSuper ? await readAscensoVisibility() : null
+
   // Cohort admins see only their cohort; a scoped admin with no cohort assigned
   // sees nothing (fail closed on a misconfigured row). Supers see everything.
   const scopedCohortId = adminUser.role === 'super' ? null : adminUser.cohort_id
@@ -116,6 +124,16 @@ export default async function AdminCohortsPage() {
       >
         Cohorts
       </h1>
+
+      {ascensoVisibility && (
+        <div className="mt-8">
+          <AscensoVisibilityToggle
+            initialVisible={ascensoVisibility.visible}
+            initialUpdatedAt={ascensoVisibility.updatedAt}
+            readError={ascensoVisibility.ok ? null : ascensoVisibility.error}
+          />
+        </div>
+      )}
 
       {cohorts.length === 0 ? (
         <p className="mt-6 text-[#6b6b6b]" style={{ fontSize: '0.95rem' }}>

@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { isAscensoVisible } from "@/lib/app-settings";
+
+// Dynamic because the Ascenso panel below is gated on a per-request DB read.
+// Without this Next prerenders the page and bakes today's flag value in, which
+// is exactly the bug the app_settings flag exists to kill.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "AP MED | Free Mentorship for Underrepresented Pre-Med Students",
@@ -50,11 +56,11 @@ const eyebrowStyle: React.CSSProperties = {
   fontWeight: 600,
 };
 
-export default function Home() {
-  // Same gate as the proxy: ASCENSO_PUBLIC=false pulls the public Ascenso
-  // surfaces while LMSA-NE reviews. The proxy redirects /ascenso itself; this
-  // hides the only link to it, so the section and the route disappear together.
-  const ascensoPublic = process.env.ASCENSO_PUBLIC !== "false";
+export default async function Home() {
+  // Same flag the two /ascenso pages and the sitemap read. This hides the only
+  // link into the funnel from anywhere on the site, so the panel and the routes
+  // it points at appear and disappear together.
+  const ascensoPublic = await isAscensoVisible();
 
   return (
     <div className="space-y-28">
