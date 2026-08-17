@@ -131,6 +131,12 @@ export async function POST(request: Request) {
   // answer the support-needs question — that overlap is the matcher's 25%
   // weight. Sending the wrong role's key simply drops it.
   const identity = pickTags(data.identity, IDENTITY_OPTIONS)
+  if (identity.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one identity or background option is required' },
+      { status: 400 },
+    )
+  }
   const supportNeeds = pickTags(role === 'mentor' ? data.can_help_with : data.help_with, [
     ...ASCENSO_HELP_WITH_OPTIONS,
     HELP_WITH_OTHER,

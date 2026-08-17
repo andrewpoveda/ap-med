@@ -7,6 +7,16 @@ import { scoreMentor } from '@/lib/match'
 import { toPublicMentor } from '@/types/mentor'
 import type { Mentor, ScoredMentor, ScoredPublicMentor } from '@/types/mentor'
 import { cap, isValidEmail, LIMITS } from '@/lib/validate'
+import { SPECIALTIES } from '@/data/specialties'
+import { HELP_WITH_OPTIONS, IDENTITY_OPTIONS } from '@/data/tags'
+
+function pickTags(value: unknown, allowedOptions: string[]): string[] {
+  if (!Array.isArray(value)) return []
+  const allowed = new Set(allowedOptions)
+  return Array.from(
+    new Set(value.filter((item): item is string => typeof item === 'string' && allowed.has(item))),
+  )
+}
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -36,14 +46,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
   }
 
+  const helpWith = pickTags(data.help_with, HELP_WITH_OPTIONS)
+  if (helpWith.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one mentorship support area is required' },
+      { status: 400 },
+    )
+  }
+
+  const interests = pickTags(data.interests, SPECIALTIES)
+  if (interests.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one medical interest is required' },
+      { status: 400 },
+    )
+  }
+
+  const identity = pickTags(data.identity, IDENTITY_OPTIONS)
+  if (identity.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one identity or background option is required' },
+      { status: 400 },
+    )
+  }
+
   const mentee = {
     full_name: cap(data.full_name, LIMITS.name),
     email: cap(data.email, LIMITS.name),
     school: cap(data.school, LIMITS.name),
     current_stage: cap(data.current_stage, LIMITS.name),
-    interests: Array.isArray(data.interests) ? data.interests : [],
-    identity: Array.isArray(data.identity) ? data.identity : [],
-    help_with: Array.isArray(data.help_with) ? data.help_with : [],
+    interests,
+    identity,
+    help_with: helpWith,
     notes: cap(data.notes, LIMITS.text),
     linkedin_url: cap(data.linkedin_url, LIMITS.name),
   }

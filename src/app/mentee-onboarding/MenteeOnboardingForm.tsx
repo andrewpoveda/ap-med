@@ -4,7 +4,17 @@ import { IDENTITY_OPTIONS, HELP_WITH_OPTIONS } from "@/data/tags"
 import { useState, useEffect, useRef } from 'react'
 import { Turnstile } from "@marsidev/react-turnstile"
 import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { isValidEmail } from '@/lib/validate'
+import { isHttpUrl } from '@/lib/url'
+
+const STEPS = [
+  { eyebrow: 'Start here', title: 'The basics' },
+  { eyebrow: 'Match preferences', title: 'Support' },
+  { eyebrow: 'Match preferences', title: 'Specialty' },
+  { eyebrow: 'Match preferences', title: 'Identity' },
+  { eyebrow: 'Your request', title: 'Your goals' },
+  { eyebrow: 'Final step', title: 'Review & submit' },
+] as const
 
 type MenteeOnboardingFormData = {
   full_name: string
@@ -55,17 +65,65 @@ export default function MenteeOnboardingForm() {
   linkedin_url: '',
   notes: '',
 })
-
-
-  const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [stepError, setStepError] = useState<string | null>(null)
   const turnstileToken = useRef<string | null>(null)
+  const formTopRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (mentorFromUrl) {
       setForm(prev => ({ ...prev, requested_mentor: mentorFromUrl }))
     }
   }, [mentorFromUrl])
+
+  const moveToStep = (step: number) => {
+    setStepError(null)
+    setCurrentStep(step)
+    window.requestAnimationFrame(() => {
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  const validateStep = (step: number): string | null => {
+    const nameParts = form.full_name.trim().split(/\s+/)
+    if (step === 0) {
+      if (!nameParts[0] || !nameParts[1]) return 'Enter your first and last name to continue.'
+      if (!isValidEmail(form.email)) return 'Enter a valid email address to continue.'
+      if (!form.school.trim()) return 'Enter your school or institution to continue.'
+      if (!form.current_stage) return 'Choose your current stage to continue.'
+      if (form.linkedin_url.trim() && !isHttpUrl(form.linkedin_url)) {
+        return 'LinkedIn URLs need to start with http:// or https://.'
+      }
+    }
+    if (step === 1 && form.help_with.length === 0) {
+      return 'Select at least one area where you want support.'
+    }
+    if (step === 2) {
+      if (form.interests.length === 0) {
+        return 'Select at least one medical interest to continue.'
+      }
+      if (form.interests.includes(OTHER_SPECIALTY) && !form.other_interest.trim()) {
+        return 'Enter your other specialty, or deselect Other.'
+      }
+    }
+    if (step === 3 && form.identity.length === 0) {
+      return 'Select at least one identity or background option to continue.'
+    }
+    if (step === 5 && !turnstileToken.current) {
+      return 'Complete the CAPTCHA check before submitting.'
+    }
+    return null
+  }
+
+  const handleNext = () => {
+    const error = validateStep(currentStep)
+    if (error) {
+      setStepError(error)
+      return
+    }
+    moveToStep(Math.min(currentStep + 1, STEPS.length - 1))
+  }
 
 const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: string) => {
     setForm((prev) => {
@@ -94,8 +152,28 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
       return
     }
 
+    if (form.help_with.length === 0) {
+      alert('Please select at least one area where you want support.')
+      return
+    }
+
+    if (form.interests.length === 0) {
+      alert('Please select at least one medical interest.')
+      return
+    }
+
     if (form.interests.includes(OTHER_SPECIALTY) && !form.other_interest.trim()) {
       alert('Please enter your other specialty or deselect Other.')
+      return
+    }
+
+    if (form.identity.length === 0) {
+      alert('Please select at least one identity or background option.')
+      return
+    }
+
+    if (!turnstileToken.current) {
+      alert('Please complete the CAPTCHA check first.')
       return
     }
 
@@ -143,293 +221,361 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
     }
   }
 
-  if (submitted) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#faf8f4',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'inherit',
-        color: '#1a1a2e',
-        textAlign: 'center',
-        padding: '2rem',
-      }}>
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>You're on the list</h1>
-        <p style={{ color: '#6b6b6b', maxWidth: '480px', lineHeight: 1.6 }}>
-          Thanks for reaching out through AP MED Mentors. Andrew will review your request and connect you with your mentor — usually within a few days.
-        </p>
-        <Link href="/mentors" style={{
-          marginTop: '2rem',
-          color: '#c8a96e',
-          textDecoration: 'none',
-          fontSize: '0.9rem',
-        }}>
-          ← Back to mentors
-        </Link>
-      </div>
-    )
+  const handleFinalSubmit = () => {
+    const error = validateStep(STEPS.length - 1)
+    if (error) {
+      setStepError(error)
+      return
+    }
+    setStepError(null)
+    void handleSubmit()
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#faf8f4',
-      color: '#1a1a2e',
-      fontFamily: 'inherit',
-    }}>
-      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-        <p style={{ color: '#c8a96e', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-          AP MED MENTORS
-        </p>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-          Request a mentor
-        </h1>
-        <p style={{ color: '#6b6b6b', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-          Fill out this short form and we'll connect you with the right mentor. Takes about 3–5 minutes.
-        </p>
-
-        <p style={{
-          marginBottom: '1.5rem',
-          color: '#4a4a5a',
-          fontSize: '1rem',
-          fontWeight: 400,
-          fontStyle: 'normal',
-          fontFamily: 'inherit',
-          lineHeight: 1.6,
-          textAlign: 'center',
-        }}>
-          AP MED Mentors connects students with volunteer mentors in good faith. By submitting this form, you agree to engage respectfully and professionally. AP MED reserves the right to remove any user from the platform for inappropriate conduct. AP MED is not liable for the outcomes of mentorship relationships.
-        </p>
-
-        <p style={{ color: '#6b6b6b', marginTop: '1.5rem', marginBottom: '2.5rem', lineHeight: 1.6, textAlign: 'center' }}>
-          We're so glad you're here, and we look forward to supporting you on your path to medicine.
-        </p>
+    <div className="ascenso-apply-page">
+      <div className="ascenso-apply-shell" ref={formTopRef}>
+        <header className="ascenso-apply-header">
+          <p className="ascenso-apply-kicker">AP MED Mentors</p>
+          <h1>Request a mentor</h1>
+          <p>
+            Tell us a little about yourself and we&apos;ll show you mentors matched on identity,
+            specialty, and mentorship needs. It takes about 3–5 minutes.
+          </p>
+        </header>
 
         {testMode && (
-          <div style={{ marginBottom: '2rem', padding: '0.75rem 1rem', background: '#fdf6e3', border: '1px solid #e0c060', borderRadius: '8px', color: '#8a6d1f', fontSize: '0.85rem', lineHeight: 1.5 }}>
-            🧪 <strong>Test mode</strong> — your submission will still be saved, and clicking Request on your results will <strong>not send any email</strong>.
+          <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: '#fdf6e3', border: '1px solid #e0c060', borderRadius: '8px', color: '#8a6d1f', fontSize: '0.85rem', lineHeight: 1.5 }}>
+            🧪 <strong>Test mode</strong> — your submission will still be saved, and clicking
+            Request on your results will <strong>not send any email</strong>.
           </div>
         )}
 
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        {mentorFromUrl && (
-          <div style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e8e4dc' }}>
-            <p style={{ color: '#6b6b6b', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Requesting mentorship from</p>
-            <p style={{ fontWeight: 600, fontSize: '1rem' }}>{mentorFromUrl}</p>
-          </div>
-        )}
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Basic info</h2>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <label style={labelStyle}>First name *</label>
-            <input
-              style={inputStyle}
-              placeholder="John"
-              value={form.full_name.split(' ')[0] || ''}
-              onChange={e => setForm(prev => ({
-                ...prev,
-                full_name: e.target.value + ' ' + (prev.full_name.split(' ')[1] || '')
-              }))}
+        <div className="ascenso-step-meta">
+          <span>Step {currentStep + 1} of {STEPS.length}</span>
+          <span>{STEPS[currentStep].title}</span>
+        </div>
+        <div
+          className="ascenso-progress"
+          aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
+          style={{ gridTemplateColumns: `repeat(${STEPS.length}, minmax(0, 1fr))` }}
+        >
+          {STEPS.map((step, index) => (
+            <button
+              key={step.title}
+              type="button"
+              className={index <= currentStep ? 'is-active' : ''}
+              aria-label={`${step.title}${index === currentStep ? ', current step' : ''}`}
+              aria-current={index === currentStep ? 'step' : undefined}
+              disabled={index >= currentStep}
+              onClick={() => {
+                if (index < currentStep) moveToStep(index)
+              }}
             />
-          </div>
-          <div>
-            <label style={labelStyle}>Last name *</label>
-            <input
-              style={inputStyle}
-              placeholder="Doe"
-              value={form.full_name.split(' ')[1] || ''}
-              onChange={e => setForm(prev => ({
-                ...prev,
-                full_name: (prev.full_name.split(' ')[0] || '') + ' ' + e.target.value
-              }))}
-            />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>Email address *</label>
-          <input
-            style={inputStyle}
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>School / Institution *</label>
-          <input
-            style={inputStyle}
-            placeholder="Rutgers University"
-            value={form.school}
-            onChange={e => setForm(prev => ({ ...prev, school: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '2.5rem' }}>
-          <label style={labelStyle}>LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span></label>
-          <input
-            style={inputStyle}
-            placeholder="https://linkedin.com/in/yourname"
-            value={form.linkedin_url}
-            onChange={e => setForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
-          />
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Your current stage *</h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Where are you in your pre-med journey?</p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2.5rem' }}>
-          {STAGES.map(stage => (
-            <label key={stage} style={radioCardStyle(form.current_stage === stage)}>
-              <input
-                type="radio"
-                name="stage"
-                value={stage}
-                checked={form.current_stage === stage}
-                onChange={() => setForm(prev => ({ ...prev, current_stage: stage }))}
-                style={{ accentColor: '#c8a96e' }}
-              />
-              {stage}
-            </label>
           ))}
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>What do you need help with?</h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Select all that apply.</p>
-
-        <div style={checkGridStyle}>
-          {HELP_WITH.map(item => (
-  <label key={item} style={checkCardStyle(form.help_with.includes(item))}>
-    <input
-      type="checkbox"
-      checked={form.help_with.includes(item)}
-      onChange={() => toggleArrayField('help_with', item)}
-      style={{ accentColor: '#c8a96e' }}
-    />
-    {item}
-  </label>
-))}
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-<h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-  Your medical interests
-</h2>
-<p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-  Select all specialties you're interested in.
-</p>
-
-<div style={checkGridStyle}>
-  {INTEREST_OPTIONS.map(spec => (
-    <label key={spec} style={checkCardStyle(form.interests.includes(spec))}>
-      <input
-        type="checkbox"
-        checked={form.interests.includes(spec)}
-        onChange={() => handleInterestToggle(spec)}
-        style={{ accentColor: '#c8a96e' }}
-      />
-      {spec}
-    </label>
-  ))}
-</div>
-
-        {form.interests.includes(OTHER_SPECIALTY) && (
-          <div style={{ marginTop: '1rem' }}>
-            <label style={labelStyle}>Your other specialty</label>
-            <input
-              list="other-specialty-options"
-              style={inputStyle}
-              placeholder="Type your other specialty"
-              value={form.other_interest}
-              onChange={e => setForm(prev => ({ ...prev, other_interest: e.target.value }))}
-            />
-            <datalist id="other-specialty-options">
-              <option value="Global Health" />
-              <option value="Medical Education" />
-              <option value="Geriatrics" />
-              <option value="Transplant Surgery" />
-              <option value="Sports Medicine" />
-            </datalist>
+        <section className="ascenso-step-card" aria-live="polite">
+          <div className="ascenso-step-heading">
+            <p>{STEPS[currentStep].eyebrow}</p>
+            <h2>{STEPS[currentStep].title}</h2>
           </div>
-        )}
 
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Identity / background</h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Helps us match you with someone who shares your background.</p>
+          {currentStep === 0 && (
+            <div className="ascenso-step-content">
+              {mentorFromUrl && (
+                <div
+                  style={{
+                    padding: '0.9rem 1rem',
+                    border: '1px solid #e8e4dc',
+                    borderRadius: '10px',
+                    background: '#faf8f4',
+                  }}
+                >
+                  <span style={{ display: 'block', marginBottom: '0.2rem', color: '#817b72', fontSize: '0.74rem' }}>
+                    Requesting mentorship from
+                  </span>
+                  <strong style={{ display: 'block', color: '#4a4a5a', fontSize: '0.95rem' }}>
+                    {mentorFromUrl}
+                  </strong>
+                </div>
+              )}
 
-<div style={checkGridStyle}>
-  {IDENTITIES.map(item => (
-    <label key={item} style={checkCardStyle(form.identity.includes(item))}>
-      <input
-        type="checkbox"
-        checked={form.identity.includes(item)}
-        onChange={() => toggleArrayField('identity', item)}
-        style={{ accentColor: '#c8a96e' }}
-      />
-      {item}
-    </label>
-  ))}
-</div>
+              <div>
+                <h3>Basic information</h3>
+                <div className="ascenso-fields-grid">
+                  <div>
+                    <label style={labelStyle}>First name *</label>
+                    <input
+                      style={inputStyle}
+                      autoComplete="given-name"
+                      placeholder="John"
+                      value={form.full_name.split(' ')[0] || ''}
+                      onChange={e => setForm(prev => ({
+                        ...prev,
+                        full_name: e.target.value + ' ' + (prev.full_name.split(' ')[1] || ''),
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Last name *</label>
+                    <input
+                      style={inputStyle}
+                      autoComplete="family-name"
+                      placeholder="Doe"
+                      value={form.full_name.split(' ')[1] || ''}
+                      onChange={e => setForm(prev => ({
+                        ...prev,
+                        full_name: (prev.full_name.split(' ')[0] || '') + ' ' + e.target.value,
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Email address *</label>
+                    <input
+                      style={inputStyle}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={form.email}
+                      onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>School / Institution *</label>
+                    <input
+                      style={inputStyle}
+                      autoComplete="organization"
+                      placeholder="Rutgers University"
+                      value={form.school}
+                      onChange={e => setForm(prev => ({ ...prev, school: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.75rem' }}>
+                  <label style={labelStyle}>
+                    LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span>
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="url"
+                    placeholder="https://linkedin.com/in/yourname"
+                    value={form.linkedin_url}
+                    onChange={e => setForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                  />
+                </div>
+              </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
+              <div>
+                <h3>Your current stage *</h3>
+                <p className="ascenso-helper">Where are you in your pre-med journey?</p>
+                <div className="ascenso-choice-list">
+                  {STAGES.map(stage => (
+                    <label key={stage} style={radioCardStyle(form.current_stage === stage)}>
+                      <input
+                        type="radio"
+                        name="stage"
+                        value={stage}
+                        checked={form.current_stage === stage}
+                        onChange={() => setForm(prev => ({ ...prev, current_stage: stage }))}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {stage}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Anything else? <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span></h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>Why do you want to connect with this mentor? Any specific goals or questions?</p>
+          {currentStep === 1 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>What do you need help with? *</h3>
+                <p className="ascenso-helper">Select at least one. Choose all that apply.</p>
+                <div className="ascenso-check-grid">
+                  {HELP_WITH.map(item => (
+                    <label key={item} style={checkCardStyle(form.help_with.includes(item))}>
+                      <input
+                        type="checkbox"
+                        checked={form.help_with.includes(item)}
+                        onChange={() => toggleArrayField('help_with', item)}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-        <textarea
-          style={{
-            ...inputStyle,
-            height: '140px',
-            resize: 'vertical',
-            fontFamily: 'inherit',
-          }}
-          placeholder="I'm a first-gen pre-med student interested in..."
-          value={form.notes}
-          onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
-        />
+          {currentStep === 2 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>Your medical interests *</h3>
+                <p className="ascenso-helper">
+                  Select at least one specialty you&apos;re interested in.
+                </p>
+                <div className="ascenso-check-grid">
+                  {INTEREST_OPTIONS.map(spec => (
+                    <label key={spec} style={checkCardStyle(form.interests.includes(spec))}>
+                      <input
+                        type="checkbox"
+                        checked={form.interests.includes(spec)}
+                        onChange={() => handleInterestToggle(spec)}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {spec}
+                    </label>
+                  ))}
+                </div>
+                {form.interests.includes(OTHER_SPECIALTY) && (
+                  <div className="ascenso-other-field">
+                    <label style={labelStyle}>Your other specialty</label>
+                    <input
+                      list="other-specialty-options"
+                      style={inputStyle}
+                      placeholder="Type your other specialty"
+                      value={form.other_interest}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, other_interest: e.target.value }))
+                      }
+                    />
+                    <datalist id="other-specialty-options">
+                      <option value="Global Health" />
+                      <option value="Medical Education" />
+                      <option value="Geriatrics" />
+                      <option value="Transplant Surgery" />
+                      <option value="Sports Medicine" />
+                    </datalist>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
+          {currentStep === 3 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>Identity / background *</h3>
+                <p className="ascenso-helper">
+                  Helps us match you with someone who shares your background. Select at least one.
+                </p>
+                <div className="ascenso-check-grid">
+                  {IDENTITIES.map(item => (
+                    <label key={item} style={checkCardStyle(form.identity.includes(item))}>
+                      <input
+                        type="checkbox"
+                        checked={form.identity.includes(item)}
+                        onChange={() => toggleArrayField('identity', item)}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <Turnstile
-            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-            onSuccess={(token) => { turnstileToken.current = token; }}
-            onExpire={() => { turnstileToken.current = null; }}
-            options={{ theme: "light" }}
-          />
-        </div>
+          {currentStep === 4 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>
+                  Anything else? <span className="ascenso-optional">(optional)</span>
+                </h3>
+                <p className="ascenso-helper">
+                  Why do you want to connect with a mentor? Any specific goals or questions?
+                </p>
+                <textarea
+                  style={{ ...inputStyle, height: '150px', resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder="I’m a first-gen pre-med student interested in…"
+                  value={form.notes}
+                  onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            style={{
-              background: loading ? '#e8e4dc' : '#c8a96e',
-              color: loading ? '#9a948a' : '#1a1a2e',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '0.75rem 2rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s',
-            }}
-          >
-            {loading ? 'Submitting...' : 'Submit →'}
-          </button>
-        </div>
+          {currentStep === 5 && (
+            <div className="ascenso-step-content">
+              <div className="ascenso-review-summary">
+                <div>
+                  <span>Current stage</span>
+                  <strong>{form.current_stage}</strong>
+                </div>
+                <div>
+                  <span>Support areas</span>
+                  <strong>{form.help_with.length} selected</strong>
+                </div>
+                <div>
+                  <span>Specialties</span>
+                  <strong>{form.interests.length} selected</strong>
+                </div>
+              </div>
+              <p className="ascenso-helper">
+                Use Back or the completed progress bars to edit your answers before submitting.
+              </p>
+              <div className="ascenso-privacy-note">
+                <strong>Community expectations</strong>
+                <p>
+                  AP MED Mentors connects students with volunteer mentors in good faith. By
+                  submitting this form, you agree to engage respectfully and professionally. AP
+                  MED reserves the right to remove any user from the platform for inappropriate
+                  conduct. AP MED is not liable for the outcomes of mentorship relationships.
+                </p>
+              </div>
+              <p
+                style={{
+                  margin: '-0.65rem 0 0',
+                  color: '#6b6b6b',
+                  fontSize: '0.875rem',
+                  lineHeight: 1.55,
+                }}
+              >
+                We&apos;re so glad you&apos;re here, and we look forward to supporting you on your path
+                to medicine.
+              </p>
+              <Turnstile
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                onSuccess={token => { turnstileToken.current = token }}
+                onExpire={() => { turnstileToken.current = null }}
+                options={{ theme: 'light' }}
+              />
+            </div>
+          )}
+
+          {stepError && (
+            <p className="ascenso-step-error" role="alert">{stepError}</p>
+          )}
+
+          <div className="ascenso-step-actions">
+            <button
+              type="button"
+              className="ascenso-back-button"
+              onClick={() => moveToStep(currentStep - 1)}
+              disabled={currentStep === 0 || loading}
+            >
+              ← Back
+            </button>
+            {currentStep < STEPS.length - 1 ? (
+              <button type="button" className="ascenso-next-button" onClick={handleNext}>
+                Next →
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="ascenso-next-button"
+                onClick={handleFinalSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Finding your matches…' : 'See my matches →'}
+              </button>
+            )}
+          </div>
+        </section>
+
+        <p className="ascenso-save-note">Your answers stay here while this page remains open.</p>
       </div>
     </div>
   )
@@ -452,13 +598,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   outline: 'none',
   boxSizing: 'border-box',
-}
-
-const checkGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: '0.5rem',
-  marginBottom: '2.5rem',
 }
 
 const radioCardStyle = (selected: boolean): React.CSSProperties => ({

@@ -180,6 +180,9 @@ export default function AscensoApplyForm({
         return 'Describe your other support area, or deselect Other.'
       }
     }
+    if (step === 3 && form.identity.length === 0) {
+      return 'Select at least one identity or background option to continue.'
+    }
     if (step === 4 && !form.motivation.trim()) {
       return isMentor
         ? 'Tell the board why you want to mentor in Ascenso.'
@@ -309,6 +312,10 @@ export default function AscensoApplyForm({
     }
     if (form.help_with.includes(HELP_WITH_OTHER) && !form.help_with_other.trim()) {
       alert('Please describe your "Other" support area, or deselect Other.')
+      return
+    }
+    if (form.identity.length === 0) {
+      alert('Please select at least one identity or background option.')
       return
     }
     // Role-scoped board questions. Only the side that can see the field is held
@@ -684,8 +691,7 @@ export default function AscensoApplyForm({
             <div className="ascenso-step-content">
               <div>
                 <h3>
-                  Identity / background{' '}
-                  <span className="ascenso-optional">(optional)</span>
+                  Identity / background *
                 </h3>
                 <p className="ascenso-helper">
                   {isMentor
