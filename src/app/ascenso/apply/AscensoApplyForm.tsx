@@ -10,8 +10,20 @@ import {
   ASCENSO_PREVIOUS_MENTOR_OPTIONS,
   ASCENSO_MENTEE_CAPACITY_OPTIONS,
 } from '@/data/tags'
+import { isValidEmail } from '@/lib/validate'
+import { isHttpUrl } from '@/lib/url'
 
 type Role = 'mentor' | 'mentee'
+
+const STEPS = [
+  { eyebrow: 'Start here', title: 'The basics' },
+  { eyebrow: 'Match preferences', title: 'Specialty' },
+  { eyebrow: 'Match preferences', title: 'Support' },
+  { eyebrow: 'Match preferences', title: 'Identity' },
+  { eyebrow: 'Your application', title: 'Your story' },
+  { eyebrow: 'Your application', title: 'Program fit' },
+  { eyebrow: 'Final step', title: 'Review & agree' },
+] as const
 
 type ApplicationFormData = {
   role: Role
@@ -124,9 +136,86 @@ export default function AscensoApplyForm({
     { kind: 'submitted' | 'updated' } | { kind: 'locked'; message: string } | null
   >(null)
   const [loading, setLoading] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [stepError, setStepError] = useState<string | null>(null)
   const turnstileToken = useRef<string | null>(null)
+  const formTopRef = useRef<HTMLDivElement | null>(null)
 
   const isMentor = form.role === 'mentor'
+
+  const moveToStep = (step: number) => {
+    setStepError(null)
+    setCurrentStep(step)
+    window.requestAnimationFrame(() => {
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  const validateStep = (step: number): string | null => {
+    if (step === 0) {
+      if (!form.track) return 'Choose the track that best matches where you are right now.'
+      if (!form.full_name.trim()) return 'Enter your full name to continue.'
+      if (!isValidEmail(form.email)) return 'Enter a valid email address to continue.'
+      if (!form.institution.trim()) return 'Enter your school or institution to continue.'
+      if (!form.current_position.trim()) {
+        return `Enter your current ${isMentor ? 'role' : 'stage or year'} to continue.`
+      }
+      if (!form.current_location.trim()) return 'Enter your current city and state to continue.'
+      if (form.linkedin_url.trim() && !isHttpUrl(form.linkedin_url)) {
+        return 'LinkedIn URLs need to start with http:// or https://.'
+      }
+    }
+    if (step === 1 && form.specialty.length === 0) {
+      return isMentor
+        ? 'Select at least one specialty you practice or trained in.'
+        : 'Select at least one specialty you want to explore.'
+    }
+    if (step === 2) {
+      if (form.help_with.length === 0) {
+        return isMentor
+          ? 'Select at least one area you can support your mentee in.'
+          : 'Select at least one area you want support with.'
+      }
+      if (form.help_with.includes(HELP_WITH_OTHER) && !form.help_with_other.trim()) {
+        return 'Describe your other support area, or deselect Other.'
+      }
+    }
+    if (step === 4 && !form.motivation.trim()) {
+      return isMentor
+        ? 'Tell the board why you want to mentor in Ascenso.'
+        : 'Tell the board why you want to join Ascenso.'
+    }
+    if (step === 5) {
+      if (isMentor && !form.mentee_capacity) {
+        return 'Choose how many mentees you would be willing to mentor.'
+      }
+      if (!isMentor && !form.goals_milestones.trim()) {
+        return 'Share one to three goals or milestones for your first year in Ascenso.'
+      }
+      if (!isMentor && !form.previous_mentor) {
+        return 'Tell us whether you have previously had a mentor.'
+      }
+    }
+    if (step === 6) {
+      if (!form.can_commit) {
+        return 'Confirm that you can commit to regular meetings for the program year.'
+      }
+      if (!form.agrees_surveys || !form.agrees_conduct || !form.agrees_participation) {
+        return 'Confirm each acknowledgment before submitting.'
+      }
+      if (!turnstileToken.current) return 'Complete the CAPTCHA check before submitting.'
+    }
+    return null
+  }
+
+  const handleNext = () => {
+    const error = validateStep(currentStep)
+    if (error) {
+      setStepError(error)
+      return
+    }
+    moveToStep(Math.min(currentStep + 1, STEPS.length - 1))
+  }
 
   const setRole = (role: Role) => {
     // Track, specialty, and support needs all flip meaning with the role (your
@@ -302,6 +391,16 @@ export default function AscensoApplyForm({
     }
   }
 
+  const handleFinalSubmit = () => {
+    const error = validateStep(STEPS.length - 1)
+    if (error) {
+      setStepError(error)
+      return
+    }
+    setStepError(null)
+    void handleSubmit()
+  }
+
   if (outcome) {
     return (
       <div
@@ -344,498 +443,541 @@ export default function AscensoApplyForm({
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#faf8f4',
-        color: '#1a1a2e',
-        fontFamily: 'inherit',
-      }}
-    >
-      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-        <p
-          style={{
-            color: '#c8a96e',
-            fontSize: '0.75rem',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            marginBottom: '0.5rem',
-          }}
-        >
-          Ascenso · LMSA-NE
-        </p>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-          Apply to {cohortName}
-        </h1>
-        <p style={{ color: '#6b6b6b', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-          Ascenso is a structured, board-reviewed mentorship cohort run by LMSA-NE on AP MED.
-          Pairs are matched across four tracks — premed through resident — and meet regularly
-          throughout the program year. Applications take about 5 minutes.
-        </p>
+    <div className="ascenso-apply-page">
+      <div className="ascenso-apply-shell" ref={formTopRef}>
+        <header className="ascenso-apply-header">
+          <p className="ascenso-apply-kicker">Ascenso · LMSA-NE</p>
+          <h1>Apply to {cohortName}</h1>
+          <p>
+            Ascenso is a structured, board-reviewed mentorship cohort run by LMSA-NE on AP MED.
+            Pairs are matched across four tracks — premed through resident — and meet regularly
+            throughout the program year. Applications take about 5 minutes.
+          </p>
+        </header>
 
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>
-          I&apos;m applying as a…
-        </h2>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '0.5rem',
-            marginBottom: '2.5rem',
-          }}
-        >
-          {(['mentee', 'mentor'] as Role[]).map(role => (
-            <label key={role} style={radioCardStyle(form.role === role)}>
-              <input
-                type="radio"
-                name="role"
-                value={role}
-                checked={form.role === role}
-                onChange={() => setRole(role)}
-                style={{ accentColor: '#c8a96e' }}
-              />
-              {role === 'mentee' ? 'Mentee' : 'Mentor'}
-            </label>
-          ))}
+        <div className="ascenso-step-meta">
+          <span>
+            Step {currentStep + 1} of {STEPS.length}
+          </span>
+          <span>{STEPS[currentStep].title}</span>
         </div>
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          Your track *
-        </h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          {isMentor
-            ? 'Pick the pairing that matches where you are and who you want to mentor.'
-            : 'Pick the pairing that matches where you are and the mentor you’re looking for.'}
-        </p>
-
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-            marginBottom: '2.5rem',
-          }}
-        >
-          {TRACKS.map(track => (
-            <label key={track.value} style={radioCardStyle(form.track === track.value)}>
-              <input
-                type="radio"
-                name="track"
-                value={track.value}
-                checked={form.track === track.value}
-                onChange={() => setForm(prev => ({ ...prev, track: track.value }))}
-                style={{ accentColor: '#c8a96e' }}
-              />
-              {isMentor ? track.mentor : track.mentee}
-            </label>
-          ))}
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Basic info</h2>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>Full name *</label>
-          <input
-            style={inputStyle}
-            placeholder="John Doe"
-            value={form.full_name}
-            onChange={e => setForm(prev => ({ ...prev, full_name: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>Email address *</label>
-          <input
-            style={inputStyle}
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>School / Institution *</label>
-          <input
-            style={inputStyle}
-            placeholder={isMentor ? 'Boston Medical Center' : 'Rutgers University'}
-            value={form.institution}
-            onChange={e => setForm(prev => ({ ...prev, institution: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>{isMentor ? 'Current role *' : 'Current stage / year *'}</label>
-          <input
-            style={inputStyle}
-            placeholder={isMentor ? 'PGY-2, Internal Medicine' : 'MS2 / Junior, Biology'}
-            value={form.current_position}
-            onChange={e => setForm(prev => ({ ...prev, current_position: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>Current city and state *</label>
-          <input
-            style={inputStyle}
-            placeholder="Newark, NJ"
-            value={form.current_location}
-            onChange={e => setForm(prev => ({ ...prev, current_location: e.target.value }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: '2.5rem' }}>
-          <label style={labelStyle}>
-            LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span>
-          </label>
-          <input
-            style={inputStyle}
-            placeholder="https://linkedin.com/in/yourname"
-            value={form.linkedin_url}
-            onChange={e => setForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
-          />
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          {isMentor ? 'Your specialties *' : 'Specialties you want to explore *'}
-        </h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          {isMentor
-            ? 'Select every specialty you practice, trained in, or can speak to. Select all that apply.'
-            : 'Select every specialty you’re curious about — pick “Not yet decided” if you’re still figuring it out. Select all that apply.'}
-        </p>
-
-        <div style={checkGridStyle}>
-          {SPECIALTIES.map(item => (
-            <label key={item} style={checkCardStyle(form.specialty.includes(item))}>
-              <input
-                type="checkbox"
-                checked={form.specialty.includes(item)}
-                onChange={() => toggleArrayField('specialty', item)}
-                style={{ accentColor: '#c8a96e' }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          {isMentor ? 'What can you help your mentee with? *' : 'What do you want support with? *'}
-        </h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          {isMentor
-            ? 'Both sides answer this, and the board pairs on the overlap — pick everything you’d genuinely be glad to help with.'
-            : 'Both sides answer this, and the board pairs on the overlap — pick everything you’d want a mentor’s help with.'}
-        </p>
-
-        <div style={checkGridStyle}>
-          {[...ASCENSO_HELP_WITH_OPTIONS, HELP_WITH_OTHER].map(item => (
-            <label key={item} style={checkCardStyle(form.help_with.includes(item))}>
-              <input
-                type="checkbox"
-                checked={form.help_with.includes(item)}
-                onChange={() => toggleArrayField('help_with', item)}
-                // The specialty list above also ends in "Other", so out of
-                // visual context (screen reader, control-by-control tabbing)
-                // the two are indistinguishable. Still contains the visible
-                // word, so the accessible name matches the label.
-                aria-label={item === HELP_WITH_OTHER ? 'Other support area' : undefined}
-                style={{ accentColor: '#c8a96e' }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-
-        {form.help_with.includes(HELP_WITH_OTHER) && (
-          <div style={{ marginTop: '-1.5rem', marginBottom: '2.5rem' }}>
-            <label style={labelStyle}>
-              {isMentor ? 'What else can you help with?' : 'What else do you want support with?'}
-            </label>
-            <input
-              style={inputStyle}
-              placeholder={
-                isMentor
-                  ? 'e.g. Navigating a career change into medicine'
-                  : 'e.g. Balancing caregiving with a post-bacc'
-              }
-              value={form.help_with_other}
-              onChange={e => setForm(prev => ({ ...prev, help_with_other: e.target.value }))}
+        <div className="ascenso-progress" aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}>
+          {STEPS.map((step, index) => (
+            <button
+              key={step.title}
+              type="button"
+              className={index <= currentStep ? 'is-active' : ''}
+              aria-label={`${step.title}${index === currentStep ? ', current step' : ''}`}
+              aria-current={index === currentStep ? 'step' : undefined}
+              disabled={index >= currentStep}
+              onClick={() => {
+                if (index < currentStep) moveToStep(index)
+              }}
             />
+          ))}
+        </div>
+
+        <section className="ascenso-step-card" aria-live="polite">
+          <div className="ascenso-step-heading">
+            <p>{STEPS[currentStep].eyebrow}</p>
+            <h2>{STEPS[currentStep].title}</h2>
           </div>
-        )}
 
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          Identity / background{' '}
-          <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span>
-        </h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          {isMentor
-            ? 'Helps the board pair you with a mentee who shares your background. Select all that apply.'
-            : 'Helps the board pair you with a mentor who shares your background. Select all that apply.'}
-        </p>
+          {currentStep === 0 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>I&apos;m applying as a…</h3>
+                <div className="ascenso-choice-grid ascenso-choice-grid--two">
+                  {(['mentee', 'mentor'] as Role[]).map(role => (
+                    <label key={role} style={radioCardStyle(form.role === role)}>
+                      <input
+                        type="radio"
+                        name="role"
+                        value={role}
+                        checked={form.role === role}
+                        onChange={() => setRole(role)}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {role === 'mentee' ? 'Mentee' : 'Mentor'}
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-        <div style={checkGridStyle}>
-          {IDENTITY_OPTIONS.map(item => (
-            <label key={item} style={checkCardStyle(form.identity.includes(item))}>
-              <input
-                type="checkbox"
-                checked={form.identity.includes(item)}
-                onChange={() => toggleArrayField('identity', item)}
-                style={{ accentColor: '#c8a96e' }}
+              <div>
+                <h3>Your track *</h3>
+                <p className="ascenso-helper">
+                  {isMentor
+                    ? 'Pick the pairing that matches where you are and who you want to mentor.'
+                    : 'Pick the pairing that matches where you are and the mentor you’re looking for.'}
+                </p>
+                <div className="ascenso-choice-list">
+                  {TRACKS.map(track => (
+                    <label key={track.value} style={radioCardStyle(form.track === track.value)}>
+                      <input
+                        type="radio"
+                        name="track"
+                        value={track.value}
+                        checked={form.track === track.value}
+                        onChange={() => setForm(prev => ({ ...prev, track: track.value }))}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {isMentor ? track.mentor : track.mentee}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3>Basic information</h3>
+                <div className="ascenso-fields-grid">
+                  <div>
+                    <label style={labelStyle}>Full name *</label>
+                    <input
+                      style={inputStyle}
+                      autoComplete="name"
+                      placeholder="John Doe"
+                      value={form.full_name}
+                      onChange={e => setForm(prev => ({ ...prev, full_name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Email address *</label>
+                    <input
+                      style={inputStyle}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={form.email}
+                      onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>School / Institution *</label>
+                    <input
+                      style={inputStyle}
+                      autoComplete="organization"
+                      placeholder={isMentor ? 'Boston Medical Center' : 'Rutgers University'}
+                      value={form.institution}
+                      onChange={e => setForm(prev => ({ ...prev, institution: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>
+                      {isMentor ? 'Current role *' : 'Current stage / year *'}
+                    </label>
+                    <input
+                      style={inputStyle}
+                      placeholder={isMentor ? 'PGY-2, Internal Medicine' : 'MS2 / Junior, Biology'}
+                      value={form.current_position}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, current_position: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Current city and state *</label>
+                    <input
+                      style={inputStyle}
+                      autoComplete="address-level2"
+                      placeholder="Newark, NJ"
+                      value={form.current_location}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, current_location: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>
+                      LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span>
+                    </label>
+                    <input
+                      style={inputStyle}
+                      type="url"
+                      placeholder="https://linkedin.com/in/yourname"
+                      value={form.linkedin_url}
+                      onChange={e => setForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 1 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>
+                  {isMentor ? 'Your specialties *' : 'Specialties you want to explore *'}
+                </h3>
+                <p className="ascenso-helper">
+                  {isMentor
+                    ? 'Select every specialty you practice, trained in, or can speak to. Select all that apply.'
+                    : 'Select every specialty you’re curious about — pick “Not yet decided” if you’re still figuring it out. Select all that apply.'}
+                </p>
+                <div className="ascenso-check-grid">
+                  {SPECIALTIES.map(item => (
+                    <label key={item} style={checkCardStyle(form.specialty.includes(item))}>
+                      <input
+                        type="checkbox"
+                        checked={form.specialty.includes(item)}
+                        onChange={() => toggleArrayField('specialty', item)}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>
+                  {isMentor ? 'What can you help your mentee with? *' : 'What do you want support with? *'}
+                </h3>
+                <p className="ascenso-helper">
+                  {isMentor
+                    ? 'Both sides answer this, and the board pairs on the overlap — pick everything you’d genuinely be glad to help with.'
+                    : 'Both sides answer this, and the board pairs on the overlap — pick everything you’d want a mentor’s help with.'}
+                </p>
+                <div className="ascenso-check-grid">
+                  {[...ASCENSO_HELP_WITH_OPTIONS, HELP_WITH_OTHER].map(item => (
+                    <label key={item} style={checkCardStyle(form.help_with.includes(item))}>
+                      <input
+                        type="checkbox"
+                        checked={form.help_with.includes(item)}
+                        onChange={() => toggleArrayField('help_with', item)}
+                        aria-label={item === HELP_WITH_OTHER ? 'Other support area' : undefined}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+                {form.help_with.includes(HELP_WITH_OTHER) && (
+                  <div className="ascenso-other-field">
+                    <label style={labelStyle}>
+                      {isMentor ? 'What else can you help with?' : 'What else do you want support with?'}
+                    </label>
+                    <input
+                      style={inputStyle}
+                      placeholder={
+                        isMentor
+                          ? 'e.g. Navigating a career change into medicine'
+                          : 'e.g. Balancing caregiving with a post-bacc'
+                      }
+                      value={form.help_with_other}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, help_with_other: e.target.value }))
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>
+                  Identity / background{' '}
+                  <span className="ascenso-optional">(optional)</span>
+                </h3>
+                <p className="ascenso-helper">
+                  {isMentor
+                    ? 'Helps the board pair you with a mentee who shares your background. Select all that apply.'
+                    : 'Helps the board pair you with a mentor who shares your background. Select all that apply.'}
+                </p>
+                <div className="ascenso-check-grid">
+                  {IDENTITY_OPTIONS.map(item => (
+                    <label key={item} style={checkCardStyle(form.identity.includes(item))}>
+                      <input
+                        type="checkbox"
+                        checked={form.identity.includes(item)}
+                        onChange={() => toggleArrayField('identity', item)}
+                        style={{ accentColor: '#c8a96e' }}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="ascenso-step-content">
+              <div>
+                <h3>
+                  {isMentor ? 'Why do you want to mentor in Ascenso?' : 'Why do you want to join Ascenso?'} *
+                </h3>
+                <p className="ascenso-helper">
+                  A few sentences is plenty — the board reads every application.
+                </p>
+                <textarea
+                  style={{ ...inputStyle, height: '150px', resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder={
+                    isMentor
+                      ? 'I want to give students the guidance I wish I’d had…'
+                      : 'I’m looking for structured guidance as I work toward…'
+                  }
+                  value={form.motivation}
+                  onChange={e => setForm(prev => ({ ...prev, motivation: e.target.value }))}
+                />
+              </div>
+              <div>
+                <h3>
+                  {isMentor
+                    ? 'Mentorship or teaching experience'
+                    : 'What do you hope to get out of the program?'}{' '}
+                  <span className="ascenso-optional">(optional)</span>
+                </h3>
+                <textarea
+                  style={{ ...inputStyle, height: '120px', resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder={
+                    isMentor
+                      ? 'Previous mentoring, tutoring, teaching, or advising…'
+                      : 'Specific goals, questions, or milestones for this year…'
+                  }
+                  value={form.experience_goals}
+                  onChange={e => setForm(prev => ({ ...prev, experience_goals: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+
+          {currentStep === 5 && (
+            <div className="ascenso-step-content">
+              {isMentor ? (
+                <>
+                  <div>
+                    <h3>
+                      How many mentees would you be willing to mentor during the 2026–27 program
+                      year? *
+                    </h3>
+                    <div className="ascenso-choice-list">
+                      {ASCENSO_MENTEE_CAPACITY_OPTIONS.map(option => (
+                        <label key={option} style={radioCardStyle(form.mentee_capacity === option)}>
+                          <input
+                            type="radio"
+                            name="mentee_capacity"
+                            value={option}
+                            checked={form.mentee_capacity === option}
+                            onChange={() =>
+                              setForm(prev => ({ ...prev, mentee_capacity: option }))
+                            }
+                            style={{ accentColor: '#c8a96e' }}
+                          />
+                          {option}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3>
+                      Are there particular mentee goals, interests, or needs that you feel
+                      especially prepared to support?{' '}
+                      <span className="ascenso-optional">(optional)</span>
+                    </h3>
+                    <textarea
+                      style={{ ...inputStyle, height: '120px', resize: 'vertical', fontFamily: 'inherit' }}
+                      placeholder="e.g. First-generation students applying to research-heavy programs…"
+                      value={form.prepared_to_support}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, prepared_to_support: e.target.value }))
+                      }
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <h3>
+                      What are one to three goals or milestones you hope to work toward during
+                      your first year in Ascenso? *
+                    </h3>
+                    <p className="ascenso-helper">
+                      Examples: completing a medical school application, finding a research
+                      opportunity, exploring a specialty, preparing for residency applications,
+                      improving professional communication, building a stronger professional
+                      network.
+                    </p>
+                    <textarea
+                      style={{ ...inputStyle, height: '120px', resize: 'vertical', fontFamily: 'inherit' }}
+                      placeholder="e.g. Submit a strong medical school application, find a research mentor, and decide between two specialties…"
+                      value={form.goals_milestones}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, goals_milestones: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <h3>Have you previously had a mentor? *</h3>
+                    <div className="ascenso-choice-list">
+                      {ASCENSO_PREVIOUS_MENTOR_OPTIONS.map(option => (
+                        <label key={option} style={radioCardStyle(form.previous_mentor === option)}>
+                          <input
+                            type="radio"
+                            name="previous_mentor"
+                            value={option}
+                            checked={form.previous_mentor === option}
+                            onChange={() =>
+                              setForm(prev => ({ ...prev, previous_mentor: option }))
+                            }
+                            style={{ accentColor: '#c8a96e' }}
+                          />
+                          {option}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>
+                      Is there anything from a previous mentorship experience that you would like
+                      Ascenso to consider?{' '}
+                      <span style={{ color: '#9a948a' }}>(optional)</span>
+                    </label>
+                    <textarea
+                      style={{ ...inputStyle, height: '100px', resize: 'vertical', fontFamily: 'inherit' }}
+                      placeholder="What worked, what didn’t, or anything the board should know…"
+                      value={form.previous_mentor_notes}
+                      onChange={e =>
+                        setForm(prev => ({ ...prev, previous_mentor_notes: e.target.value }))
+                      }
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {currentStep === 6 && (
+            <div className="ascenso-step-content">
+              <div className="ascenso-review-summary">
+                <div>
+                  <span>Applying as</span>
+                  <strong>{isMentor ? 'Mentor' : 'Mentee'}</strong>
+                </div>
+                <div>
+                  <span>Specialties</span>
+                  <strong>{form.specialty.length} selected</strong>
+                </div>
+                <div>
+                  <span>Support areas</span>
+                  <strong>{form.help_with.length} selected</strong>
+                </div>
+              </div>
+              <p className="ascenso-helper">
+                Review the commitments below. You can use Back or the completed progress bars to
+                edit earlier answers.
+              </p>
+
+              <div className="ascenso-acknowledgments">
+                <label style={checkCardStyle(form.can_commit)}>
+                  <input
+                    type="checkbox"
+                    checked={form.can_commit}
+                    onChange={e => setForm(prev => ({ ...prev, can_commit: e.target.checked }))}
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  I can commit to regular monthly meetings with my {isMentor ? 'mentee' : 'mentor'}
+                  for the full program year. *
+                </label>
+                <label style={checkCardStyle(form.agrees_surveys)}>
+                  <input
+                    type="checkbox"
+                    checked={form.agrees_surveys}
+                    onChange={e => setForm(prev => ({ ...prev, agrees_surveys: e.target.checked }))}
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  I agree to complete brief midpoint and end-of-year feedback surveys to help LMSA
+                  Northeast evaluate and improve Ascenso. *
+                </label>
+                <label style={checkCardStyle(form.agrees_conduct)}>
+                  <input
+                    type="checkbox"
+                    checked={form.agrees_conduct}
+                    onChange={e => setForm(prev => ({ ...prev, agrees_conduct: e.target.checked }))}
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  I agree to maintain respectful communication, appropriate professional
+                  boundaries, and confidentiality throughout my participation in Ascenso. *
+                </label>
+                <label style={checkCardStyle(form.agrees_participation)}>
+                  <input
+                    type="checkbox"
+                    checked={form.agrees_participation}
+                    onChange={e =>
+                      setForm(prev => ({ ...prev, agrees_participation: e.target.checked }))
+                    }
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  {isMentor
+                    ? 'I understand that Ascenso requires consistent and active participation throughout the program year, including regular communication with my mentee, required training, program check-ins, and agreed-upon mentorship activities. *'
+                    : 'I understand that Ascenso requires consistent and active participation throughout the program year, including regular communication with my mentor, required training, program check-ins, and follow-through on agreed-upon goals. *'}
+                </label>
+              </div>
+
+              <div className="ascenso-privacy-note">
+                <strong>Your information stays private.</strong>
+                <p>
+                  Application information will be reviewed only by authorized Ascenso reviewers
+                  and designated members of LMSA Northeast leadership for application review,
+                  matching, communication, and evaluation. Information will not be made public
+                  without the applicant&apos;s permission.
+                </p>
+              </div>
+
+              <Turnstile
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                onSuccess={token => {
+                  turnstileToken.current = token
+                }}
+                onExpire={() => {
+                  turnstileToken.current = null
+                }}
+                options={{ theme: 'light' }}
               />
-              {item}
-            </label>
-          ))}
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', marginBottom: '2.5rem' }} />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          {isMentor ? 'Why do you want to mentor in Ascenso? *' : 'Why do you want to join Ascenso? *'}
-        </h2>
-        <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          A few sentences is plenty — the board reads every application.
-        </p>
-
-        <textarea
-          style={{ ...inputStyle, height: '140px', resize: 'vertical', fontFamily: 'inherit' }}
-          placeholder={
-            isMentor
-              ? 'I want to give students the guidance I wish I’d had…'
-              : 'I’m looking for structured guidance as I work toward…'
-          }
-          value={form.motivation}
-          onChange={e => setForm(prev => ({ ...prev, motivation: e.target.value }))}
-        />
-
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 0.5rem' }}>
-          {isMentor ? 'Mentorship or teaching experience' : 'What do you hope to get out of the program?'}{' '}
-          <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>(optional)</span>
-        </h2>
-
-        <textarea
-          style={{ ...inputStyle, height: '110px', resize: 'vertical', fontFamily: 'inherit' }}
-          placeholder={
-            isMentor
-              ? 'Previous mentoring, tutoring, teaching, or advising…'
-              : 'Specific goals, questions, or milestones for this year…'
-          }
-          value={form.experience_goals}
-          onChange={e => setForm(prev => ({ ...prev, experience_goals: e.target.value }))}
-        />
-
-        {isMentor ? (
-          <>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 1.25rem' }}>
-              How many mentees would you be willing to mentor during the 2026–27 program
-              year? *
-            </h2>
-
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-                marginBottom: '2.5rem',
-              }}
-            >
-              {ASCENSO_MENTEE_CAPACITY_OPTIONS.map(option => (
-                <label key={option} style={radioCardStyle(form.mentee_capacity === option)}>
-                  <input
-                    type="radio"
-                    name="mentee_capacity"
-                    value={option}
-                    checked={form.mentee_capacity === option}
-                    onChange={() => setForm(prev => ({ ...prev, mentee_capacity: option }))}
-                    style={{ accentColor: '#c8a96e' }}
-                  />
-                  {option}
-                </label>
-              ))}
             </div>
+          )}
 
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem' }}>
-              Are there particular mentee goals, interests, or needs that you feel especially
-              prepared to support?{' '}
-              <span style={{ color: '#9a948a', fontWeight: 400, fontSize: '0.9rem' }}>
-                (optional)
-              </span>
-            </h2>
-
-            <textarea
-              style={{ ...inputStyle, height: '110px', resize: 'vertical', fontFamily: 'inherit' }}
-              placeholder="e.g. First-generation students applying to research-heavy programs…"
-              value={form.prepared_to_support}
-              onChange={e => setForm(prev => ({ ...prev, prepared_to_support: e.target.value }))}
-            />
-          </>
-        ) : (
-          <>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 0.5rem' }}>
-              What are one to three goals or milestones you hope to work toward during your
-              first year in Ascenso? *
-            </h2>
-            <p style={{ color: '#6b6b6b', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-              Examples: completing a medical school application, finding a research
-              opportunity, exploring a specialty, preparing for residency applications,
-              improving professional communication, building a stronger professional network.
+          {stepError && (
+            <p className="ascenso-step-error" role="alert">
+              {stepError}
             </p>
+          )}
 
-            <textarea
-              style={{ ...inputStyle, height: '110px', resize: 'vertical', fontFamily: 'inherit' }}
-              placeholder="e.g. Submit a strong medical school application, find a research mentor, and decide between two specialties…"
-              value={form.goals_milestones}
-              onChange={e => setForm(prev => ({ ...prev, goals_milestones: e.target.value }))}
-            />
-
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '2.5rem 0 1.25rem' }}>
-              Have you previously had a mentor? *
-            </h2>
-
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-                marginBottom: '1.5rem',
-              }}
+          <div className="ascenso-step-actions">
+            <button
+              type="button"
+              className="ascenso-back-button"
+              onClick={() => moveToStep(currentStep - 1)}
+              disabled={currentStep === 0 || loading}
             >
-              {ASCENSO_PREVIOUS_MENTOR_OPTIONS.map(option => (
-                <label key={option} style={radioCardStyle(form.previous_mentor === option)}>
-                  <input
-                    type="radio"
-                    name="previous_mentor"
-                    value={option}
-                    checked={form.previous_mentor === option}
-                    onChange={() => setForm(prev => ({ ...prev, previous_mentor: option }))}
-                    style={{ accentColor: '#c8a96e' }}
-                  />
-                  {option}
-                </label>
-              ))}
-            </div>
+              ← Back
+            </button>
+            {currentStep < STEPS.length - 1 ? (
+              <button type="button" className="ascenso-next-button" onClick={handleNext}>
+                Next →
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="ascenso-next-button"
+                onClick={handleFinalSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Submitting…' : 'Submit application →'}
+              </button>
+            )}
+          </div>
+        </section>
 
-            <label style={labelStyle}>
-              Is there anything from a previous mentorship experience that you would like
-              Ascenso to consider? <span style={{ color: '#9a948a' }}>(optional)</span>
-            </label>
-            <textarea
-              style={{ ...inputStyle, height: '90px', resize: 'vertical', fontFamily: 'inherit' }}
-              placeholder="What worked, what didn’t, or anything the board should know…"
-              value={form.previous_mentor_notes}
-              onChange={e =>
-                setForm(prev => ({ ...prev, previous_mentor_notes: e.target.value }))
-              }
-            />
-          </>
-        )}
-
-        <hr style={{ border: 'none', borderTop: '1px solid #e8e4dc', margin: '2.5rem 0' }} />
-
-        <label style={{ ...checkCardStyle(form.can_commit), marginBottom: '0.5rem' }}>
-          <input
-            type="checkbox"
-            checked={form.can_commit}
-            onChange={e => setForm(prev => ({ ...prev, can_commit: e.target.checked }))}
-            style={{ accentColor: '#c8a96e' }}
-          />
-          I can commit to regular monthly meetings with my {isMentor ? 'mentee' : 'mentor'} for
-          the full program year. *
-        </label>
-
-        <label style={{ ...checkCardStyle(form.agrees_surveys), marginBottom: '0.5rem' }}>
-          <input
-            type="checkbox"
-            checked={form.agrees_surveys}
-            onChange={e => setForm(prev => ({ ...prev, agrees_surveys: e.target.checked }))}
-            style={{ accentColor: '#c8a96e' }}
-          />
-          I agree to complete brief midpoint and end-of-year feedback surveys to help LMSA
-          Northeast evaluate and improve Ascenso. *
-        </label>
-
-        <label style={{ ...checkCardStyle(form.agrees_conduct), marginBottom: '0.5rem' }}>
-          <input
-            type="checkbox"
-            checked={form.agrees_conduct}
-            onChange={e => setForm(prev => ({ ...prev, agrees_conduct: e.target.checked }))}
-            style={{ accentColor: '#c8a96e' }}
-          />
-          I agree to maintain respectful communication, appropriate professional boundaries,
-          and confidentiality throughout my participation in Ascenso. *
-        </label>
-
-        {/* One checkbox, two wordings — the mentor sentence names their mentee and
-            mentorship activities, the mentee sentence names their mentor and their
-            goals. isMentor picks exactly one, so both can never be on screen. */}
-        <label style={{ ...checkCardStyle(form.agrees_participation), marginBottom: '1.5rem' }}>
-          <input
-            type="checkbox"
-            checked={form.agrees_participation}
-            onChange={e =>
-              setForm(prev => ({ ...prev, agrees_participation: e.target.checked }))
-            }
-            style={{ accentColor: '#c8a96e' }}
-          />
-          {isMentor
-            ? 'I understand that Ascenso requires consistent and active participation throughout the program year, including regular communication with my mentee, required training, program check-ins, and agreed-upon mentorship activities. *'
-            : 'I understand that Ascenso requires consistent and active participation throughout the program year, including regular communication with my mentor, required training, program check-ins, and follow-through on agreed-upon goals. *'}
-        </label>
-
-        <p
-          style={{
-            color: '#6b6b6b',
-            fontSize: '0.875rem',
-            lineHeight: 1.6,
-            marginBottom: '1.5rem',
-          }}
-        >
-          Application information will be reviewed only by authorized Ascenso reviewers and
-          designated members of LMSA Northeast leadership for application review, matching,
-          communication, and evaluation. Information will not be made public without the
-          applicant&apos;s permission.
-        </p>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <Turnstile
-            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-            onSuccess={token => {
-              turnstileToken.current = token
-            }}
-            onExpire={() => {
-              turnstileToken.current = null
-            }}
-            options={{ theme: 'light' }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            style={{
-              background: loading ? '#e8e4dc' : '#c8a96e',
-              color: loading ? '#9a948a' : '#1a1a2e',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '0.75rem 2rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.2s',
-            }}
-          >
-            {loading ? 'Submitting...' : 'Submit application →'}
-          </button>
-        </div>
+        <p className="ascenso-save-note">Your answers stay here while this page remains open.</p>
       </div>
     </div>
   )
@@ -858,14 +1000,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   outline: 'none',
   boxSizing: 'border-box',
-}
-
-// Same two-column multi-select grid the mentor/mentee onboarding forms use.
-const checkGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: '0.5rem',
-  marginBottom: '2.5rem',
 }
 
 const radioCardStyle = (selected: boolean): React.CSSProperties => ({
