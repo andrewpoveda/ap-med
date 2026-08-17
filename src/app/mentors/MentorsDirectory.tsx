@@ -9,7 +9,7 @@ import FilterBar from "@/components/FilterBar";
 function SkeletonCard() {
   return (
     <div className="border border-[#e8e4dc] rounded-xl bg-white overflow-hidden animate-pulse">
-      <div className="w-full h-[180px] bg-[#ece7dd]" />
+      <div className="w-full aspect-[6/5] bg-[#ece7dd]" />
       <div className="p-5 space-y-2">
         <div className="h-4 bg-[#e4ded3] rounded w-1/2" />
         <div className="h-3 bg-[#ece7dd] rounded w-3/4" />

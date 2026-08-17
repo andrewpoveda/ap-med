@@ -11,15 +11,33 @@ type Props = {
 
 const GOLD = '#c8a96e';
 
+// Portraits need individual focal points when cropped into the wide card frame.
+// Keep this keyed by the public display name so the source images can remain
+// unchanged in Supabase.
+const PHOTO_POSITIONS: Record<string, string> = {
+  'Devin Barzallo': '50% 15%',
+  'Ricardo Correa': '50% 6%',
+  'Henry del Carmen': '50% 21%',
+  'Marcos Gomez Ambriz': '50% 7%',
+  'Emely Loscalzo': '50% 0%',
+  'Andrea Mendez Colmenares': '50% 5%',
+  'Rebecca Zasloff': '50% 0%',
+};
+
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 }
 
 function PhotoArea({ name, photoUrl, isGuest }: { name: string; photoUrl?: string; isGuest: boolean }) {
   return (
-    <div style={{ position: 'relative', width: '100%', height: 180, background: '#f0ece4' }}>
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '6 / 5', background: '#f0ece4' }}>
       {photoUrl ? (
-        <Image src={photoUrl} alt={name} fill style={{ objectFit: 'cover' }} />
+        <Image
+          src={photoUrl}
+          alt={name}
+          fill
+          style={{ objectFit: 'cover', objectPosition: PHOTO_POSITIONS[name] ?? '50% 50%' }}
+        />
       ) : (
         <div style={{
           width: '100%', height: '100%', display: 'flex',
