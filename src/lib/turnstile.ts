@@ -46,9 +46,13 @@ export async function verifyTurnstileToken(token: string): Promise<boolean> {
   // action label. Enforced only when the allowlist env vars are configured, so
   // existing deployments — and the CF test keys used in local dev — keep working
   // until the allowlists are set in production.
-  const allowedHosts = envList("TURNSTILE_ALLOWED_HOSTNAMES").map(h => h.toLowerCase());
+  // AP MED is served directly from both the apex and www hostnames. Treat the
+  // conventional www alias as the same hostname for this allowlist check; an
+  // exact comparison rejected otherwise-valid tokens solved on www.ap-med.org
+  // when production was configured with only ap-med.org (and vice versa).
+  const allowedHosts = envList("TURNSTILE_ALLOWED_HOSTNAMES").map(normalizeHostname);
   if (allowedHosts.length > 0) {
-    const host = String(data.hostname ?? "").toLowerCase();
+    const host = normalizeHostname(data.hostname);
     if (!allowedHosts.includes(host)) {
       console.error(`Turnstile hostname not allowed: ${host || "(none)"}`);
       return false;
@@ -72,4 +76,8 @@ function envList(name: string): string[] {
     .split(",")
     .map(v => v.trim())
     .filter(Boolean);
+}
+
+function normalizeHostname(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase().replace(/^www\./, "");
 }
