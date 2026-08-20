@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Turnstile } from '@marsidev/react-turnstile'
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
+import { usePostHog } from 'posthog-js/react'
 import Link from 'next/link'
 import { SPECIALTIES } from '@/data/specialties'
 import {
@@ -102,6 +103,7 @@ export default function AscensoApplyForm({
   cohortId: string
   cohortName: string
 }) {
+  const posthog = usePostHog()
   const [form, setForm] = useState<ApplicationFormData>({
     role: 'mentee',
     track: '',
@@ -138,12 +140,19 @@ export default function AscensoApplyForm({
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [stepError, setStepError] = useState<string | null>(null)
+  const [turnstileStatus, setTurnstileStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const turnstileToken = useRef<string | null>(null)
+  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined)
+  const submittingRef = useRef(false)
   const formTopRef = useRef<HTMLDivElement | null>(null)
 
   const isMentor = form.role === 'mentor'
 
   const moveToStep = (step: number) => {
+    if (currentStep === STEPS.length - 1 && step < currentStep) {
+      turnstileToken.current = null
+      setTurnstileStatus('loading')
+    }
     setStepError(null)
     setCurrentStep(step)
     window.requestAnimationFrame(() => {
@@ -206,7 +215,9 @@ export default function AscensoApplyForm({
       if (!form.agrees_surveys || !form.agrees_conduct || !form.agrees_participation) {
         return 'Confirm each acknowledgment before submitting.'
       }
-      if (!turnstileToken.current) return 'Complete the CAPTCHA check before submitting.'
+      if (!turnstileToken.current || turnstileStatus !== 'ready') {
+        return 'Complete the CAPTCHA check before submitting.'
+      }
     }
     return null
   }
@@ -275,77 +286,22 @@ export default function AscensoApplyForm({
   }
 
   const handleSubmit = async () => {
-    if (!form.track) {
-      alert('Please select your track.')
-      return
-    }
-    if (
-      !form.full_name.trim() ||
-      !form.email.trim() ||
-      !form.institution.trim() ||
-      !form.current_position.trim() ||
-      !form.current_location.trim() ||
-      !form.motivation.trim()
-    ) {
-      alert('Please fill out all required fields.')
-      return
-    }
-    // The matcher's heaviest differentiating signal — "Not yet decided" and
-    // "Other" are both valid answers, so there's always something to pick.
-    if (form.specialty.length === 0) {
-      alert(
-        isMentor
-          ? 'Please select at least one specialty you practice or trained in.'
-          : 'Please select at least one specialty you want to explore.',
-      )
-      return
-    }
-    // Required on BOTH sides: an unanswered side makes this weight score the
-    // same for every candidate pair, which is the same as not asking at all.
-    if (form.help_with.length === 0) {
-      alert(
-        isMentor
-          ? 'Please select at least one area you can support your mentee in.'
-          : 'Please select at least one area you want support with.',
-      )
-      return
-    }
-    if (form.help_with.includes(HELP_WITH_OTHER) && !form.help_with_other.trim()) {
-      alert('Please describe your "Other" support area, or deselect Other.')
-      return
-    }
-    if (form.identity.length === 0) {
-      alert('Please select at least one identity or background option.')
-      return
-    }
-    // Role-scoped board questions. Only the side that can see the field is held
-    // to it — the other side's copy is blank by construction (setRole clears it)
-    // and is dropped server-side anyway.
-    if (!isMentor && !form.goals_milestones.trim()) {
-      alert('Please share one to three goals or milestones for your first year in Ascenso.')
-      return
-    }
-    if (!isMentor && !form.previous_mentor) {
-      alert('Please tell us whether you’ve previously had a mentor.')
-      return
-    }
-    if (isMentor && !form.mentee_capacity) {
-      alert('Please tell us how many mentees you’re willing to mentor this program year.')
-      return
-    }
-    if (!form.can_commit) {
-      alert('Please confirm you can commit to regular meetings for the program year.')
-      return
-    }
-    if (!form.agrees_surveys || !form.agrees_conduct || !form.agrees_participation) {
-      alert('Please confirm each acknowledgment before submitting.')
-      return
-    }
-    if (!turnstileToken.current) {
-      alert('Please complete the CAPTCHA check first.')
+    if (submittingRef.current) return
+
+    const widgetExpired = turnstileRef.current?.isExpired() === true
+    if (!turnstileToken.current || turnstileStatus !== 'ready' || widgetExpired) {
+      turnstileToken.current = null
+      setTurnstileStatus('loading')
+      setStepError('The security check is refreshing. Please wait a moment, then submit again.')
+      turnstileRef.current?.reset()
+      posthog?.capture('ascenso_application_blocked', {
+        role: form.role,
+        reason: 'captcha_not_ready',
+      })
       return
     }
 
+    submittingRef.current = true
     setLoading(true)
 
     try {
@@ -367,7 +323,7 @@ export default function AscensoApplyForm({
         }),
       })
 
-      const resData = await res.json()
+      const resData = await res.json().catch(() => null)
 
       // 409 now means only one thing: the board already reviewed this
       // application, so it can't be rewritten. An un-reviewed one is updated in
@@ -385,15 +341,37 @@ export default function AscensoApplyForm({
 
       if (!res.ok) {
         console.error('Application API error:', resData?.error || resData)
-        alert(resData?.error || 'Something went wrong, please try again.')
+        const isCaptchaFailure = resData?.code === 'captcha_failed'
+        turnstileToken.current = null
+        setTurnstileStatus('loading')
+        turnstileRef.current?.reset()
+        setStepError(isCaptchaFailure
+          ? 'The security check expired before your application reached us. Your answers are still here—when the check says complete, submit again.'
+          : `${resData?.error || "We couldn't save your application"}. Your answers are still here—when the fresh security check says complete, try again.`)
+        posthog?.capture('ascenso_application_failed', {
+          role: form.role,
+          reason: isCaptchaFailure ? 'captcha_failed' : (resData?.code || `http_${res.status}`),
+        })
         return
       }
 
+      posthog?.capture('ascenso_application_succeeded', {
+        role: form.role,
+        updated: resData?.updated === true,
+      })
       setOutcome({ kind: resData?.updated === true ? 'updated' : 'submitted' })
     } catch (error) {
       console.error('Submit error:', error)
-      alert('Something went wrong, please try again.')
+      turnstileToken.current = null
+      setTurnstileStatus('loading')
+      turnstileRef.current?.reset()
+      setStepError("We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.")
+      posthog?.capture('ascenso_application_failed', {
+        role: form.role,
+        reason: 'network_error',
+      })
     } finally {
+      submittingRef.current = false
       setLoading(false)
     }
   }
@@ -890,7 +868,7 @@ export default function AscensoApplyForm({
                     onChange={e => setForm(prev => ({ ...prev, can_commit: e.target.checked }))}
                     style={{ accentColor: '#c8a96e' }}
                   />
-                  I can commit to regular monthly meetings with my {isMentor ? 'mentee' : 'mentor'}
+                  I can commit to regular monthly meetings with my {isMentor ? 'mentee' : 'mentor'}{' '}
                   for the full program year. *
                 </label>
                 <label style={checkCardStyle(form.agrees_surveys)}>
@@ -938,16 +916,65 @@ export default function AscensoApplyForm({
                 </p>
               </div>
 
-              <Turnstile
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                onSuccess={token => {
-                  turnstileToken.current = token
-                }}
-                onExpire={() => {
-                  turnstileToken.current = null
-                }}
-                options={{ theme: 'light' }}
-              />
+              <div style={securityPanelStyle} aria-live="polite">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <strong style={{ display: 'block', fontSize: '0.9rem', color: '#1a1a2e' }}>Security check</strong>
+                    <span style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.8rem', color: turnstileStatus === 'error' ? '#b91c1c' : '#6b6b6b' }}>
+                      {turnstileStatus === 'ready' && 'Complete — your application is ready to submit.'}
+                      {turnstileStatus === 'loading' && 'Checking your browser. This usually takes a moment.'}
+                      {turnstileStatus === 'error' && "The security check couldn't load. A content blocker or network issue may be interfering."}
+                    </span>
+                  </div>
+                  {turnstileStatus === 'error' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        turnstileToken.current = null
+                        setStepError(null)
+                        setTurnstileStatus('loading')
+                        turnstileRef.current?.reset()
+                      }}
+                      style={retryButtonStyle}
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  onSuccess={token => {
+                    turnstileToken.current = token
+                    setTurnstileStatus('ready')
+                  }}
+                  onExpire={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('loading')
+                  }}
+                  onTimeout={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('loading')
+                  }}
+                  onError={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('error')
+                  }}
+                  onUnsupported={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('error')
+                  }}
+                  scriptOptions={{ onError: () => setTurnstileStatus('error') }}
+                  options={{
+                    theme: 'light',
+                    appearance: 'always',
+                    size: 'flexible',
+                    retry: 'auto',
+                    refreshExpired: 'auto',
+                    refreshTimeout: 'auto',
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -975,9 +1002,13 @@ export default function AscensoApplyForm({
                 type="button"
                 className="ascenso-next-button"
                 onClick={handleFinalSubmit}
-                disabled={loading}
+                disabled={loading || turnstileStatus !== 'ready'}
               >
-                {loading ? 'Submitting…' : 'Submit application →'}
+                {loading
+                  ? 'Submitting…'
+                  : turnstileStatus !== 'ready'
+                    ? 'Finishing security check…'
+                    : 'Submit application →'}
               </button>
             )}
           </div>
@@ -1006,6 +1037,24 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   outline: 'none',
   boxSizing: 'border-box',
+}
+
+const securityPanelStyle: React.CSSProperties = {
+  padding: '1rem',
+  border: '1px solid #e8e4dc',
+  borderRadius: '12px',
+  background: '#f7f3ec',
+}
+
+const retryButtonStyle: React.CSSProperties = {
+  alignSelf: 'flex-start',
+  border: 0,
+  background: 'transparent',
+  color: '#8a6a2f',
+  fontSize: '0.8rem',
+  fontWeight: 600,
+  textDecoration: 'underline',
+  cursor: 'pointer',
 }
 
 const radioCardStyle = (selected: boolean): React.CSSProperties => ({

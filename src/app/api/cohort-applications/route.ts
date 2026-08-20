@@ -36,7 +36,7 @@ type Track = (typeof TRACKS)[number]
  * fixed list, so anything else is a stale client or a hand-crafted request, and
  * neither is worth failing a real application over.
  */
-function pickTags(value: unknown, allowed: string[]): string[] {
+function pickTags(value: unknown, allowed: readonly string[]): string[] {
   if (!Array.isArray(value)) return []
   const permitted = new Set(allowed)
   const out: string[] = []
@@ -59,46 +59,157 @@ function pickTags(value: unknown, allowed: string[]): string[] {
  * these are review-only answers, and none is worth failing a real application
  * over. Stored verbatim because the board reads the sentence, not a code.
  */
-function pickOne(value: unknown, allowed: string[]): string {
+function pickOne(value: unknown, allowed: readonly string[]): string {
   if (typeof value !== 'string') return ''
   const choice = value.trim()
   return allowed.includes(choice) ? choice : ''
 }
 
 export async function POST(request: Request) {
-  const supabaseAdmin = getSupabaseAdmin()
-  const data = await request.json()
+  let data: Record<string, unknown>
+  try {
+    const parsed: unknown = await request.json()
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Submission body must be an object')
+    }
+    data = parsed as Record<string, unknown>
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid submission', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
 
-  const turnstileOk = await verifyTurnstileToken(data.turnstile_token ?? '')
+  const turnstileOk = await verifyTurnstileToken(cap(data.turnstile_token, 2048))
   if (!turnstileOk) {
-    return NextResponse.json({ error: 'CAPTCHA verification failed' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Security verification expired or failed', code: 'captcha_failed' },
+      { status: 400 },
+    )
   }
 
   const role = String(data.role ?? '')
   if (!ROLES.includes(role as Role)) {
-    return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Invalid role', code: 'invalid_submission' },
+      { status: 400 },
+    )
   }
 
   const track = String(data.track ?? '')
   if (!TRACKS.includes(track as Track)) {
-    return NextResponse.json({ error: 'Invalid track' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Invalid track', code: 'invalid_submission' },
+      { status: 400 },
+    )
   }
 
   const fullName = cap(data.full_name, LIMITS.name).trim()
-  if (!fullName) {
-    return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
-  }
-
-  if (!isValidEmail(data.email)) {
-    return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
-  }
-  const email = cap(data.email, LIMITS.name).trim()
-
+  const email = cap(data.email, LIMITS.name).trim().toLowerCase()
+  const institution = cap(data.institution, LIMITS.name).trim()
+  const currentPosition = cap(data.current_position, LIMITS.name).trim()
+  const currentLocation = cap(data.current_location, LIMITS.name).trim()
+  const motivation = cap(data.motivation, LIMITS.text).trim()
+  const experienceGoals = cap(data.experience_goals, LIMITS.text).trim()
   const linkedinUrl = cap(data.linkedin_url, LIMITS.name).trim()
+
+  if (!fullName || !institution || !currentPosition || !currentLocation || !motivation) {
+    return NextResponse.json(
+      { error: 'Please complete all required fields', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  if (!isValidEmail(email)) {
+    return NextResponse.json(
+      { error: 'A valid email is required', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
   if (linkedinUrl && !isHttpUrl(linkedinUrl)) {
     return NextResponse.json(
-      { error: 'LinkedIn URL must start with http:// or https://' },
+      { error: 'LinkedIn URL must start with http:// or https://', code: 'invalid_submission' },
       { status: 400 }
+    )
+  }
+
+  const identity = pickTags(data.identity, IDENTITY_OPTIONS)
+  if (identity.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one identity or background option is required', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  const supportNeeds = pickTags(role === 'mentor' ? data.can_help_with : data.help_with, [
+    ...ASCENSO_HELP_WITH_OPTIONS,
+    HELP_WITH_OTHER,
+  ])
+  if (supportNeeds.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one support area is required', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  const helpWithOther = supportNeeds.includes(HELP_WITH_OTHER)
+    ? cap(data.help_with_other, LIMITS.name).trim()
+    : ''
+  if (supportNeeds.includes(HELP_WITH_OTHER) && !helpWithOther) {
+    return NextResponse.json(
+      { error: 'Please describe the other support area', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  const specialty = pickTags(
+    role === 'mentor' ? data.specialty : data.preferred_specialty,
+    SPECIALTIES,
+  )
+  if (specialty.length === 0) {
+    return NextResponse.json(
+      { error: 'At least one specialty is required', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  if (
+    data.can_commit !== true ||
+    data.agrees_surveys !== true ||
+    data.agrees_conduct !== true ||
+    data.agrees_participation !== true
+  ) {
+    return NextResponse.json(
+      { error: 'Please confirm every required acknowledgment', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  const goalsMilestones = cap(data.goals_milestones, LIMITS.text).trim()
+  const previousMentor = pickOne(data.previous_mentor, ASCENSO_PREVIOUS_MENTOR_OPTIONS)
+  const menteeCapacity = pickOne(data.mentee_capacity, ASCENSO_MENTEE_CAPACITY_OPTIONS)
+  if (role === 'mentee' && (!goalsMilestones || !previousMentor)) {
+    return NextResponse.json(
+      { error: 'Please complete the required mentee program-fit questions', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+  if (role === 'mentor' && !menteeCapacity) {
+    return NextResponse.json(
+      { error: 'Please choose your mentee capacity', code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
+  let supabaseAdmin
+  try {
+    supabaseAdmin = getSupabaseAdmin()
+  } catch (error) {
+    console.error('Cohort application API configuration failed:', error)
+    return NextResponse.json(
+      { error: 'Could not save your application', code: 'server_error' },
+      { status: 500 },
     )
   }
 
@@ -112,11 +223,14 @@ export async function POST(request: Request) {
     .single()
 
   if (cohortError || !cohort) {
-    return NextResponse.json({ error: 'Cohort not found' }, { status: 404 })
+    return NextResponse.json(
+      { error: 'Cohort not found', code: 'cohort_not_found' },
+      { status: 404 },
+    )
   }
   if (cohort.status !== 'applications_open') {
     return NextResponse.json(
-      { error: 'Applications are closed for this cohort' },
+      { error: 'Applications are closed for this cohort', code: 'applications_closed' },
       { status: 403 }
     )
   }
@@ -130,30 +244,12 @@ export async function POST(request: Request) {
   // mentees.interests and their `help_with` on mentees.help_with. Both sides
   // answer the support-needs question — that overlap is the matcher's 25%
   // weight. Sending the wrong role's key simply drops it.
-  const identity = pickTags(data.identity, IDENTITY_OPTIONS)
-  if (identity.length === 0) {
-    return NextResponse.json(
-      { error: 'At least one identity or background option is required' },
-      { status: 400 },
-    )
-  }
-  const supportNeeds = pickTags(role === 'mentor' ? data.can_help_with : data.help_with, [
-    ...ASCENSO_HELP_WITH_OPTIONS,
-    HELP_WITH_OTHER,
-  ])
-  // Free text only — never a matching tag (overlap is exact-string, so one
-  // person's phrasing would never meet another's). Kept for the board to read,
-  // and only when "Other" was actually selected.
-  const helpWithOther = supportNeeds.includes(HELP_WITH_OTHER)
-    ? cap(data.help_with_other, LIMITS.name).trim()
-    : ''
-
   const answers = {
-    institution: cap(data.institution, LIMITS.name),
-    current_position: cap(data.current_position, LIMITS.name),
-    current_location: cap(data.current_location, LIMITS.name),
-    motivation: cap(data.motivation, LIMITS.text),
-    experience_goals: cap(data.experience_goals, LIMITS.text),
+    institution,
+    current_position: currentPosition,
+    current_location: currentLocation,
+    motivation,
+    experience_goals: experienceGoals,
     linkedin_url: linkedinUrl,
     can_commit: data.can_commit === true,
     identity,
@@ -166,19 +262,19 @@ export async function POST(request: Request) {
     agrees_participation: data.agrees_participation === true,
     ...(role === 'mentor'
       ? {
-          specialty: pickTags(data.specialty, SPECIALTIES),
+          specialty,
           can_help_with: supportNeeds,
           // Survey answer only — nothing sizes a mentor's load off this. See
           // ASCENSO_MENTEE_CAPACITY_OPTIONS in src/data/tags.ts.
-          mentee_capacity: pickOne(data.mentee_capacity, ASCENSO_MENTEE_CAPACITY_OPTIONS),
-          prepared_to_support: cap(data.prepared_to_support, LIMITS.text),
+          mentee_capacity: menteeCapacity,
+          prepared_to_support: cap(data.prepared_to_support, LIMITS.text).trim(),
         }
       : {
-          preferred_specialty: pickTags(data.preferred_specialty, SPECIALTIES),
+          preferred_specialty: specialty,
           help_with: supportNeeds,
-          goals_milestones: cap(data.goals_milestones, LIMITS.text),
-          previous_mentor: pickOne(data.previous_mentor, ASCENSO_PREVIOUS_MENTOR_OPTIONS),
-          previous_mentor_notes: cap(data.previous_mentor_notes, LIMITS.text),
+          goals_milestones: goalsMilestones,
+          previous_mentor: previousMentor,
+          previous_mentor_notes: cap(data.previous_mentor_notes, LIMITS.text).trim(),
         }),
   }
 

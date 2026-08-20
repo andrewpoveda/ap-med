@@ -1,8 +1,10 @@
 'use client'
 import { SPECIALTIES } from "@/data/specialties"
 import { IDENTITY_OPTIONS, HELP_WITH_OPTIONS } from "@/data/tags"
+import { MENTEE_STAGE_OPTIONS } from '@/data/mentee-onboarding'
 import { useState, useEffect, useRef } from 'react'
-import { Turnstile } from "@marsidev/react-turnstile"
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
+import { usePostHog } from 'posthog-js/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { isValidEmail } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
@@ -17,7 +19,8 @@ const STEPS = [
 ] as const
 
 type MenteeOnboardingFormData = {
-  full_name: string
+  first_name: string
+  last_name: string
   email: string
   school: string
   current_stage: string
@@ -30,14 +33,6 @@ type MenteeOnboardingFormData = {
   notes: string
 }
 
-const STAGES = [
-  'Pre-med / Undergrad',
-  'Post-bacc',
-  'Gap year',
-  'MD / DO Student',
-  'Other',
-]
-
 // Identity + help-with options come from the shared canonical lists
 // (src/data/tags.ts) so this form, the mentor form, and the Ascenso cohort
 // application all emit identical strings — see IDENTITY_OPTIONS import.
@@ -48,12 +43,14 @@ const OTHER_SPECIALTY = 'Other'
 const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)
 
 export default function MenteeOnboardingForm() {
+  const posthog = usePostHog()
   const router = useRouter()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
   const testMode = searchParams.get('test') === '1'
   const [form, setForm] = useState<MenteeOnboardingFormData>({
-  full_name: '',
+  first_name: '',
+  last_name: '',
   email: '',
   school: '',
   current_stage: '',
@@ -68,7 +65,11 @@ export default function MenteeOnboardingForm() {
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [stepError, setStepError] = useState<string | null>(null)
+  const [turnstileStatus, setTurnstileStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const turnstileToken = useRef<string | null>(null)
+  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined)
+  const submittingRef = useRef(false)
+  const submissionId = useRef<string | null>(null)
   const formTopRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -78,6 +79,10 @@ export default function MenteeOnboardingForm() {
   }, [mentorFromUrl])
 
   const moveToStep = (step: number) => {
+    if (currentStep === STEPS.length - 1 && step < currentStep) {
+      turnstileToken.current = null
+      setTurnstileStatus('loading')
+    }
     setStepError(null)
     setCurrentStep(step)
     window.requestAnimationFrame(() => {
@@ -86,9 +91,10 @@ export default function MenteeOnboardingForm() {
   }
 
   const validateStep = (step: number): string | null => {
-    const nameParts = form.full_name.trim().split(/\s+/)
     if (step === 0) {
-      if (!nameParts[0] || !nameParts[1]) return 'Enter your first and last name to continue.'
+      if (!form.first_name.trim() || !form.last_name.trim()) {
+        return 'Enter your first and last name to continue.'
+      }
       if (!isValidEmail(form.email)) return 'Enter a valid email address to continue.'
       if (!form.school.trim()) return 'Enter your school or institution to continue.'
       if (!form.current_stage) return 'Choose your current stage to continue.'
@@ -110,7 +116,7 @@ export default function MenteeOnboardingForm() {
     if (step === 3 && form.identity.length === 0) {
       return 'Select at least one identity or background option to continue.'
     }
-    if (step === 5 && !turnstileToken.current) {
+    if (step === 5 && (!turnstileToken.current || turnstileStatus !== 'ready')) {
       return 'Complete the CAPTCHA check before submitting.'
     }
     return null
@@ -147,59 +153,88 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
   }
 
   const handleSubmit = async () => {
-    if (!form.full_name || !form.email || !form.school || !form.current_stage) {
-      alert('Please fill out all required fields.')
+    if (submittingRef.current) return
+    if (!form.first_name.trim() || !form.last_name.trim() || !form.email || !form.school || !form.current_stage) {
+      setStepError('Please fill out all required fields.')
       return
     }
 
     if (form.help_with.length === 0) {
-      alert('Please select at least one area where you want support.')
+      setStepError('Please select at least one area where you want support.')
       return
     }
 
     if (form.interests.length === 0) {
-      alert('Please select at least one medical interest.')
+      setStepError('Please select at least one medical interest.')
       return
     }
 
     if (form.interests.includes(OTHER_SPECIALTY) && !form.other_interest.trim()) {
-      alert('Please enter your other specialty or deselect Other.')
+      setStepError('Please enter your other specialty or deselect Other.')
       return
     }
 
     if (form.identity.length === 0) {
-      alert('Please select at least one identity or background option.')
+      setStepError('Please select at least one identity or background option.')
       return
     }
 
-    if (!turnstileToken.current) {
-      alert('Please complete the CAPTCHA check first.')
+    const widgetExpired = turnstileRef.current?.isExpired() === true
+    if (!turnstileToken.current || turnstileStatus !== 'ready' || widgetExpired) {
+      turnstileToken.current = null
+      setTurnstileStatus('loading')
+      setStepError('The security check is refreshing. Please wait a moment, then submit again.')
+      turnstileRef.current?.reset()
+      posthog?.capture('mentee_submission_blocked', { reason: 'captcha_not_ready' })
       return
     }
 
+    submittingRef.current = true
     setLoading(true)
+    setStepError(null)
+    const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`
 
     try {
+      submissionId.current ??= createSubmissionId()
       // 1. Save mentee + run matching in one Turnstile-verified request.
       //    No email fires on submit — mentors are only notified when the mentee
       //    clicks "Request" on the results page.
       const saveRes = await fetch('/api/mentees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, turnstile_token: turnstileToken.current }),
+        body: JSON.stringify({
+          ...form,
+          full_name: fullName,
+          submission_id: submissionId.current,
+          turnstile_token: turnstileToken.current,
+        }),
       })
 
-      const saveData = await saveRes.json()
+      const saveData = await saveRes.json().catch(() => null)
 
       if (!saveRes.ok) {
         console.error('Supabase API error:', saveData?.error || saveData)
-        alert('Something went wrong, please try again.')
+        const isCaptchaFailure = saveData?.code === 'captcha_failed'
+        turnstileToken.current = null
+        setTurnstileStatus('loading')
+        turnstileRef.current?.reset()
+        setStepError(isCaptchaFailure
+          ? 'The security check expired before your submission reached us. Your answers are still here—when the check says complete, submit again.'
+          : `${saveData?.error || "We couldn't save your request"}. Your answers are still here—when the fresh security check says complete, try again.`)
+        posthog?.capture('mentee_submission_failed', {
+          reason: isCaptchaFailure ? 'captcha_failed' : (saveData?.code || `http_${saveRes.status}`),
+        })
         return
       }
 
       if (!saveData.mentors) {
         console.error('Matching failed (mentee saved) — showing browse-all results')
-        // Still show results even if match fails — just redirect to browse all
+        // Preserve the saved submission context instead of sending the results
+        // page there empty (which would bounce back to a blank form).
+        sessionStorage.setItem('matchResults', JSON.stringify([]))
+        sessionStorage.setItem('menteeName', fullName)
+        sessionStorage.setItem('menteeId', saveData.menteeId || '')
+        sessionStorage.setItem('matchTestMode', testMode ? '1' : '')
         router.push('/mentors/results')
         return
       }
@@ -208,15 +243,21 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
       //    request capability the results page sends to /api/notify — the
       //    endpoint resolves all mentee data from the DB row by this id.
       sessionStorage.setItem('matchResults', JSON.stringify(saveData.mentors))
-      sessionStorage.setItem('menteeName', form.full_name)
+      sessionStorage.setItem('menteeName', fullName)
       sessionStorage.setItem('menteeId', saveData.menteeId || '')
       // Carry dry-run mode to the results page so the "Request" button also skips email
       sessionStorage.setItem('matchTestMode', testMode ? '1' : '')
+      posthog?.capture('mentee_submission_succeeded')
       router.push('/mentors/results')
     } catch (error) {
       console.error('Submit error:', error)
-      alert('Something went wrong, please try again.')
+      turnstileToken.current = null
+      setTurnstileStatus('loading')
+      turnstileRef.current?.reset()
+      setStepError("We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.")
+      posthog?.capture('mentee_submission_failed', { reason: 'network_error' })
     } finally {
+      submittingRef.current = false
       setLoading(false)
     }
   }
@@ -309,11 +350,8 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                       style={inputStyle}
                       autoComplete="given-name"
                       placeholder="John"
-                      value={form.full_name.split(' ')[0] || ''}
-                      onChange={e => setForm(prev => ({
-                        ...prev,
-                        full_name: e.target.value + ' ' + (prev.full_name.split(' ')[1] || ''),
-                      }))}
+                      value={form.first_name}
+                      onChange={e => setForm(prev => ({ ...prev, first_name: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -322,11 +360,8 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                       style={inputStyle}
                       autoComplete="family-name"
                       placeholder="Doe"
-                      value={form.full_name.split(' ')[1] || ''}
-                      onChange={e => setForm(prev => ({
-                        ...prev,
-                        full_name: (prev.full_name.split(' ')[0] || '') + ' ' + e.target.value,
-                      }))}
+                      value={form.last_name}
+                      onChange={e => setForm(prev => ({ ...prev, last_name: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -369,7 +404,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 <h3>Your current stage *</h3>
                 <p className="ascenso-helper">Where are you in your pre-med journey?</p>
                 <div className="ascenso-choice-list">
-                  {STAGES.map(stage => (
+                  {MENTEE_STAGE_OPTIONS.map(stage => (
                     <label key={stage} style={radioCardStyle(form.current_stage === stage)}>
                       <input
                         type="radio"
@@ -536,12 +571,65 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 We&apos;re so glad you&apos;re here, and we look forward to supporting you on your path
                 to medicine.
               </p>
-              <Turnstile
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                onSuccess={token => { turnstileToken.current = token }}
-                onExpire={() => { turnstileToken.current = null }}
-                options={{ theme: 'light' }}
-              />
+              <div style={securityPanelStyle} aria-live="polite">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <strong style={{ display: 'block', fontSize: '0.9rem', color: '#1a1a2e' }}>Security check</strong>
+                    <span style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.8rem', color: turnstileStatus === 'error' ? '#b91c1c' : '#6b6b6b' }}>
+                      {turnstileStatus === 'ready' && 'Complete — your request is ready to submit.'}
+                      {turnstileStatus === 'loading' && 'Checking your browser. This usually takes a moment.'}
+                      {turnstileStatus === 'error' && "The security check couldn't load. A content blocker or network issue may be interfering."}
+                    </span>
+                  </div>
+                  {turnstileStatus === 'error' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        turnstileToken.current = null
+                        setStepError(null)
+                        setTurnstileStatus('loading')
+                        turnstileRef.current?.reset()
+                      }}
+                      style={retryButtonStyle}
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  onSuccess={token => {
+                    turnstileToken.current = token
+                    setTurnstileStatus('ready')
+                  }}
+                  onExpire={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('loading')
+                  }}
+                  onTimeout={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('loading')
+                  }}
+                  onError={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('error')
+                  }}
+                  onUnsupported={() => {
+                    turnstileToken.current = null
+                    setTurnstileStatus('error')
+                  }}
+                  scriptOptions={{ onError: () => setTurnstileStatus('error') }}
+                  options={{
+                    theme: 'light',
+                    appearance: 'always',
+                    size: 'flexible',
+                    retry: 'auto',
+                    refreshExpired: 'auto',
+                    refreshTimeout: 'auto',
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -567,9 +655,13 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 type="button"
                 className="ascenso-next-button"
                 onClick={handleFinalSubmit}
-                disabled={loading}
+                disabled={loading || turnstileStatus !== 'ready'}
               >
-                {loading ? 'Finding your matches…' : 'See my matches →'}
+                {loading
+                  ? 'Finding your matches…'
+                  : turnstileStatus !== 'ready'
+                    ? 'Finishing security check…'
+                    : 'See my matches →'}
               </button>
             )}
           </div>
@@ -598,6 +690,36 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   outline: 'none',
   boxSizing: 'border-box',
+}
+
+const securityPanelStyle: React.CSSProperties = {
+  padding: '1rem',
+  border: '1px solid #e8e4dc',
+  borderRadius: '12px',
+  background: '#f7f3ec',
+}
+
+const retryButtonStyle: React.CSSProperties = {
+  alignSelf: 'flex-start',
+  border: 0,
+  background: 'transparent',
+  color: '#8a6a2f',
+  fontSize: '0.8rem',
+  fontWeight: 600,
+  textDecoration: 'underline',
+  cursor: 'pointer',
+}
+
+function createSubmissionId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+
+  // Older WebKit builds expose getRandomValues but not randomUUID. Keep the
+  // idempotency protection working there instead of leaving Submit stuck.
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 const radioCardStyle = (selected: boolean): React.CSSProperties => ({
