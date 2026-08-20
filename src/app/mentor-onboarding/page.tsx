@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Turnstile } from "@marsidev/react-turnstile";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { usePostHog } from "posthog-js/react";
 import { SPECIALTIES } from "@/data/specialties";
 // Identity + help-with options come from the shared canonical lists
 // (src/data/tags.ts), same reason as SPECIALTIES: the matcher scores overlap by
 // exact string equality across all three intake forms.
 import { IDENTITY_OPTIONS, HELP_WITH_OPTIONS } from "@/data/tags";
+import {
+  MENTOR_CAPACITY_OPTIONS,
+  MENTOR_CONTACT_OPTIONS,
+  MENTOR_STAGE_OPTIONS,
+} from "@/data/mentor-onboarding";
 
 type FormData = {
   firstName: string;
@@ -31,25 +37,11 @@ type FormData = {
   notes: string;
 };
 
-const STAGE_OPTIONS = [
-  "Pre-med / Undergrad",
-  "Post-bacc",
-  "MD / DO Student",
-  "Resident",
-  "Fellow",
-  "Attending Physician",
-  "Faculty / Dean / Administrator",
-];
-
 // Specialty options come from the shared canonical list (src/data/specialties.ts)
 // so the mentor + mentee forms emit identical strings — see SPECIALTIES import.
 const SPECIALTY_OPTIONS = SPECIALTIES;
 
 const HELP_OPTIONS = HELP_WITH_OPTIONS;
-
-const CONTACT_OPTIONS = ["Email", "LinkedIn", "Scheduling link", "AP MED form only"];
-
-const CAPACITY_OPTIONS = ["1", "2–3", "4 or more", "None right now — add me to the waitlist"];
 
 const SECTION_LABELS = [
   "Basic info",
@@ -121,10 +113,16 @@ const Field = ({ label, error, optional, hint, children }: { label: string; erro
 );
 
 export default function MentorOnboardingPage() {
+  const posthog = usePostHog();
   const [section, setSection] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [turnstileStatus, setTurnstileStatus] = useState<"loading" | "ready" | "error">("loading");
   const turnstileToken = useRef<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined);
+  const submittingRef = useRef(false);
 
   const [form, setForm] = useState<FormData>({
     firstName: "",
@@ -164,7 +162,12 @@ export default function MentorOnboardingPage() {
       }
       return { ...f, [field]: newArr };
     });
-    setErrors((err) => { const n = { ...err }; delete n[field]; return n; });
+    setErrors((err) => {
+      const n = { ...err };
+      delete n[field];
+      if (field === "specialties") delete n.specialtyOther;
+      return n;
+    });
   };
 
   const setRadio = (field: "stage" | "capacity", value: string) => {
@@ -185,6 +188,7 @@ export default function MentorOnboardingPage() {
       if (!form.stage) e.stage = "Please select one";
     }
     if (idx === 2) {
+      if (form.specialties.includes("Other") && !form.specialtyOther.trim()) e.specialtyOther = "Please specify your specialty";
       if (form.helpWith.length === 0) e.helpWith = "Please select at least one";
       if (!form.capacity) e.capacity = "Please select one";
     }
@@ -202,6 +206,21 @@ export default function MentorOnboardingPage() {
       setSection((s) => s + 1);
       window.scrollTo(0, 0);
     } else {
+      if (submittingRef.current) return;
+
+      const widgetExpired = turnstileRef.current?.isExpired() === true;
+      if (!turnstileToken.current || turnstileStatus !== "ready" || widgetExpired) {
+        turnstileToken.current = null;
+        setTurnstileStatus("loading");
+        setSubmitError("The security check is refreshing. Please wait a moment, then submit again.");
+        turnstileRef.current?.reset();
+        posthog?.capture("mentor_submission_blocked", { reason: "captcha_not_ready" });
+        return;
+      }
+
+      submittingRef.current = true;
+      setIsSubmitting(true);
+      setSubmitError("");
       try {
         const response = await fetch('/api/mentor', {
           method: 'POST',
@@ -219,33 +238,68 @@ export default function MentorOnboardingPage() {
             identity: form.identity,
             current_stage: form.stage,
             specialty: form.specialties,
+            specialty_other: form.specialtyOther,
             can_help_with: form.helpWith,
             mentee_capacity: form.capacity,
             contact_method: form.contactMethods,
             scheduling_url: form.schedulingLink,
             open_to_podcast: form.consent2,
+            directory_consent: form.consent1,
             email: form.email,
             notes: form.notes,
           }),
         })
 
-        const data = await response.json()
+        const data = await response.json().catch(() => null)
 
         if (!response.ok) {
           console.error('Mentor API error:', data?.error || data)
-          alert('Something went wrong, please try again.')
+          const isCaptchaFailure = data?.code === "captcha_failed";
+          // A Turnstile token is single-use even when a later database or
+          // validation step fails. Always obtain a new one before a retry.
+          turnstileToken.current = null;
+          setTurnstileStatus("loading");
+          turnstileRef.current?.reset();
+          if (isCaptchaFailure) {
+            setSubmitError("The security check expired before your submission reached us. Your answers are still here—when the check says complete, submit again.");
+          } else {
+            setSubmitError(data?.error
+              ? `${data.error}. Your answers are still here—when the fresh security check says complete, try again.`
+              : "We couldn't submit your profile. Your answers are still here—when the fresh security check says complete, try again.");
+          }
+          posthog?.capture("mentor_submission_failed", {
+            reason: isCaptchaFailure ? "captcha_failed" : (data?.code || `http_${response.status}`),
+          });
           return
         }
 
+        posthog?.capture("mentor_submission_succeeded");
         setSubmitted(true)
       } catch (err) {
         console.error(err)
-        alert('Something went wrong, please try again.')
+        // The request may have reached the server before the connection was
+        // interrupted, so the token may already be consumed. Refresh it safely.
+        turnstileToken.current = null;
+        setTurnstileStatus("loading");
+        turnstileRef.current?.reset();
+        setSubmitError("We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.");
+        posthog?.capture("mentor_submission_failed", { reason: "network_error" });
+      } finally {
+        submittingRef.current = false;
+        setIsSubmitting(false);
       }
     }
   };
 
-  const handleBack = () => { setSection((s) => s - 1); window.scrollTo(0, 0); };
+  const handleBack = () => {
+    if (section === 3) {
+      turnstileToken.current = null;
+      setTurnstileStatus("loading");
+      setSubmitError("");
+    }
+    setSection((s) => s - 1);
+    window.scrollTo(0, 0);
+  };
 
   const themeBlue = "var(--global-theme-color)";
   const inputClass = "w-full bg-white border border-[#e8e4dc] rounded-lg px-3 py-2 text-sm text-[#1a1a2e] placeholder-[#9a948a] focus:outline-none focus:border-[var(--global-theme-color)] transition-colors";
@@ -350,7 +404,7 @@ export default function MentorOnboardingPage() {
             <p className="text-sm font-medium text-[#1a1a2e] mb-3">Your current stage</p>
             {errors.stage && <p className="text-xs text-red-600 mb-2">{errors.stage}</p>}
             <div className="flex flex-col gap-2">
-              {STAGE_OPTIONS.map((opt) => (
+              {MENTOR_STAGE_OPTIONS.map((opt) => (
                 <RadioItem key={opt} name="stage" label={opt} selected={form.stage === opt} onChange={() => setRadio("stage", opt)} />
               ))}
             </div>
@@ -376,7 +430,7 @@ export default function MentorOnboardingPage() {
             </div>
             {form.specialties.includes("Other") && (
               <div className="mt-4">
-                <Field label="Please specify your specialty or subspecialty" optional>
+                <Field label="Please specify your specialty or subspecialty" error={errors.specialtyOther}>
                   <input
                     name="specialtyOther"
                     className={inputClass}
@@ -403,7 +457,7 @@ export default function MentorOnboardingPage() {
             <p className="text-sm font-medium text-[#1a1a2e] mb-3">How many mentees can you take on right now?</p>
             {errors.capacity && <p className="text-xs text-red-600 mb-2">{errors.capacity}</p>}
             <div className="flex flex-col gap-2">
-              {CAPACITY_OPTIONS.map((opt) => (
+              {MENTOR_CAPACITY_OPTIONS.map((opt) => (
                 <RadioItem key={opt} name="capacity" label={opt} selected={form.capacity === opt} onChange={() => setRadio("capacity", opt)} />
               ))}
             </div>
@@ -412,7 +466,7 @@ export default function MentorOnboardingPage() {
           <div className="border-t border-[#e8e4dc] pt-5">
             <p className="text-sm font-medium text-[#1a1a2e] mb-1">Preferred contact method <span className="text-[#9a948a] font-normal">(optional)</span></p>
             <div className="grid grid-cols-2 gap-2 mt-3">
-              {CONTACT_OPTIONS.map((opt) => (
+              {MENTOR_CONTACT_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="contactMethods" label={opt} checked={form.contactMethods.includes(opt)} onChange={() => toggleArray("contactMethods", opt)} />
               ))}
             </div>
@@ -481,29 +535,100 @@ export default function MentorOnboardingPage() {
 
       {/* Turnstile CAPTCHA — only shown on final section */}
       {section === 3 && (
-        <div className="mt-8">
+        <div className="mt-8 rounded-xl border border-[#e8e4dc] bg-[#f7f3ec] p-4" aria-live="polite">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-[#1a1a2e]">Security check</p>
+              <p className={`mt-1 text-xs ${turnstileStatus === "error" ? "text-red-600" : "text-[#6b6b6b]"}`}>
+                {turnstileStatus === "ready" && "Complete — your form is ready to submit."}
+                {turnstileStatus === "loading" && "Checking your browser. This usually takes a moment."}
+                {turnstileStatus === "error" && "The security check couldn't load. A content blocker or network issue may be interfering."}
+              </p>
+            </div>
+            {turnstileStatus === "error" && (
+              <button
+                type="button"
+                onClick={() => {
+                  turnstileToken.current = null;
+                  setSubmitError("");
+                  setTurnstileStatus("loading");
+                  turnstileRef.current?.reset();
+                }}
+                className="shrink-0 text-xs font-medium text-[#8a6a2f] underline underline-offset-2"
+              >
+                Retry
+              </button>
+            )}
+          </div>
           <Turnstile
+            ref={turnstileRef}
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-            onSuccess={(token) => { turnstileToken.current = token; }}
-            onExpire={() => { turnstileToken.current = null; }}
-            options={{ theme: "light" }}
+            onSuccess={(token) => {
+              turnstileToken.current = token;
+              setTurnstileStatus("ready");
+            }}
+            onExpire={() => {
+              turnstileToken.current = null;
+              setTurnstileStatus("loading");
+            }}
+            onTimeout={() => {
+              turnstileToken.current = null;
+              setTurnstileStatus("loading");
+            }}
+            onError={() => {
+              turnstileToken.current = null;
+              setTurnstileStatus("error");
+            }}
+            onUnsupported={() => {
+              turnstileToken.current = null;
+              setTurnstileStatus("error");
+            }}
+            scriptOptions={{
+              onError: () => {
+                turnstileToken.current = null;
+                setTurnstileStatus("error");
+              },
+            }}
+            options={{
+              theme: "light",
+              appearance: "always",
+              size: "flexible",
+              retry: "auto",
+              refreshExpired: "auto",
+              refreshTimeout: "auto",
+            }}
           />
+          {submitError && (
+            <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {submitError}
+            </p>
+          )}
         </div>
       )}
 
       {/* Nav */}
       <div className="flex justify-between items-center mt-10 pt-6 border-t border-[#e8e4dc]">
         {section > 0 ? (
-          <button onClick={handleBack} className="text-sm text-[#6b6b6b] hover:text-[#1a1a2e] transition-colors">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={isSubmitting}
+            className="text-sm text-[#6b6b6b] hover:text-[#1a1a2e] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          >
             ← Back
           </button>
         ) : <div />}
         <button
+          type="button"
           onClick={handleNext}
-          className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#1a1a2e] transition-all hover:opacity-90"
+          disabled={section === 3 && (isSubmitting || turnstileStatus !== "ready")}
+          className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#1a1a2e] transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           style={{ background: themeBlue }}
         >
-          {section === 3 ? "Submit →" : "Continue →"}
+          {section !== 3 && "Continue →"}
+          {section === 3 && isSubmitting && "Submitting…"}
+          {section === 3 && !isSubmitting && turnstileStatus !== "ready" && "Finishing security check…"}
+          {section === 3 && !isSubmitting && turnstileStatus === "ready" && "Submit →"}
         </button>
       </div>
     </div>
