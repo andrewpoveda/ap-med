@@ -3,9 +3,14 @@ import { SPECIALTIES } from "@/data/specialties"
 import { IDENTITY_OPTIONS, HELP_WITH_OPTIONS } from "@/data/tags"
 import { MENTEE_STAGE_OPTIONS } from '@/data/mentee-onboarding'
 import { useState, useEffect, useRef } from 'react'
-import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile"
+import {
+  ReliableTurnstile,
+  type ReliableTurnstileHandle,
+  type TurnstileStatus,
+} from '@/components/ReliableTurnstile'
 import { usePostHog } from 'posthog-js/react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { fetchWithTimeout, isRequestTimeout } from '@/lib/fetch-with-timeout'
 import { isValidEmail } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
 
@@ -65,9 +70,9 @@ export default function MenteeOnboardingForm() {
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [stepError, setStepError] = useState<string | null>(null)
-  const [turnstileStatus, setTurnstileStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>('loading')
   const turnstileToken = useRef<string | null>(null)
-  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined)
+  const turnstileRef = useRef<ReliableTurnstileHandle | null>(null)
   const submittingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
   const formTopRef = useRef<HTMLDivElement | null>(null)
@@ -199,7 +204,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
       // 1. Save mentee + run matching in one Turnstile-verified request.
       //    No email fires on submit — mentors are only notified when the mentee
       //    clicks "Request" on the results page.
-      const saveRes = await fetch('/api/mentees', {
+      const saveRes = await fetchWithTimeout('/api/mentees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -251,11 +256,16 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
       router.push('/mentors/results')
     } catch (error) {
       console.error('Submit error:', error)
+      const timedOut = isRequestTimeout(error)
       turnstileToken.current = null
       setTurnstileStatus('loading')
       turnstileRef.current?.reset()
-      setStepError("We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.")
-      posthog?.capture('mentee_submission_failed', { reason: 'network_error' })
+      setStepError(timedOut
+        ? "The server took too long to respond. Your answers are still here—when the fresh security check says complete, try again."
+        : "We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.")
+      posthog?.capture('mentee_submission_failed', {
+        reason: timedOut ? 'request_timeout' : 'network_error',
+      })
     } finally {
       submittingRef.current = false
       setLoading(false)
@@ -588,7 +598,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                         turnstileToken.current = null
                         setStepError(null)
                         setTurnstileStatus('loading')
-                        turnstileRef.current?.reset()
+                        turnstileRef.current?.retry()
                       }}
                       style={retryButtonStyle}
                     >
@@ -596,38 +606,13 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                     </button>
                   )}
                 </div>
-                <Turnstile
+                <ReliableTurnstile
                   ref={turnstileRef}
                   siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                  onSuccess={token => {
+                  onTokenChange={token => {
                     turnstileToken.current = token
-                    setTurnstileStatus('ready')
                   }}
-                  onExpire={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('loading')
-                  }}
-                  onTimeout={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('loading')
-                  }}
-                  onError={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('error')
-                  }}
-                  onUnsupported={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('error')
-                  }}
-                  scriptOptions={{ onError: () => setTurnstileStatus('error') }}
-                  options={{
-                    theme: 'light',
-                    appearance: 'always',
-                    size: 'flexible',
-                    retry: 'auto',
-                    refreshExpired: 'auto',
-                    refreshTimeout: 'auto',
-                  }}
+                  onStatusChange={setTurnstileStatus}
                 />
               </div>
             </div>

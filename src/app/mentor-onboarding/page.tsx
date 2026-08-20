@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import {
+  ReliableTurnstile,
+  type ReliableTurnstileHandle,
+  type TurnstileStatus,
+} from "@/components/ReliableTurnstile";
 import { usePostHog } from "posthog-js/react";
 import { SPECIALTIES } from "@/data/specialties";
 // Identity + help-with options come from the shared canonical lists
@@ -13,6 +17,7 @@ import {
   MENTOR_CONTACT_OPTIONS,
   MENTOR_STAGE_OPTIONS,
 } from "@/data/mentor-onboarding";
+import { fetchWithTimeout, isRequestTimeout } from "@/lib/fetch-with-timeout";
 
 type FormData = {
   firstName: string;
@@ -119,9 +124,9 @@ export default function MentorOnboardingPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [turnstileStatus, setTurnstileStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>("loading");
   const turnstileToken = useRef<string | null>(null);
-  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined);
+  const turnstileRef = useRef<ReliableTurnstileHandle | null>(null);
   const submittingRef = useRef(false);
 
   const [form, setForm] = useState<FormData>({
@@ -222,7 +227,7 @@ export default function MentorOnboardingPage() {
       setIsSubmitting(true);
       setSubmitError("");
       try {
-        const response = await fetch('/api/mentor', {
+        const response = await fetchWithTimeout('/api/mentor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -277,13 +282,18 @@ export default function MentorOnboardingPage() {
         setSubmitted(true)
       } catch (err) {
         console.error(err)
+        const timedOut = isRequestTimeout(err);
         // The request may have reached the server before the connection was
         // interrupted, so the token may already be consumed. Refresh it safely.
         turnstileToken.current = null;
         setTurnstileStatus("loading");
         turnstileRef.current?.reset();
-        setSubmitError("We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.");
-        posthog?.capture("mentor_submission_failed", { reason: "network_error" });
+        setSubmitError(timedOut
+          ? "The server took too long to respond. Your answers are still here—when the fresh security check says complete, try again."
+          : "We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.");
+        posthog?.capture("mentor_submission_failed", {
+          reason: timedOut ? "request_timeout" : "network_error",
+        });
       } finally {
         submittingRef.current = false;
         setIsSubmitting(false);
@@ -552,7 +562,7 @@ export default function MentorOnboardingPage() {
                   turnstileToken.current = null;
                   setSubmitError("");
                   setTurnstileStatus("loading");
-                  turnstileRef.current?.reset();
+                  turnstileRef.current?.retry();
                 }}
                 className="shrink-0 text-xs font-medium text-[#8a6a2f] underline underline-offset-2"
               >
@@ -560,43 +570,13 @@ export default function MentorOnboardingPage() {
               </button>
             )}
           </div>
-          <Turnstile
+          <ReliableTurnstile
             ref={turnstileRef}
             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-            onSuccess={(token) => {
+            onTokenChange={(token) => {
               turnstileToken.current = token;
-              setTurnstileStatus("ready");
             }}
-            onExpire={() => {
-              turnstileToken.current = null;
-              setTurnstileStatus("loading");
-            }}
-            onTimeout={() => {
-              turnstileToken.current = null;
-              setTurnstileStatus("loading");
-            }}
-            onError={() => {
-              turnstileToken.current = null;
-              setTurnstileStatus("error");
-            }}
-            onUnsupported={() => {
-              turnstileToken.current = null;
-              setTurnstileStatus("error");
-            }}
-            scriptOptions={{
-              onError: () => {
-                turnstileToken.current = null;
-                setTurnstileStatus("error");
-              },
-            }}
-            options={{
-              theme: "light",
-              appearance: "always",
-              size: "flexible",
-              retry: "auto",
-              refreshExpired: "auto",
-              refreshTimeout: "auto",
-            }}
+            onStatusChange={setTurnstileStatus}
           />
           {submitError && (
             <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

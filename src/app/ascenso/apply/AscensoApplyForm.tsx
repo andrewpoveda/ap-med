@@ -1,6 +1,10 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
+import {
+  ReliableTurnstile,
+  type ReliableTurnstileHandle,
+  type TurnstileStatus,
+} from '@/components/ReliableTurnstile'
 import { usePostHog } from 'posthog-js/react'
 import Link from 'next/link'
 import { SPECIALTIES } from '@/data/specialties'
@@ -13,6 +17,7 @@ import {
 } from '@/data/tags'
 import { isValidEmail } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
+import { fetchWithTimeout, isRequestTimeout } from '@/lib/fetch-with-timeout'
 
 type Role = 'mentor' | 'mentee'
 
@@ -140,9 +145,9 @@ export default function AscensoApplyForm({
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [stepError, setStepError] = useState<string | null>(null)
-  const [turnstileStatus, setTurnstileStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>('loading')
   const turnstileToken = useRef<string | null>(null)
-  const turnstileRef = useRef<TurnstileInstance | undefined>(undefined)
+  const turnstileRef = useRef<ReliableTurnstileHandle | null>(null)
   const submittingRef = useRef(false)
   const formTopRef = useRef<HTMLDivElement | null>(null)
 
@@ -310,7 +315,7 @@ export default function AscensoApplyForm({
       // they offer is `can_help_with`; a mentee's wanted specialties are
       // `preferred_specialty` and what they need is `help_with`.
       const { specialty, help_with, ...rest } = form
-      const res = await fetch('/api/cohort-applications', {
+      const res = await fetchWithTimeout('/api/cohort-applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -362,13 +367,16 @@ export default function AscensoApplyForm({
       setOutcome({ kind: resData?.updated === true ? 'updated' : 'submitted' })
     } catch (error) {
       console.error('Submit error:', error)
+      const timedOut = isRequestTimeout(error)
       turnstileToken.current = null
       setTurnstileStatus('loading')
       turnstileRef.current?.reset()
-      setStepError("We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.")
+      setStepError(timedOut
+        ? "The server took too long to respond. Your answers are still here—when the fresh security check says complete, try again."
+        : "We couldn't reach the server. Your answers are still here—check your connection, then try again when the fresh security check says complete.")
       posthog?.capture('ascenso_application_failed', {
         role: form.role,
-        reason: 'network_error',
+        reason: timedOut ? 'request_timeout' : 'network_error',
       })
     } finally {
       submittingRef.current = false
@@ -933,7 +941,7 @@ export default function AscensoApplyForm({
                         turnstileToken.current = null
                         setStepError(null)
                         setTurnstileStatus('loading')
-                        turnstileRef.current?.reset()
+                        turnstileRef.current?.retry()
                       }}
                       style={retryButtonStyle}
                     >
@@ -941,38 +949,13 @@ export default function AscensoApplyForm({
                     </button>
                   )}
                 </div>
-                <Turnstile
+                <ReliableTurnstile
                   ref={turnstileRef}
                   siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                  onSuccess={token => {
+                  onTokenChange={token => {
                     turnstileToken.current = token
-                    setTurnstileStatus('ready')
                   }}
-                  onExpire={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('loading')
-                  }}
-                  onTimeout={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('loading')
-                  }}
-                  onError={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('error')
-                  }}
-                  onUnsupported={() => {
-                    turnstileToken.current = null
-                    setTurnstileStatus('error')
-                  }}
-                  scriptOptions={{ onError: () => setTurnstileStatus('error') }}
-                  options={{
-                    theme: 'light',
-                    appearance: 'always',
-                    size: 'flexible',
-                    retry: 'auto',
-                    refreshExpired: 'auto',
-                    refreshTimeout: 'auto',
-                  }}
+                  onStatusChange={setTurnstileStatus}
                 />
               </div>
             </div>
