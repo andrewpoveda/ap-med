@@ -231,9 +231,9 @@ export default function HomepageExperience({
         <div className={styles.journeyHeading}>
           <p className={styles.sectionKicker}>How it works</p>
           <h2 id="journey-title">
-            A connection,
+            Your story
             <br />
-            thoughtfully made.
+            shapes the match.
           </h2>
         </div>
         <ol className={styles.journeySteps}>
