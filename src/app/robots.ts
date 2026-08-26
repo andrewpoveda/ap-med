@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { absoluteUrl } from '@/lib/site'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -21,6 +22,6 @@ export default function robots(): MetadataRoute.Robots {
         '/schedule/',
       ],
     },
-    sitemap: 'https://ap-med.org/sitemap.xml',
+    sitemap: absoluteUrl('/sitemap.xml'),
   }
 }

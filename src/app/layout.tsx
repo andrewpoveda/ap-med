@@ -3,8 +3,10 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import Navigation from "@/components/Navigation";
 import PostHogProvider from "@/components/PostHogProvider";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "AP MED",
   description: "Free mentorship for underrepresented pre-med students. Find a mentor matched to your identity, specialty, and goals.",
 };
