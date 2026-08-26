@@ -230,11 +230,7 @@ export default function HomepageExperience({
       <section className={styles.journey} aria-labelledby="journey-title">
         <div className={styles.journeyHeading}>
           <p className={styles.sectionKicker}>How it works</p>
-          <h2 id="journey-title">
-            Your story
-            <br />
-            shapes the match.
-          </h2>
+          <h2 id="journey-title">Your story shapes the match.</h2>
         </div>
         <ol className={styles.journeySteps}>
           <li>
