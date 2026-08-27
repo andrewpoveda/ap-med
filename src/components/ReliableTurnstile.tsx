@@ -22,6 +22,7 @@ type Props = {
   siteKey: string
   onTokenChange: (token: string | null) => void
   onStatusChange: (status: TurnstileStatus) => void
+  appearance?: 'always' | 'execute' | 'interaction-only'
 }
 
 const SCRIPT_ID = 'cf-turnstile-script'
@@ -35,7 +36,10 @@ const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render
  * without reloading the page or losing the form's React state.
  */
 export const ReliableTurnstile = forwardRef<ReliableTurnstileHandle, Props>(
-  function ReliableTurnstile({ siteKey, onTokenChange, onStatusChange }, ref) {
+  function ReliableTurnstile(
+    { siteKey, onTokenChange, onStatusChange, appearance = 'always' },
+    ref,
+  ) {
     const widgetRef = useRef<TurnstileInstance | undefined>(undefined)
     const scriptFailedRef = useRef(false)
     const onTokenChangeRef = useRef(onTokenChange)
@@ -181,7 +185,7 @@ export const ReliableTurnstile = forwardRef<ReliableTurnstileHandle, Props>(
         }}
         options={{
           theme: 'light',
-          appearance: 'always',
+          appearance,
           size: 'flexible',
           retry: 'auto',
           refreshExpired: 'auto',

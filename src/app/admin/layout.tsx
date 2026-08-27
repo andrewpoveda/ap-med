@@ -40,6 +40,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <span className="text-[#6b6b6b]" style={{ fontSize: '0.85rem' }}>
             {adminUser.display_name ?? email}
           </span>
+          {adminUser.role === 'super' && (
+            <Link href="/admin/waitlist" style={{ color: '#8a6a2f', fontSize: '0.85rem' }}>
+              Waitlist →
+            </Link>
+          )}
           <Link
             href="/dashboard"
             style={{ color: '#8a6a2f', fontSize: '0.85rem' }}

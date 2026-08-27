@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  ReliableTurnstile,
+  type ReliableTurnstileHandle,
+  type TurnstileStatus,
+} from "@/components/ReliableTurnstile";
+import { isValidEmail } from "@/lib/validate";
 import styles from "./HomepageExperience.module.css";
 
 type Signal = {
@@ -17,6 +23,188 @@ const SIGNALS: Signal[] = [
 
 const SPOTIFY_SHOW_URL =
   "https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB";
+
+type WaitlistFeedback =
+  | { kind: "error"; message: string; fieldInvalid: boolean }
+  | { kind: "success"; message: string };
+
+type WaitlistResponse = {
+  status?: "joined" | "invalid_email" | "security_failed" | "error";
+  message?: string;
+};
+
+function WaitlistForm() {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<WaitlistFeedback | null>(null);
+  const [turnstileStatus, setTurnstileStatus] =
+    useState<TurnstileStatus>("loading");
+  const turnstileToken = useRef<string | null>(null);
+  const turnstileRef = useRef<ReliableTurnstileHandle | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setFeedback({
+        kind: "error",
+        message: "Enter your email address.",
+        fieldInvalid: true,
+      });
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      setFeedback({
+        kind: "error",
+        message: "Enter a valid email address.",
+        fieldInvalid: true,
+      });
+      return;
+    }
+
+    const widgetExpired = turnstileRef.current?.isExpired() === true;
+    if (
+      !turnstileToken.current ||
+      turnstileStatus !== "ready" ||
+      widgetExpired
+    ) {
+      turnstileToken.current = null;
+      setFeedback({
+        kind: "error",
+        message:
+          turnstileStatus === "error"
+            ? "The security check couldn’t load. Please try again."
+            : "One moment—finishing the security check.",
+        fieldInvalid: false,
+      });
+      if (widgetExpired || turnstileStatus === "error") {
+        turnstileRef.current?.retry();
+      }
+      return;
+    }
+
+    setSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          turnstile_token: turnstileToken.current,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as WaitlistResponse;
+
+      if (response.ok && payload.status === "joined") {
+        setFeedback({
+          kind: "success",
+          message: "You’re on the list. We’ll keep you posted.",
+        });
+        return;
+      }
+
+      // Turnstile tokens are single-use. The server may have consumed this one
+      // even when the request ultimately failed, so every retry starts fresh.
+      turnstileToken.current = null;
+      setTurnstileStatus("loading");
+      turnstileRef.current?.reset();
+
+      setFeedback({
+        kind: "error",
+        message:
+          payload.status === "invalid_email"
+            ? (payload.message ?? "Enter a valid email address.")
+            : payload.status === "security_failed"
+              ? "The security check expired. Please try again."
+            : "Something went wrong. Please try again.",
+        fieldInvalid: payload.status === "invalid_email",
+      });
+    } catch {
+      turnstileToken.current = null;
+      setTurnstileStatus("loading");
+      turnstileRef.current?.reset();
+      setFeedback({
+        kind: "error",
+        message: "Something went wrong. Please try again.",
+        fieldInvalid: false,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (feedback?.kind === "success") {
+    return (
+      <p className={styles.waitlistConfirmation} role="status" aria-live="polite">
+        <span aria-hidden="true">✓</span>
+        {feedback.message}
+      </p>
+    );
+  }
+
+  return (
+    <form className={styles.waitlistForm} onSubmit={handleSubmit} noValidate>
+      <label htmlFor="waitlist-email">Email address</label>
+      <div className={styles.waitlistFields}>
+        <input
+          id="waitlist-email"
+          name="email"
+          type="email"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (feedback) setFeedback(null);
+          }}
+          placeholder="you@example.com"
+          autoComplete="email"
+          autoCapitalize="none"
+          inputMode="email"
+          maxLength={200}
+          spellCheck={false}
+          aria-invalid={feedback?.kind === "error" && feedback.fieldInvalid}
+          aria-describedby="waitlist-note waitlist-feedback"
+          disabled={submitting}
+        />
+        <button type="submit" disabled={submitting}>
+          {submitting ? "Joining…" : "Join the waitlist"}
+        </button>
+      </div>
+      <div className={styles.waitlistMeta}>
+        <p id="waitlist-note">Email only. No account required.</p>
+        <p
+          id="waitlist-feedback"
+          className={styles.waitlistFeedback}
+          role={feedback?.kind === "error" ? "alert" : undefined}
+          aria-live="polite"
+        >
+          {feedback?.kind === "error" ? feedback.message : ""}
+        </p>
+      </div>
+      <div className={styles.waitlistSecurity}>
+        <ReliableTurnstile
+          ref={turnstileRef}
+          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+          appearance="interaction-only"
+          onTokenChange={(token) => {
+            turnstileToken.current = token;
+          }}
+          onStatusChange={setTurnstileStatus}
+        />
+        {turnstileStatus === "error" && (
+          <button
+            type="button"
+            onClick={() => turnstileRef.current?.retry()}
+          >
+            Retry security check
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
 
 function ProfileNode({
   name,
@@ -260,6 +448,18 @@ export default function HomepageExperience({
             </div>
           </li>
         </ol>
+      </section>
+
+      <section className={styles.waitlist} aria-labelledby="waitlist-title">
+        <div className={styles.waitlistCopy}>
+          <p className={styles.sectionKicker}>AP MED Mentors</p>
+          <h2 id="waitlist-title">Get early access to AP Med Mentors</h2>
+          <p>
+            We&apos;re opening the platform to more premeds soon. Join the
+            waitlist and we&apos;ll let you know when you&apos;re in.
+          </p>
+        </div>
+        <WaitlistForm />
       </section>
 
       {ascensoVisible && (
