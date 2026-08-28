@@ -24,6 +24,7 @@ export default function FilterBar({
   return (
     <div className="flex flex-row flex-wrap items-center gap-3 mb-4">
       <select
+        aria-label="Filter mentors by identity"
         value={selectedIdentity}
         onChange={(e) => setSelectedIdentity(e.target.value)}
         className="w-44 border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"
@@ -35,6 +36,7 @@ export default function FilterBar({
       </select>
 
       <select
+        aria-label="Filter mentors by specialty"
         value={selectedSpecialty}
         onChange={(e) => setSelectedSpecialty(e.target.value)}
         className="w-44 border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"
@@ -46,6 +48,7 @@ export default function FilterBar({
       </select>
 
       <select
+        aria-label="Filter mentors by help type"
         value={selectedOpenTo}
         onChange={(e) => setSelectedOpenTo(e.target.value)}
         className="w-44 border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"

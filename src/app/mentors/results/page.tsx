@@ -6,6 +6,9 @@ import Link from 'next/link'
 import type { ScoredPublicMentor } from '@/types/mentor'
 import EpisodeLink from '@/components/EpisodeLink'
 
+type RequestStatus = 'idle' | 'loading' | 'success' | 'error'
+type RequestState = { status: RequestStatus; message?: string }
+
 export default function MatchResultsPage() {
   const router = useRouter()
   const [mentors, setMentors] = useState<ScoredPublicMentor[]>([])
@@ -13,7 +16,7 @@ export default function MatchResultsPage() {
   const [menteeId, setMenteeId] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [showAll, setShowAll] = useState(false)
-  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
+  const [requestStates, setRequestStates] = useState<Record<string, RequestState>>({})
   const [scheduleUrls, setScheduleUrls] = useState<Record<string, string>>({})
   const [testMode, setTestMode] = useState(false)
 
@@ -36,8 +39,15 @@ export default function MatchResultsPage() {
   }, [router])
 
   const handleRequest = async (mentor: ScoredPublicMentor) => {
-    setRequestedIds(prev => new Set([...prev, mentor.id]))
-    if (!menteeId) return
+    if (!menteeId) {
+      setRequestStates(prev => ({
+        ...prev,
+        [mentor.id]: { status: 'error', message: 'Your request session expired. Please get matched again.' },
+      }))
+      return
+    }
+
+    setRequestStates(prev => ({ ...prev, [mentor.id]: { status: 'loading' } }))
     try {
       // /api/notify resolves both parties from the DB by id — no mentee data
       // leaves the browser here.
@@ -51,8 +61,26 @@ export default function MatchResultsPage() {
       if (res.ok && typeof data.scheduleUrl === 'string') {
         setScheduleUrls(prev => ({ ...prev, [mentor.id]: data.scheduleUrl }))
       }
+      if (res.ok) {
+        setRequestStates(prev => ({ ...prev, [mentor.id]: { status: 'success' } }))
+        return
+      }
+      if (res.status === 409) {
+        setRequestStates(prev => ({
+          ...prev,
+          [mentor.id]: { status: 'success', message: 'You already requested this mentor.' },
+        }))
+        return
+      }
+      setRequestStates(prev => ({
+        ...prev,
+        [mentor.id]: { status: 'error', message: 'We couldn’t send your request. Please try again.' },
+      }))
     } catch {
-      // silent — UI already updated
+      setRequestStates(prev => ({
+        ...prev,
+        [mentor.id]: { status: 'error', message: 'We couldn’t reach the server. Check your connection and try again.' },
+      }))
     }
   }
 
@@ -107,7 +135,7 @@ export default function MatchResultsPage() {
                   mentor={mentor}
                   rank={i + 1}
                   featured
-                  requested={requestedIds.has(mentor.id)}
+                  requestState={requestStates[mentor.id]}
                   scheduleUrl={scheduleUrls[mentor.id]}
                   onRequest={() => handleRequest(mentor)}
                 />
@@ -145,7 +173,7 @@ export default function MatchResultsPage() {
                     key={mentor.id}
                     mentor={mentor}
                     featured={false}
-                    requested={requestedIds.has(mentor.id)}
+                    requestState={requestStates[mentor.id]}
                     scheduleUrl={scheduleUrls[mentor.id]}
                     onRequest={() => handleRequest(mentor)}
                   />
@@ -199,12 +227,12 @@ function SkeletonCard() {
 }
 
 function MatchCard({
-  mentor, rank, featured, requested, scheduleUrl, onRequest,
+  mentor, rank, featured, requestState, scheduleUrl, onRequest,
 }: {
   mentor: ScoredPublicMentor
   rank?: number
   featured: boolean
-  requested: boolean
+  requestState?: RequestState
   scheduleUrl?: string
   onRequest: () => void
 }) {
@@ -214,6 +242,9 @@ function MatchCard({
     '#9a948a'
 
   const fullName = `${mentor.first_name} ${mentor.last_name}`
+  const requestStatus = requestState?.status ?? 'idle'
+  const requested = requestStatus === 'success'
+  const requesting = requestStatus === 'loading'
 
   return (
     <div
@@ -276,7 +307,8 @@ function MatchCard({
         </div>
         <button
           onClick={onRequest}
-          disabled={requested}
+          disabled={requested || requesting}
+          aria-describedby={requestState?.message ? `request-status-${mentor.id}` : undefined}
           className="sm:mt-4"
           style={{
             display: 'inline-block',
@@ -287,11 +319,11 @@ function MatchCard({
             padding: '0.4rem 0.85rem',
             fontSize: '0.8rem',
             fontWeight: 600,
-            cursor: requested ? 'default' : 'pointer',
+            cursor: requested || requesting ? 'default' : 'pointer',
             whiteSpace: 'nowrap',
           }}
         >
-          {requested ? 'Requested ✓' : 'Request →'}
+          {requested ? 'Requested ✓' : requesting ? 'Sending…' : 'Request →'}
         </button>
         {requested && scheduleUrl && (
           <a
@@ -306,6 +338,16 @@ function MatchCard({
           >
             Pick a time →
           </a>
+        )}
+        {requestState?.message && (
+          <p
+            id={`request-status-${mentor.id}`}
+            role={requestStatus === 'error' ? 'alert' : 'status'}
+            className="mt-2 max-w-48 text-right text-xs"
+            style={{ color: requestStatus === 'error' ? '#b91c1c' : '#6b6b6b' }}
+          >
+            {requestState.message}
+          </p>
         )}
       </div>
     </div>

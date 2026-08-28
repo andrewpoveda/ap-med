@@ -355,8 +355,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 <h3>Basic information</h3>
                 <div className="ascenso-fields-grid">
                   <div>
-                    <label style={labelStyle}>First name *</label>
+                    <label htmlFor="mentee-first-name" style={labelStyle}>First name *</label>
                     <input
+                      id="mentee-first-name"
+                      name="first_name"
                       style={inputStyle}
                       autoComplete="given-name"
                       placeholder="John"
@@ -365,8 +367,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Last name *</label>
+                    <label htmlFor="mentee-last-name" style={labelStyle}>Last name *</label>
                     <input
+                      id="mentee-last-name"
+                      name="last_name"
                       style={inputStyle}
                       autoComplete="family-name"
                       placeholder="Doe"
@@ -375,8 +379,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Email address *</label>
+                    <label htmlFor="mentee-email" style={labelStyle}>Email address *</label>
                     <input
+                      id="mentee-email"
+                      name="email"
                       style={inputStyle}
                       type="email"
                       autoComplete="email"
@@ -386,8 +392,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>School / Institution *</label>
+                    <label htmlFor="mentee-school" style={labelStyle}>School / Institution *</label>
                     <input
+                      id="mentee-school"
+                      name="school"
                       style={inputStyle}
                       autoComplete="organization"
                       placeholder="Rutgers University"
@@ -397,10 +405,12 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                   </div>
                 </div>
                 <div style={{ marginTop: '0.75rem' }}>
-                  <label style={labelStyle}>
+                  <label htmlFor="mentee-linkedin" style={labelStyle}>
                     LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span>
                   </label>
                   <input
+                    id="mentee-linkedin"
+                    name="linkedin_url"
                     style={inputStyle}
                     type="url"
                     placeholder="https://linkedin.com/in/yourname"
@@ -476,8 +486,10 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 </div>
                 {form.interests.includes(OTHER_SPECIALTY) && (
                   <div className="ascenso-other-field">
-                    <label style={labelStyle}>Your other specialty</label>
+                    <label htmlFor="mentee-other-specialty" style={labelStyle}>Your other specialty</label>
                     <input
+                      id="mentee-other-specialty"
+                      name="other_interest"
                       list="other-specialty-options"
                       style={inputStyle}
                       placeholder="Type your other specialty"
@@ -526,13 +538,15 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           {currentStep === 4 && (
             <div className="ascenso-step-content">
               <div>
-                <h3>
+                <h3 id="mentee-notes-label">
                   Anything else? <span className="ascenso-optional">(optional)</span>
                 </h3>
                 <p className="ascenso-helper">
                   Why do you want to connect with a mentor? Any specific goals or questions?
                 </p>
                 <textarea
+                  name="notes"
+                  aria-labelledby="mentee-notes-label"
                   style={{ ...inputStyle, height: '150px', resize: 'vertical', fontFamily: 'inherit' }}
                   placeholder="I’m a first-gen pre-med student interested in…"
                   value={form.notes}

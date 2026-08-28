@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { cloneElement, useState, useRef, type ReactElement } from "react";
 import {
   ReliableTurnstile,
   type ReliableTurnstileHandle,
@@ -105,17 +105,47 @@ const RadioItem = ({ label, name, selected, onChange }: { label: string; name: s
   </label>
 );
 
-const Field = ({ label, error, optional, hint, children }: { label: string; error?: string; optional?: boolean; hint?: string; children: React.ReactNode }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-sm font-medium text-[#1a1a2e]">
-      {label}
-      {optional && <span className="text-[#9a948a] font-normal ml-1">(optional)</span>}
-    </label>
-    {hint && <p className="text-xs text-[#9a948a]">{hint}</p>}
-    {children}
-    {error && <p className="text-xs text-red-600">{error}</p>}
-  </div>
-);
+type FieldControlProps = {
+  id?: string;
+  name?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+};
+
+const Field = ({
+  label,
+  error,
+  optional,
+  hint,
+  children,
+}: {
+  label: string;
+  error?: string;
+  optional?: boolean;
+  hint?: string;
+  children: ReactElement<FieldControlProps>;
+}) => {
+  const fieldId = children.props.id ?? (children.props.name ? `mentor-${children.props.name}` : undefined);
+  const hintId = fieldId && hint ? `${fieldId}-hint` : undefined;
+  const errorId = fieldId && error ? `${fieldId}-error` : undefined;
+  const describedBy = [children.props['aria-describedby'], hintId, errorId].filter(Boolean).join(' ') || undefined;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={fieldId} className="text-sm font-medium text-[#1a1a2e]">
+        {label}
+        {optional && <span className="text-[#9a948a] font-normal ml-1">(optional)</span>}
+      </label>
+      {hint && <p id={hintId} className="text-xs text-[#9a948a]">{hint}</p>}
+      {cloneElement(children, {
+        id: fieldId,
+        'aria-invalid': error ? true : undefined,
+        'aria-describedby': describedBy,
+      })}
+      {error && <p id={errorId} className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+};
 
 export default function MentorOnboardingPage() {
   const posthog = usePostHog();

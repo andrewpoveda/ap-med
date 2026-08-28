@@ -98,6 +98,15 @@ export const ReliableTurnstile = forwardRef<ReliableTurnstileHandle, Props>(
     useEffect(() => {
       if (typeof window === 'undefined' || typeof document === 'undefined') return
 
+      // A missing public key is a deployment configuration problem, but it
+      // should still settle into the form's existing recoverable error state
+      // instead of letting the third-party widget throw an unhandled promise.
+      if (!siteKey) {
+        updateToken(null)
+        updateStatus('error')
+        return
+      }
+
       let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
 
       const handleScriptError = () => {
@@ -153,7 +162,9 @@ export const ReliableTurnstile = forwardRef<ReliableTurnstileHandle, Props>(
           script.onerror = null
         }
       }
-    }, [hasLoadedScript, scriptAttempt, updateStatus, updateToken])
+    }, [hasLoadedScript, scriptAttempt, siteKey, updateStatus, updateToken])
+
+    if (!siteKey) return null
 
     return (
       <Turnstile

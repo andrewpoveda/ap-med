@@ -18,42 +18,64 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
  */
 export default function LoginButton() {
   const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   async function signIn() {
     setLoading(true)
-    const supabase = createSupabaseBrowserClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'openid email profile',
-      },
-    })
-    if (error) {
+    setErrorMessage('')
+
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'openid email profile',
+        },
+      })
+      if (!error) return
+
       // On success the browser is already navigating to Google, so we only
       // reach here on failure.
       console.error('Google sign-in failed:', error.message)
+      setErrorMessage('We couldn’t start Google sign-in. Please try again.')
+      setLoading(false)
+    } catch (error) {
+      console.error('Google sign-in failed:', error)
+      setErrorMessage('We couldn’t start Google sign-in. Check your connection and try again.')
       setLoading(false)
     }
   }
 
   return (
-    <button
-      onClick={signIn}
-      disabled={loading}
-      style={{
-        background: '#c8a96e',
-        color: '#1a1a2e',
-        padding: '0.8rem 1.75rem',
-        borderRadius: '8px',
-        fontWeight: 600,
-        fontSize: '0.95rem',
-        border: 'none',
-        cursor: loading ? 'default' : 'pointer',
-        opacity: loading ? 0.7 : 1,
-      }}
-    >
-      {loading ? 'Redirecting…' : 'Continue with Google'}
-    </button>
+    <div className="text-center">
+      <button
+        onClick={signIn}
+        disabled={loading}
+        aria-describedby={errorMessage ? 'google-sign-in-error' : undefined}
+        style={{
+          background: '#c8a96e',
+          color: '#1a1a2e',
+          padding: '0.8rem 1.75rem',
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.95rem',
+          border: 'none',
+          cursor: loading ? 'default' : 'pointer',
+          opacity: loading ? 0.7 : 1,
+        }}
+      >
+        {loading ? 'Redirecting…' : 'Continue with Google'}
+      </button>
+      {errorMessage && (
+        <p
+          id="google-sign-in-error"
+          role="alert"
+          className="mt-3 max-w-sm text-sm text-red-700"
+        >
+          {errorMessage}
+        </p>
+      )}
+    </div>
   )
 }

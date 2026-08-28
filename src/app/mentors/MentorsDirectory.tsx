@@ -26,24 +26,41 @@ function SkeletonCard() {
 export default function MentorsDirectory() {
   const [mentors, setMentors] = useState<PublicMentor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedIdentity, setSelectedIdentity] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedOpenTo, setSelectedOpenTo] = useState("");
 
   useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError(false);
+
     // Browse-only directory: just list mentors alphabetically. Compatibility
     // scores are intentionally NOT shown here — they only appear on the results
     // page after a mentee completes the onboarding form and the matcher runs.
-    fetch("/api/mentor")
-      .then(r => r.json())
+    fetch("/api/mentor", { signal: controller.signal })
+      .then(r => {
+        if (!r.ok) throw new Error(`Mentor directory returned ${r.status}`);
+        return r.json();
+      })
       .then(data => {
-        const fetched: PublicMentor[] = data.mentors || [];
+        if (!Array.isArray(data.mentors)) throw new Error("Invalid mentor directory response");
+        const fetched: PublicMentor[] = [...data.mentors];
         fetched.sort((a, b) => a.last_name.localeCompare(b.last_name));
         setMentors(fetched);
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, []);
+      .catch(error => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setLoadError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [reloadKey]);
 
   const uniqueIdentities = Array.from(
     new Set(mentors.flatMap(m => Array.isArray(m.identity) ? m.identity : []))
@@ -92,24 +109,65 @@ export default function MentorsDirectory() {
         </Link>
       </div>
 
-      <FilterBar
-        selectedIdentity={selectedIdentity}
-        setSelectedIdentity={setSelectedIdentity}
-        selectedSpecialty={selectedSpecialty}
-        setSelectedSpecialty={setSelectedSpecialty}
-        selectedOpenTo={selectedOpenTo}
-        setSelectedOpenTo={setSelectedOpenTo}
-        uniqueIdentities={uniqueIdentities}
-        uniqueSpecialties={uniqueSpecialties}
-        uniqueOpenTo={uniqueOpenTo}
-      />
+      {!loadError && (
+        <FilterBar
+          selectedIdentity={selectedIdentity}
+          setSelectedIdentity={setSelectedIdentity}
+          selectedSpecialty={selectedSpecialty}
+          setSelectedSpecialty={setSelectedSpecialty}
+          selectedOpenTo={selectedOpenTo}
+          setSelectedOpenTo={setSelectedOpenTo}
+          uniqueIdentities={uniqueIdentities}
+          uniqueSpecialties={uniqueSpecialties}
+          uniqueOpenTo={uniqueOpenTo}
+        />
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {loading
-          ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-          : filtered.map(mentor => <MentorCard key={mentor.id} mentor={mentor} />)
-        }
-      </div>
+      {loadError ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-[#e0c060] bg-[#fdf6e3] p-6 text-center"
+        >
+          <p className="font-semibold text-[#1a1a2e]">We couldn&apos;t load the mentor directory.</p>
+          <p className="mt-2 text-sm text-[#6b6b6b]">Check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey(key => key + 1)}
+            className="mt-4 rounded-lg border border-[#c8a96e] bg-white px-4 py-2 text-sm font-semibold text-[#8a6a2f]"
+          >
+            Try again
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" aria-busy={loading}>
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+          ) : filtered.length > 0 ? (
+            filtered.map(mentor => <MentorCard key={mentor.id} mentor={mentor} />)
+          ) : (
+            <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-[#e8e4dc] bg-white p-8 text-center">
+              <p className="font-semibold text-[#1a1a2e]">
+                {mentors.length === 0
+                  ? "No approved mentors are available right now."
+                  : "No mentors match these filters."}
+              </p>
+              {mentors.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedIdentity("");
+                    setSelectedSpecialty("");
+                    setSelectedOpenTo("");
+                  }}
+                  className="mt-3 text-sm font-semibold text-[#8a6a2f] hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
