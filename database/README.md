@@ -87,3 +87,18 @@ The baseline intentionally preserves the three policies that existed at its
 historical cutoff. The later lockdown migration removes exactly those policies
 and revokes direct `anon` and `authenticated` table privileges. Applications
 must access `mentor` and `mentees` through the existing server-mediated paths.
+
+## Verification
+
+The full reproducibility check requires a local PostgreSQL 17 installation and
+uses an isolated temporary cluster:
+
+```bash
+./database/verification/verify_postgres17.sh
+```
+
+The focused client-contract tests use Node's built-in test runner:
+
+```bash
+node --test database/verification/email_budget_client.test.mjs
+```

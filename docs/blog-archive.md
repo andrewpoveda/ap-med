@@ -1,9 +1,12 @@
-# Blog Post Archive
+# Legacy Blog Copy Archive
 
-Copy preserved from the retired `/blog` page (removed July 2026 — the page had been
-unreachable since the 2026-06-25 nav redesign). Kept for reuse in outreach, social,
-or a future blog. Each post's preview line was the first paragraph of its content,
-so the full content below captures everything.
+**Historical record:** This preserves copy from the version of `/blog` retired in
+July 2026. A current blog exists in the application; this file does not describe
+its routes, content model, or production state. Retain this material only for
+historical reference or possible editorial reuse.
+
+Each archived post's preview line was the first paragraph of its content, so the
+full content below captures the retired page's copy.
 
 ---
 

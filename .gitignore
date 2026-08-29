@@ -33,9 +33,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# local-only Claude Code context (references machine-specific vault paths)
-CLAUDE.md
-
 # local-only Claude Code tooling (dev-server launch config + machine-specific settings)
 .claude/
 

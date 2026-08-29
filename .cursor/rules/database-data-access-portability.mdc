@@ -1,8 +1,9 @@
 ---
-description: Keep new database access centralized where practical without unnecessary refactors
-alwaysApply: true
+description: Keep database changes portable and reusable without unnecessary refactors
+globs: "{database,supabase}/**/*"
+alwaysApply: false
 ---
 
 # Database Data-Access Portability
 
-For new database functionality, avoid spreading additional direct Supabase query-builder usage across unrelated application code when it is practical to centralize reusable data access. Do not refactor existing working queries solely to satisfy this principle.
+Read `database/README.md` before changing schema or migrations. Keep new database functionality portable where practical, and centralize reusable access cleanly. Do not refactor working queries solely to satisfy this principle.
