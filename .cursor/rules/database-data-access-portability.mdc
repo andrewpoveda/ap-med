@@ -1,0 +1,8 @@
+---
+description: Keep new database access centralized where practical without unnecessary refactors
+alwaysApply: true
+---
+
+# Database Data-Access Portability
+
+For new database functionality, avoid spreading additional direct Supabase query-builder usage across unrelated application code when it is practical to centralize reusable data access. Do not refactor existing working queries solely to satisfy this principle.
