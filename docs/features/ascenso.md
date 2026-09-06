@@ -23,6 +23,52 @@ access must continue to be enforced by authenticated IDs and `cohort_id`.
 
 Do not document or assume the flag's current deployed value. Do not add an Ascenso call to action that routes applicants into the general mentor directory.
 
+## Future LMSA-NE custom-domain launch checklist
+
+This checklist records launch requirements, not completed approvals or current
+production settings.
+
+- Obtain LMSA-NE approval of the exact Ascenso hostname first. Any hostname
+  discussed before that approval is only a proposal.
+- Keep `app_settings.ascenso_visible` disabled until the coordinated launch.
+  Domain setup alone is not approval to expose the public program or application
+  flow. Enabling visibility also affects the AP MED public surfaces described
+  above.
+- Configure the required Vercel production variables: `ASCENSO_SITE_URL` must be
+  the approved HTTPS origin, and `ASCENSO_COHORT_ID` must be the intended cohort's
+  exact UUID. Include the approved hostname in `TURNSTILE_ALLOWED_HOSTNAMES`.
+- Attach the approved custom domain to the existing Vercel project, complete
+  DNS verification and TLS setup, and deploy with the launch variables.
+- Complete the [provider configuration checklist](../development.md): Supabase
+  Auth redirect URLs, Google Cloud Calendar OAuth redirect URI, Cloudflare
+  Turnstile widget hostname, and Sentry browser Allowed Domains. Preserve the
+  existing AP MED entries alongside the new hostname.
+
+Perform final E2E verification on the approved HTTPS hostname using designated
+test participants and recipients. Sign-in and existing-member checks can run
+while visibility is disabled; verify the public application flow when visibility
+is enabled as part of the coordinated launch. These checks can create real
+applications, bookings, and emails, so coordinate the test records and cleanup.
+
+- Confirm `/` redirects to `/ascenso` with the Ascenso shell and that the closed
+  state is displayed before public visibility is enabled.
+- Sign in through Google as an Ascenso mentor and mentee; confirm callbacks
+  return to the approved host and the appropriate member dashboard.
+- Submit a public application after launch visibility is enabled; confirm it
+  reaches only the configured cohort, which must be accepting applications.
+- Confirm Turnstile loads and validates on the approved hostname and that a
+  missing or invalid challenge cannot submit the application.
+- Connect Google Calendar and confirm the consent flow returns through the
+  approved Calendar OAuth callback without a redirect or state error.
+- Book a session with the designated matched participants; confirm the booking,
+  Calendar event, and expected notifications. Exercise any tokenized scheduling
+  link included in the launch flow.
+- Check generated activation, digest, scheduling, and any retained magic-link
+  emails: links must use the intended configured origin and reach the correct
+  sign-in, dashboard, or scheduling page.
+- Log out and confirm protected pages require sign-in again on the customer
+  host. Verify AP MED still works independently on its normal hostname.
+
 ## Applications and membership
 
 `/api/cohort-applications` owns server validation. Applications require identity fields, current position and location, motivation, specialty/support selections, role-specific answers, and the four acknowledgments represented by the current form and route. Email plus cohort and role is unique. A repeat submission can update an existing application only while it remains unreviewed; reviewed applications reject resubmission.
