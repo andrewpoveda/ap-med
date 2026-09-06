@@ -49,6 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: SITE_URL, changeFrequency: 'monthly', priority: 1 },
+    { url: absoluteUrl('/institutions'), changeFrequency: 'monthly', priority: 0.85 },
     { url: absoluteUrl('/mentors'), changeFrequency: 'weekly', priority: 0.9 },
     { url: absoluteUrl('/mentee-onboarding'), changeFrequency: 'monthly', priority: 0.8 },
     ...alternativeEntries,
