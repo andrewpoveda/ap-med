@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { IBM_Plex_Mono, Instrument_Serif, Newsreader, Source_Sans_3 } from "next/font/google";
+import "./styles.css";
 
 const display = Newsreader({
   subsets: ["latin"],
