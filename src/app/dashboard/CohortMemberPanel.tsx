@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { TRACK_LABELS, type CohortTrack } from '@/types/cohort'
 import type { ActiveMatchView, MilestoneView, CohortMemberType } from '@/lib/cohort-dashboard'
+import styles from './CohortRelationshipWorkspace.module.css'
 
 const cardStyle: CSSProperties = {
   background: '#ffffff',
@@ -43,29 +44,25 @@ export default function CohortMemberPanel({
 
   return (
     <>
-      <div style={cardStyle}>
-        <p style={eyebrowStyle}>{cohortName} · your match</p>
+      <div
+        className={`${styles.matchCard} ${matches.length > 0 ? styles.matchCardPaired : ''}`}
+        data-cohort-match-state={matches.length > 0 ? 'paired' : 'waiting'}
+      >
+        <p className={styles.eyebrow}>{cohortName} · your match</p>
         {matches.length === 0 ? (
-          <p className="text-[#4a4a5a]" style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6 }}>
+          <p className={styles.waitingCopy}>
             Your {partnerNoun} match will appear here once the board activates your
             pairing. You&apos;ll also get an introduction email when that happens.
           </p>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-3">
+          <ul className={styles.partnerList}>
             {matches.map((m) => (
-              <li
-                key={m.matchId}
-                style={{ border: '1px solid #e8e4dc', borderRadius: '8px', padding: '0.85rem 1rem' }}
-              >
-                <p className="text-[#1a1a2e]" style={{ margin: 0, fontWeight: 500 }}>
-                  {m.partnerName}
-                </p>
+              <li key={m.matchId} className={styles.partnerIdentity}>
+                <h2 className={styles.partnerName}>{m.partnerName}</h2>
                 {m.partnerDetail && (
-                  <p className="text-[#6b6b6b]" style={{ margin: '0.15rem 0 0', fontSize: '0.85rem' }}>
-                    {m.partnerDetail}
-                  </p>
+                  <p className={styles.partnerDetail}>{m.partnerDetail}</p>
                 )}
-                <p className="text-[#6b6b6b]" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem' }}>
+                <p className={styles.partnerMeta}>
                   {trackLabel(m.track)}
                   {m.activeSince && (
                     <>

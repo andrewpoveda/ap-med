@@ -49,6 +49,10 @@ import MeetingLogSection from './MeetingLogSection'
 import GoalSection from './GoalSection'
 import CohortBookingSection, { type BookingMatch } from './CohortBookingSection'
 import SurveySection from './SurveySection'
+import {
+  CohortRelationshipTools,
+  CohortRelationshipWorkspace,
+} from './CohortRelationshipWorkspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -308,7 +312,7 @@ export default async function DashboardPage({
       {mentor ? (
         <div className="mt-8 space-y-6">
           {cohortRole === 'mentor' && (
-            <>
+            <CohortRelationshipWorkspace separateFromGeneralTools>
               <CohortMemberPanel
                 cohortName={cohortName}
                 role="mentor"
@@ -316,21 +320,21 @@ export default async function DashboardPage({
                 milestones={cohortMilestones}
               />
               {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
-              {bookingMatches.length > 0 && (
-                <CohortBookingSection role="mentor" matches={bookingMatches} />
-              )}
               {meetingLogMatches.length > 0 && (
-                <MeetingLogSection
-                  role="mentor"
-                  matches={meetingLogMatches}
-                  logs={meetingLogs}
-                  loggableSessions={loggableSessions}
-                />
+                <CohortRelationshipTools>
+                  {bookingMatches.length > 0 && (
+                    <CohortBookingSection role="mentor" matches={bookingMatches} />
+                  )}
+                  <MeetingLogSection
+                    role="mentor"
+                    matches={meetingLogMatches}
+                    logs={meetingLogs}
+                    loggableSessions={loggableSessions}
+                  />
+                  <GoalSection role="mentor" matches={meetingLogMatches} goals={goals} />
+                </CohortRelationshipTools>
               )}
-              {meetingLogMatches.length > 0 && (
-                <GoalSection role="mentor" matches={meetingLogMatches} goals={goals} />
-              )}
-            </>
+            </CohortRelationshipWorkspace>
           )}
           <div style={cardStyle}>
             <p style={eyebrowStyle}>Google Calendar</p>

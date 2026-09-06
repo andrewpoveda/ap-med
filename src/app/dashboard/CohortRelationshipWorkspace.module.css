@@ -1,0 +1,166 @@
+.workspace {
+  display: grid;
+  min-width: 0;
+  gap: 1.5rem;
+}
+
+.matchCard {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1.5rem;
+  border: 1px solid #e8e4dc;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(26, 26, 46, 0.04);
+}
+
+.matchCardPaired {
+  overflow: visible;
+  padding: 0.75rem 0 2rem;
+  border: 0;
+  border-bottom: 1px solid #e8e4dc;
+  border-radius: 0;
+  background: #faf8f4;
+  box-shadow: none;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: #9a948a;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.matchCardPaired .eyebrow {
+  margin-bottom: 0.9rem;
+  color: #8a6a2f;
+}
+
+.waitingCopy {
+  margin: 0;
+  color: #4a4a5a;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.partnerList {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.matchCardPaired .partnerList {
+  animation: relationship-arrival 250ms ease-out both;
+}
+
+.partnerIdentity {
+  min-width: 0;
+  padding-top: 0.25rem;
+}
+
+.partnerIdentity + .partnerIdentity {
+  padding-top: 1.1rem;
+  border-top: 1px solid #ece5da;
+}
+
+.partnerName {
+  margin: 0;
+  color: #1a1a2e;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.35rem, 4.5vw, 3rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.partnerDetail {
+  margin: 0.45rem 0 0;
+  color: #4a4a5a;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.partnerMeta {
+  margin: 0.7rem 0 0;
+  color: #777064;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.tools {
+  display: grid;
+  min-width: 0;
+  gap: 1.5rem;
+}
+
+.tools > * {
+  min-width: 0;
+  animation: relationship-tool-arrival 220ms ease-out both;
+}
+
+.tools > :nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.tools > :nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.tools > :nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.workspaceSeparated {
+  padding-bottom: 1.25rem;
+}
+
+.tools :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid #8a6a2f;
+  outline-offset: 3px;
+}
+
+@keyframes relationship-arrival {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes relationship-tool-arrival {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .matchCardPaired {
+    padding: 0.5rem 0 1.6rem;
+  }
+
+  .partnerName {
+    font-size: 2.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matchCardPaired .partnerList,
+  .tools > * {
+    animation: none;
+  }
+}

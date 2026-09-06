@@ -28,6 +28,10 @@ import GoalSection from '@/app/dashboard/GoalSection'
 import CohortBookingSection, { type BookingMatch } from '@/app/dashboard/CohortBookingSection'
 import MenteeSessionsList from '@/app/dashboard/MenteeSessionsList'
 import SurveySection from '@/app/dashboard/SurveySection'
+import {
+  CohortRelationshipTools,
+  CohortRelationshipWorkspace,
+} from '@/app/dashboard/CohortRelationshipWorkspace'
 import LoginButton from '@/app/login/LoginButton'
 import SignInLinkForm from './SignInLinkForm'
 
@@ -247,32 +251,33 @@ export default async function AscensoDashboardPage({
       </div>
 
       <div className="mt-8 space-y-6">
-        <CohortMemberPanel
-          cohortName={cohortName}
-          role="mentee"
-          matches={matches}
-          milestones={milestones}
-        />
+        <CohortRelationshipWorkspace>
+          <CohortMemberPanel
+            cohortName={cohortName}
+            role="mentee"
+            matches={matches}
+            milestones={milestones}
+          />
 
-        {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
+          {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
 
-        {bookingMatches.length > 0 && (
-          <CohortBookingSection role="mentee" matches={bookingMatches} />
-        )}
-
-        {matchOptions.length > 0 && (
-          <>
-            <GoalSection role="mentee" matches={matchOptions} goals={goals} />
-            {/* readOnly: the mentor keeps the log, the mentee reads it. */}
-            <MeetingLogSection
-              role="mentee"
-              matches={matchOptions}
-              logs={meetingLogs}
-              loggableSessions={{}}
-              readOnly
-            />
-          </>
-        )}
+          {matchOptions.length > 0 && (
+            <CohortRelationshipTools>
+              {bookingMatches.length > 0 && (
+                <CohortBookingSection role="mentee" matches={bookingMatches} />
+              )}
+              <GoalSection role="mentee" matches={matchOptions} goals={goals} />
+              {/* readOnly: the mentor keeps the log, the mentee reads it. */}
+              <MeetingLogSection
+                role="mentee"
+                matches={matchOptions}
+                logs={meetingLogs}
+                loggableSessions={{}}
+                readOnly
+              />
+            </CohortRelationshipTools>
+          )}
+        </CohortRelationshipWorkspace>
 
         <div style={cardStyle}>
           <p style={eyebrowStyle}>Upcoming sessions</p>
