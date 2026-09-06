@@ -47,9 +47,9 @@ export const ASCENSO_CALLBACK_PATH = '/ascenso/auth/callback'
 
 /**
  * A one-time sign-in URL for a cohort mentee, creating the auth user on first
- * use. `origin` must be a server-derived origin (new URL(request.url).origin) —
- * never a client-supplied value, or the link would be redirectable to an
- * attacker's host.
+ * use. `origin` must be an explicitly configured application origin — never a
+ * client-supplied value or unvalidated Host header, or the link would be
+ * redirectable to an attacker's host.
  *
  * Returns null on any failure: a missing account link is a degraded email, not
  * a failed match activation.

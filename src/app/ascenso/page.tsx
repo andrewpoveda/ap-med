@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { isAscensoVisible } from '@/lib/app-settings'
+import { ascensoAbsoluteUrl, getRequestHostname, isAscensoHostname } from '@/lib/site'
 
 /**
  * Public Ascenso landing page — the discoverable front door for the cohort.
@@ -22,6 +24,13 @@ export const metadata: Metadata = {
   title: 'Ascenso — LMSA-NE Mentorship Cohort | AP MED',
   description:
     "Ascenso is LMSA-NE's longitudinal mentorship initiative on AP MED — board-reviewed applications, thoughtful matching, and support beyond the match.",
+  alternates: { canonical: ascensoAbsoluteUrl('/ascenso') },
+  openGraph: {
+    title: 'Ascenso — LMSA-NE Mentorship Cohort',
+    description:
+      "Ascenso is LMSA-NE's longitudinal mentorship initiative on AP MED — board-reviewed applications, thoughtful matching, and support beyond the match.",
+    url: ascensoAbsoluteUrl('/ascenso'),
+  },
 }
 
 const GOLD = '#c8a96e'
@@ -101,10 +110,55 @@ const HOW_IT_WORKS = [
 ]
 
 export default async function AscensoPage() {
-  // Hidden → send visitors home, the same 307 the proxy used to serve. The
-  // homepage panel and the sitemap entries drop out on the same flag, so there
-  // is never a live link pointing at this redirect.
-  if (!(await isAscensoVisible())) redirect('/')
+  // On AP MED, hidden still means undiscoverable and redirects home. On the
+  // dedicated customer host, '/' already redirects here; sending it back would
+  // create a loop. Give that host a small, branded closed state with a member
+  // sign-in instead.
+  if (!(await isAscensoVisible())) {
+    const customerHost = isAscensoHostname(getRequestHostname(await headers()))
+    if (!customerHost) redirect('/')
+
+    return (
+      <section className="text-center py-20">
+        <p
+          style={{
+            color: GOLD,
+            fontSize: '0.75rem',
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+            marginBottom: '1.25rem',
+          }}
+        >
+          Ascenso · LMSA Northeast
+        </p>
+        <h1
+          style={{
+            ...serifHeading,
+            fontSize: 'clamp(2.1rem, 5vw, 3rem)',
+            lineHeight: 1.1,
+            margin: 0,
+          }}
+        >
+          The public Ascenso experience is currently closed
+        </h1>
+        <p
+          style={{
+            color: '#4a4a5a',
+            maxWidth: '560px',
+            margin: '1.5rem auto 0',
+            lineHeight: 1.7,
+          }}
+        >
+          Applications and public program information are not available right now.
+          Current participants can still sign in to their dashboard.
+        </p>
+        <Link href="/login" style={{ ...goldButton, marginTop: '2rem' }}>
+          Member sign in
+        </Link>
+      </section>
+    )
+  }
 
   return (
     <div className="space-y-20">

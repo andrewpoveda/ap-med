@@ -6,6 +6,7 @@ import { verifyTurnstileToken } from '@/lib/turnstile'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { cap, isValidEmail, LIMITS } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
+import { getAscensoCohortId } from '@/lib/site'
 import { SPECIALTIES } from '@/data/specialties'
 import {
   IDENTITY_OPTIONS,
@@ -213,9 +214,25 @@ export async function POST(request: Request) {
     )
   }
 
-  // The cohort must exist and be accepting applications. A malformed id lands
-  // here as a lookup error, so it degrades to the same 404.
-  const cohortId = String(data.cohort_id ?? '')
+  // The public form may echo the configured id, but it never chooses the
+  // destination cohort. This prevents a stale or crafted client from applying
+  // to some other open cohort in the shared backend.
+  const cohortId = getAscensoCohortId()
+  if (!cohortId) {
+    console.error('ASCENSO_COHORT_ID is missing or invalid — refusing application')
+    return NextResponse.json(
+      { error: 'Applications are not configured', code: 'applications_unavailable' },
+      { status: 503 },
+    )
+  }
+  if (String(data.cohort_id ?? '') !== cohortId) {
+    return NextResponse.json(
+      { error: 'Cohort not found', code: 'cohort_not_found' },
+      { status: 404 },
+    )
+  }
+
+  // The configured cohort must still exist and be accepting applications.
   const { data: cohort, error: cohortError } = await supabaseAdmin
     .from('cohorts')
     .select('id, status')

@@ -16,6 +16,7 @@ import {
   BOOKING_HORIZON_DAYS,
   type BusyInterval,
 } from '@/lib/availability'
+import { isMutationDryRunAllowed } from '@/lib/test-mode'
 import { cap, LIMITS } from '@/lib/validate'
 
 /**
@@ -28,8 +29,8 @@ import { cap, LIMITS } from '@/lib/validate'
  * computation (same computeOpenSlots code path the page used — one
  * implementation, no drift), which closes the stale-page TOCTOU. The partial
  * unique index sessions_mentor_slot_key is the final race guard; a losing
- * insert surfaces as 409. ?test=1 records the row and skips Google (mirrors
- * /api/notify and /api/sessions).
+ * insert surfaces as 409. In local/test environments only, ?test=1 records the
+ * row and skips Google.
  */
 export async function POST(
   request: Request,
@@ -37,6 +38,10 @@ export async function POST(
 ) {
   try {
     const dryRun = new URL(request.url).searchParams.get('test') === '1'
+    if (dryRun && !isMutationDryRunAllowed(process.env.NODE_ENV)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
     const { token } = await ctx.params
     const admin = getSupabaseAdmin()
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { SiteContext } from "@/lib/site";
 
 const SPOTIFY_SHOW_URL = "https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB";
 
@@ -11,7 +12,7 @@ type NavItem = {
   external?: boolean;
 };
 
-const navItems: NavItem[] = [
+const apMedNavItems: NavItem[] = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/blog", label: "Blog" },
@@ -20,8 +21,15 @@ const navItems: NavItem[] = [
   { href: "/mentor-onboarding", label: "Become a Mentor" },
 ];
 
-export default function Navigation() {
+const ascensoNavItems: NavItem[] = [
+  { href: "/ascenso", label: "Program" },
+  { href: "/ascenso/apply", label: "Apply" },
+];
+
+export default function Navigation({ siteContext = "ap-med" }: { siteContext?: SiteContext }) {
   const pathname = usePathname();
+  const isAscenso = siteContext === "ascenso";
+  const navItems = isAscenso ? ascensoNavItems : apMedNavItems;
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#e8e4dc] bg-[#faf8f4]">
@@ -32,8 +40,13 @@ export default function Navigation() {
             style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
             className="text-2xl text-[#1a1a2e] tracking-wide hover:opacity-80 transition-opacity whitespace-nowrap shrink-0"
           >
-            AP MED
+            {isAscenso ? "Ascenso" : "AP MED"}
           </Link>
+          {isAscenso && (
+            <span className="hidden sm:block text-[0.65rem] uppercase tracking-[0.12em] text-[#8a6d3b] whitespace-nowrap">
+              LMSA Northeast · AP MED
+            </span>
+          )}
           <div className="flex items-center gap-4 md:gap-7 overflow-x-auto no-scrollbar min-w-0">
             {navItems.map((item) =>
               item.external ? (

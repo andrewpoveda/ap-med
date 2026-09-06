@@ -7,6 +7,8 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser } from '@/lib/mentor-link'
 import { buildConsentUrl, getRedirectUri } from '@/lib/google'
+import { GOOGLE_OAUTH_STATE_COOKIE_OPTIONS } from '@/lib/cookie-options'
+import { getRequestHostname } from '@/lib/site'
 
 /**
  * Start the "Connect Google Calendar" flow for a signed-in mentor. This is a
@@ -36,13 +38,13 @@ export async function GET(request: Request) {
     const state = randomBytes(16).toString('hex')
     const cookieStore = await cookies()
     cookieStore.set('google_oauth_state', state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+      ...GOOGLE_OAUTH_STATE_COOKIE_OPTIONS,
       maxAge: 600,
     })
-    consentUrl = buildConsentUrl({ redirectUri: getRedirectUri(request.url), state })
+    consentUrl = buildConsentUrl({
+      redirectUri: getRedirectUri(request.url, getRequestHostname(request.headers)),
+      state,
+    })
   } catch (err) {
     // Missing GOOGLE_CLIENT_ID/SECRET, etc.
     console.error('Google connect misconfigured:', err)

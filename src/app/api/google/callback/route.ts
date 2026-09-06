@@ -7,6 +7,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser } from '@/lib/mentor-link'
 import { exchangeCodeForTokens, getRedirectUri, decodeIdTokenEmail } from '@/lib/google'
 import { encryptToken } from '@/lib/crypto'
+import { GOOGLE_OAUTH_STATE_COOKIE_OPTIONS } from '@/lib/cookie-options'
+import { getRequestHostname } from '@/lib/site'
 
 /**
  * Google Calendar OAuth callback. Verifies the CSRF state, exchanges the code
@@ -30,7 +32,10 @@ export async function GET(request: Request) {
   // CSRF: the state must match the cookie we set in /connect. Clear it either way.
   const cookieStore = await cookies()
   const expectedState = cookieStore.get('google_oauth_state')?.value
-  cookieStore.set('google_oauth_state', '', { maxAge: 0, path: '/' })
+  cookieStore.set('google_oauth_state', '', {
+    ...GOOGLE_OAUTH_STATE_COOKIE_OPTIONS,
+    maxAge: 0,
+  })
 
   if (!code || !state || !expectedState || state !== expectedState) {
     return dash('state_error')
@@ -53,7 +58,7 @@ export async function GET(request: Request) {
   try {
     const tokens = await exchangeCodeForTokens({
       code,
-      redirectUri: getRedirectUri(request.url),
+      redirectUri: getRedirectUri(request.url, getRequestHostname(request.headers)),
     })
     if (!tokens.refresh_token) {
       // No refresh token means we can't act offline later — ask to retry (the

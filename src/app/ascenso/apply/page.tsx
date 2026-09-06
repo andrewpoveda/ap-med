@@ -1,8 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isAscensoVisible } from '@/lib/app-settings'
+import {
+  ascensoAbsoluteUrl,
+  getAscensoCohortId,
+  getRequestHostname,
+  isAscensoHostname,
+} from '@/lib/site'
 import AscensoApplyForm from './AscensoApplyForm'
 
 export const dynamic = 'force-dynamic'
@@ -11,28 +18,39 @@ export const metadata: Metadata = {
   title: 'Apply to Ascenso | AP MED',
   description:
     'Apply to Ascenso, the LMSA-NE mentorship cohort on AP MED — as a mentor or a mentee, across premed, med-student, and resident tracks.',
+  alternates: { canonical: ascensoAbsoluteUrl('/ascenso/apply') },
+  openGraph: {
+    title: 'Apply to Ascenso | LMSA Northeast',
+    description:
+      'Apply to Ascenso, the LMSA-NE mentorship cohort on AP MED — as a mentor or a mentee, across premed, med-student, and resident tracks.',
+    url: ascensoAbsoluteUrl('/ascenso/apply'),
+  },
 }
 
-// Server component: resolves the currently-open Ascenso cohort with the
+// Server component: resolves the explicitly configured Ascenso cohort with the
 // service-role client (cohorts is RLS-locked) and hands its id to the client
-// form. No open cohort → applications-closed state.
+// form. Missing/invalid configuration or a non-open cohort fails closed.
 export default async function Page() {
   // Discoverability gate, checked before the cohort lookup — see /ascenso.
   // Distinct from the applications-closed state below: this flag hides the page
   // entirely, cohorts.status decides whether the form accepts submissions.
-  if (!(await isAscensoVisible())) redirect('/')
+  if (!(await isAscensoVisible())) {
+    const customerHost = isAscensoHostname(getRequestHostname(await headers()))
+    redirect(customerHost ? '/ascenso' : '/')
+  }
 
   let cohort: { id: string; name: string } | null = null
+  const cohortId = getAscensoCohortId()
 
-  try {
+  if (!cohortId) {
+    console.error('ASCENSO_COHORT_ID is missing or invalid — applications are closed')
+  } else try {
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('cohorts')
       .select('id, name')
-      .ilike('name', 'ascenso%')
+      .eq('id', cohortId)
       .eq('status', 'applications_open')
-      .order('created_at', { ascending: false })
-      .limit(1)
       .maybeSingle()
     if (error) {
       console.error('Ascenso cohort lookup failed:', error.message)

@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMentorForUser } from '@/lib/mentor-link'
 import { bookSession, requestExists } from '@/lib/sessions'
+import { isMutationDryRunAllowed } from '@/lib/test-mode'
 import { cap, LIMITS } from '@/lib/validate'
 
 /**
@@ -12,11 +13,15 @@ import { cap, LIMITS } from '@/lib/validate'
  * signed-in mentor, and can only schedule a mentee who already requested them
  * (reuses the mentee_requests capability chain — no new abuse surface). Creates
  * a Google Calendar event with a Meet link (emailing both attendees), then
- * records the session row. ?test=1 records the row but skips the Google call.
+ * records the session row. In local/test environments only, ?test=1 records
+ * the row but skips the Google call.
  */
 export async function POST(request: Request) {
   try {
     const dryRun = new URL(request.url).searchParams.get('test') === '1'
+    if (dryRun && !isMutationDryRunAllowed(process.env.NODE_ENV)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
 
     const supabase = await createSupabaseServerClient()
     const {

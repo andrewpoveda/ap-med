@@ -1,21 +1,49 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";
-import PostHogProvider from "@/components/PostHogProvider";
 import SiteShell from "@/components/SiteShell";
-import { SITE_URL } from "@/lib/site";
+import PostHogProvider from "@/components/PostHogProvider";
+import VercelAnalytics from "@/components/VercelAnalytics";
+import {
+  ASCENSO_SITE_NAME,
+  ASCENSO_SITE_URL,
+  getRequestHostname,
+  getSiteContext,
+  SITE_URL,
+  type SiteContext,
+} from "@/lib/site";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: "AP MED",
-  description: "Free mentorship for underrepresented pre-med students. Find a mentor matched to your identity, specialty, and goals.",
-};
+async function requestSiteContext(): Promise<SiteContext> {
+  return getSiteContext(getRequestHostname(await headers()));
+}
 
-export default function RootLayout({
+export async function generateMetadata(): Promise<Metadata> {
+  const siteContext = await requestSiteContext();
+
+  if (siteContext === "ascenso") {
+    return {
+      metadataBase: new URL(ASCENSO_SITE_URL ?? SITE_URL),
+      title: ASCENSO_SITE_NAME,
+      description:
+        "Ascenso is LMSA Northeast's longitudinal mentorship initiative, powered by AP MED.",
+    };
+  }
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: "AP MED",
+    description:
+      "Free mentorship for underrepresented pre-med students. Find a mentor matched to your identity, specialty, and goals.",
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteContext = await requestSiteContext();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -28,8 +56,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen">
         <PostHogProvider>
-          <SiteShell>{children}</SiteShell>
-          <Analytics />
+          <SiteShell siteContext={siteContext}>{children}</SiteShell>
+          <VercelAnalytics />
         </PostHogProvider>
       </body>
     </html>

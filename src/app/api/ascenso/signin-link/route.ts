@@ -7,6 +7,7 @@ import { createMenteeSignInLink } from '@/lib/ascenso-auth'
 import { sendAscensoSignInLink } from '@/lib/email'
 import { getCohortName } from '@/lib/cohort-dashboard'
 import { isValidEmail } from '@/lib/validate'
+import { ascensoAbsoluteUrl } from '@/lib/site'
 
 /**
  * DEPRECATED (superseded Jul 30 2026) — re-request an Ascenso mentee magic-link
@@ -110,8 +111,13 @@ export async function POST(request: Request) {
     const recipient = String(mentee.email ?? '').trim()
     if (!isValidEmail(recipient)) return NextResponse.json(GENERIC_OK)
 
-    const origin = new URL(request.url).origin
-    const signInUrl = await createMenteeSignInLink(admin, recipient, origin)
+    // The emailed credential must always return to the configured Ascenso
+    // origin, regardless of which deployment alias received this request.
+    const signInUrl = await createMenteeSignInLink(
+      admin,
+      recipient,
+      ascensoAbsoluteUrl(),
+    )
     if (!signInUrl) {
       return NextResponse.json(
         { error: 'Could not send a sign-in link right now — please try again.' },

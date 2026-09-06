@@ -84,9 +84,9 @@ export type BookingSlots =
  * two can't drift (unlike the magic-link page/route, which inline it twice).
  *
  * Real path: mentor bookable hours − Google freebusy − already-booked sessions.
- * `skipFreebusy` (the ?test=1 dry-run) skips the Google round-trip entirely and
- * requires no connected calendar — the auth/party posture + slot math stay
- * exercisable without GCP test-user gating (mirrors bookSession's dryRun).
+ * `skipFreebusy` (the local/test ?test=1 dry-run) skips the Google round-trip
+ * entirely and requires no connected calendar — the auth/party posture + slot
+ * math stay exercisable without GCP test-user gating.
  *
  * A returned 'ok' may still have zero slots (mentor fully booked) — the caller
  * distinguishes "not live" (no_availability/not_connected/unavailable) from

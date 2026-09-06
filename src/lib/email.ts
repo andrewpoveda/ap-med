@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import type { ScoredMentor } from '@/types/mentor'
 import { safeUrl } from '@/lib/url'
+import { ascensoAbsoluteUrl } from '@/lib/site'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -389,6 +390,7 @@ export async function sendCohortDigests(
   recipients: {
     email: string
     firstName: string
+    memberType: 'mentor' | 'mentee'
     cohortName: string
     items: { text: string }[]
   }[],
@@ -413,10 +415,12 @@ export async function sendCohortDigests(
 
 function buildDigestHtml({
   firstName,
+  memberType,
   cohortName,
   items,
 }: {
   firstName: string
+  memberType: 'mentor' | 'mentee'
   cohortName: string
   items: { text: string }[]
 }): string {
@@ -437,7 +441,10 @@ function buildDigestHtml({
         Hi ${safeFirst}, a few things in ${safeCohort} are waiting on you:
       </p>
       ${panel(`<ul style="margin:0;padding-left:18px;">${itemsHtml}</ul>`)}
-      ${primaryButton('https://www.ap-med.org/dashboard', 'Open your dashboard →')}`,
+      ${primaryButton(
+        ascensoAbsoluteUrl(memberType === 'mentee' ? '/ascenso/dashboard' : '/dashboard'),
+        'Open your dashboard →',
+      )}`,
     footer: `You received this because you're part of ${safeCohort} on AP MED Mentors.
         We send at most one check-in a week (plus a heads-up the day before a
         scheduled session). Questions any time? Just reply to this email.`,

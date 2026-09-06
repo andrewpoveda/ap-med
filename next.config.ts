@@ -1,7 +1,16 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import { getSecurityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: getSecurityHeaders(),
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

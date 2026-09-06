@@ -1,5 +1,10 @@
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase-middleware'
+import {
+  ASCENSO_SITE_URL,
+  getRequestHostname,
+  isAscensoHostname,
+} from '@/lib/site'
 
 // Next 16 request interceptor (the renamed "middleware" convention). Refreshes
 // the Supabase auth session cookie for the gated mentor and admin areas.
@@ -11,6 +16,20 @@ import { updateSession } from '@/lib/supabase-middleware'
 // the full server env, whereas a failed read here would fail closed and hide
 // Ascenso permanently with no obvious cause.
 export function proxy(request: NextRequest) {
+  // A configured customer hostname has one deliberate public front door. Keep
+  // the canonical /ascenso path in the browser (rather than rewriting it) so
+  // metadata, sharing, and diagnostics all describe the route actually served.
+  const hostname = getRequestHostname(request.headers)
+  if (
+    request.nextUrl.pathname === '/' &&
+    ASCENSO_SITE_URL &&
+    isAscensoHostname(hostname)
+  ) {
+    const destination = new URL('/ascenso', ASCENSO_SITE_URL)
+    destination.search = request.nextUrl.search
+    return NextResponse.redirect(destination)
+  }
+
   return updateSession(request)
 }
 
@@ -29,6 +48,7 @@ export const config = {
   // session refresh on two public pages and narrowing it wrong would silently
   // stop refreshing a real member's session.
   matcher: [
+    '/',
     '/dashboard',
     '/dashboard/:path*',
     '/ascenso',

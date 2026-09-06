@@ -1,8 +1,15 @@
 import type { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
 import { isAscensoVisible } from '@/lib/app-settings'
 import { alternatives } from '@/data/alternatives'
 import { blogPosts } from '@/data/blog'
-import { absoluteUrl, SITE_URL } from '@/lib/site'
+import {
+  absoluteUrl,
+  getBaseUrlForHostname,
+  getRequestHostname,
+  isAscensoHostname,
+  SITE_URL,
+} from '@/lib/site'
 
 // Dynamic for the same reason as the homepage: a prerendered sitemap would bake
 // the flag in at build time and keep advertising /ascenso after it was hidden.
@@ -13,6 +20,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // is hidden those routes redirect to /, so pointing crawlers at them would
   // only advertise a redirect.
   const ascensoPublic = await isAscensoVisible()
+  const hostname = getRequestHostname(await headers())
+  const requestBaseUrl = getBaseUrlForHostname(hostname)
+
+  // Do not publish duplicate AP MED marketing URLs under the partner domain.
+  // Its root redirects to /ascenso, which remains a useful canonical entry even
+  // while the public visibility flag is closed for applications/program copy.
+  if (isAscensoHostname(hostname)) {
+    const entries: MetadataRoute.Sitemap = [
+      {
+        url: absoluteUrl('/ascenso', requestBaseUrl),
+        changeFrequency: 'monthly',
+        priority: 1,
+      },
+    ]
+    if (ascensoPublic) {
+      entries.push({
+        url: absoluteUrl('/ascenso/apply', requestBaseUrl),
+        changeFrequency: 'monthly',
+        priority: 0.8,
+      })
+    }
+    return entries
+  }
+
   const ascensoEntries: MetadataRoute.Sitemap = ascensoPublic
     ? [
         { url: absoluteUrl('/ascenso'), changeFrequency: 'monthly', priority: 0.8 },

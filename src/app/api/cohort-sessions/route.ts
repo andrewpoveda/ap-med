@@ -7,6 +7,7 @@ import { cap, LIMITS } from '@/lib/validate'
 import { resolveActingMember } from '@/lib/goals'
 import { bookSession, hasUpcomingSession } from '@/lib/sessions'
 import { getActiveMatchForMember, computeBookingSlots } from '@/lib/cohort-sessions'
+import { isMutationDryRunAllowed } from '@/lib/test-mode'
 
 /**
  * Authed cohort session booking (ascenso-prm.md §7.11). A matched pair books a
@@ -27,11 +28,15 @@ import { getActiveMatchForMember, computeBookingSlots } from '@/lib/cohort-sessi
  * The requested slot is re-validated against a FRESH availability + freebusy
  * recompute (the same computeBookingSlots the dashboard rendered), which closes
  * the stale-dashboard TOCTOU; the partial unique index sessions_mentor_slot_key
- * is the final race guard (→ 409). ?test=1 records the row and skips Google.
+ * is the final race guard (→ 409). In local/test environments only, ?test=1
+ * records the row and skips Google.
  */
 export async function POST(request: Request) {
   try {
     const dryRun = new URL(request.url).searchParams.get('test') === '1'
+    if (dryRun && !isMutationDryRunAllowed(process.env.NODE_ENV)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
 
     const supabase = await createSupabaseServerClient()
     const {
@@ -108,7 +113,7 @@ export async function POST(request: Request) {
     }
 
     // Fresh slot recompute — the same code path the dashboard used, with fresh
-    // busy data (closes the stale-dashboard TOCTOU). Dry-run skips Google.
+    // busy data (closes the stale-dashboard TOCTOU). Local/test dry-run skips Google.
     const slots = await computeBookingSlots(admin, mentorId, { skipFreebusy: dryRun })
     if (slots.status !== 'ok') {
       return NextResponse.json(

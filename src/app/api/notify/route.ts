@@ -15,6 +15,7 @@ import {
 } from '@/lib/email-budget'
 import { isUuid } from '@/lib/uuid'
 import { isNotifyDryRunAllowed } from '@/lib/notify-request'
+import { absoluteUrl, getBaseUrlForHostname, getRequestHostname } from '@/lib/site'
 import type { Mentor } from '@/types/mentor'
 
 function getSupabaseAdmin() {
@@ -203,9 +204,13 @@ export async function POST(request: Request) {
     const scoredMentor = { ...mentor, matchPercent: scoreMentor(mentor, mentee) }
 
     // The raw token exists only in this response + the confirmation email —
-    // the DB holds its hash. Origin comes from the request (Cloudflare/Vercel
-    // enforce the public Host in prod), same approach as getRedirectUri().
-    const scheduleUrl = `${new URL(request.url).origin}/schedule/${scheduleToken}`
+    // the DB holds its hash. Map the request hostname through the two explicitly
+    // configured public origins so an arbitrary Host can never become an email
+    // destination.
+    const scheduleUrl = absoluteUrl(
+      `/schedule/${scheduleToken}`,
+      getBaseUrlForHostname(getRequestHostname(request.headers)),
+    )
 
     // Core action: notify the mentor. On failure, release the dedupe slot so the
     // mentee can retry — no email actually went out.

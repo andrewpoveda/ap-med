@@ -7,6 +7,8 @@
  * mirroring src/lib/turnstile.ts.
  */
 
+import { ascensoAbsoluteUrl, isAscensoHostname } from '@/lib/site'
+
 // openid+email so the token response's id_token carries the connected Google
 // address; calendar.events (not full calendar) is the least privilege needed to
 // create events with a Meet link; calendar.freebusy ("view your availability")
@@ -42,10 +44,18 @@ export function getGoogleOAuthConfig(): GoogleOAuthConfig {
 }
 
 /** The redirect URI for our calendar OAuth flow (distinct from Supabase's). */
-export function getRedirectUri(requestUrl: string): string {
+export function getRedirectUri(
+  requestUrl: string,
+  requestHostname?: string | null,
+): string {
+  const request = new URL(requestUrl)
+  if (isAscensoHostname(requestHostname ?? request.hostname)) {
+    return ascensoAbsoluteUrl('/api/google/callback')
+  }
+
   return (
     process.env.GOOGLE_OAUTH_REDIRECT_URI ??
-    `${new URL(requestUrl).origin}/api/google/callback`
+    `${request.origin}/api/google/callback`
   )
 }
 

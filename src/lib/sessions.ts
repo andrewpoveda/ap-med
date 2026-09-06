@@ -228,7 +228,7 @@ export async function hasUpcomingSession(
 
 /**
  * This mentor's already-scheduled sessions as busy intervals — belt and braces
- * on top of freebusy, covering sessions with no Google event (?test=1 rows).
+ * on top of freebusy, covering local/test dry-run rows with no Google event.
  */
 export async function getScheduledBusyIntervals(
   admin: SupabaseClient,
@@ -271,7 +271,8 @@ export type BookSessionOutcome =
  * (POST /api/sessions) and the mentee magic-link route
  * (POST /api/schedule/[token]) so booking semantics can't drift.
  *
- * dryRun records the row and skips Google entirely (mirrors /api/notify).
+ * dryRun records the row and skips Google entirely. Public route callers gate
+ * this mutation-skipping mode to local development and test processes.
  * A unique-violation on sessions_mentor_slot_key (two bookings racing for the
  * same slot — migration 0005) comes back as code 'slot_taken'.
  */
