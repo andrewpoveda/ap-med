@@ -3,25 +3,10 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { sendCohortAnnouncement } from '@/lib/email'
+import { buildAnnouncementMessage } from '@/lib/email'
+import { sendCohortDeliveries } from '@/lib/cohort-delivery'
 import { cap, isValidEmail, LIMITS } from '@/lib/validate'
 
-// Community announcements send route (ascenso-prm.md §5.10 / §7.8). The admin
-// composes subject/body/audience on the cohort admin page; this route resolves
-// recipients SERVER-SIDE from cohort membership (never from the client body),
-// sends one email per recipient via Resend, then writes the announcements row +
-// one email_log row per recipient (kind 'announcement', ref_id = announcement
-// id). Same non-probeable posture as the other admin routes: 401 anon, 404
-// non-admin / wrong cohort / cohort miss.
-//
-// Two email rules are enforced here at the route level, both with clear errors
-// and no silent queueing (§2): (1) refuse past the 90/day email_log soft cap
-// (Resend free tier is 100/day, account-global) → 429; (2) never more than one
-// full-cohort ('all') send per cohort per day → 429. ?test=1 is a side-effect-
-// free dry-run: it resolves recipients and returns the count, but sends nothing,
-// writes no announcement row, and logs nothing.
-
-const DAILY_EMAIL_SOFT_CAP = 90
 const AUDIENCES = ['all', 'mentors', 'mentees'] as const
 type Audience = (typeof AUDIENCES)[number]
 
@@ -112,60 +97,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const todayUtcStart = new Date()
-    todayUtcStart.setUTCHours(0, 0, 0, 0)
-
-    // Rule (2): at most one full-cohort blast per cohort per day (§2 — a full
-    // send is ≈60 emails; two in a day threatens the 100/day Resend cap).
-    if (audience === 'all') {
-      const { count: allSendsToday, error: allSendsError } = await admin
-        .from('announcements')
-        .select('id', { count: 'exact', head: true })
-        .eq('cohort_id', cohortId)
-        .eq('audience', 'all')
-        .gte('sent_at', todayUtcStart.toISOString())
-      if (allSendsError) {
-        console.error('Full-cohort send check failed:', allSendsError.message)
-        return NextResponse.json(
-          { error: 'Could not verify the daily announcement limit' },
-          { status: 500 },
-        )
-      }
-      if ((allSendsToday ?? 0) > 0) {
-        return NextResponse.json(
-          {
-            error:
-              'This cohort already received a full-cohort announcement today — only one is allowed per day. Send to mentors or mentees only, or try again tomorrow.',
-          },
-          { status: 429 },
-        )
-      }
-    }
-
-    // Rule (1): refuse when this send's recipients would push today's global
-    // email_log past the soft cap. Soft = concurrent sends can slightly
-    // overshoot; the Resend hard limit (100/day) holds the remaining headroom.
-    const { count: sentToday, error: countError } = await admin
-      .from('email_log')
-      .select('id', { count: 'exact', head: true })
-      .gte('sent_at', todayUtcStart.toISOString())
-    if (countError) {
-      console.error('email_log count failed:', countError.message)
-      return NextResponse.json(
-        { error: 'Could not verify the daily email budget' },
-        { status: 500 },
-      )
-    }
-    if ((sentToday ?? 0) + recipients.length > DAILY_EMAIL_SOFT_CAP) {
-      const remaining = Math.max(0, DAILY_EMAIL_SOFT_CAP - (sentToday ?? 0))
-      return NextResponse.json(
-        {
-          error: `Daily email budget reached — this send needs ${recipients.length} but only ${remaining} remain today. Try again tomorrow.`,
-        },
-        { status: 429 },
-      )
-    }
-
     // ?test=1 is a side-effect-free preview: recipients are resolved and both
     // budget rules above have been checked (so a dry-run faithfully returns 429
     // when a real send would be refused), but nothing is sent, no announcement
@@ -180,63 +111,20 @@ export async function POST(request: Request) {
       })
     }
 
-    // Record the announcement first so email_log rows can reference its id. If
-    // the send then fails wholesale we delete it, so a row always reflects a
-    // real send.
-    const { data: created, error: insertError } = await admin
-      .from('announcements')
-      .insert([
-        {
-          cohort_id: cohortId,
-          subject,
-          body: messageBody,
-          audience,
-          sent_at: new Date().toISOString(),
-          sent_by: adminUser.id,
-          recipient_count: recipients.length,
-        },
-      ])
-      .select('id')
-      .single()
-    if (insertError || !created) {
-      console.error('Announcement insert failed:', insertError?.message)
-      return NextResponse.json({ error: 'Could not save the announcement' }, { status: 500 })
+    const requestId = String(body.requestId ?? '')
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      return NextResponse.json({ error: 'A valid request ID is required' }, { status: 400 })
     }
-
-    try {
-      await sendCohortAnnouncement({
-        recipients,
-        cohortName: cohort.name,
-        subject,
-        body: messageBody,
-      })
-    } catch {
-      // Batch send is all-or-nothing: nothing went out, so remove the row.
-      await admin.from('announcements').delete().eq('id', created.id)
-      return NextResponse.json(
-        { error: 'The announcement failed to send — nothing was delivered, try again' },
-        { status: 502 },
-      )
-    }
-
-    // One email_log row per recipient (kind 'announcement', ref_id = the
-    // announcement). The sends already happened — a failed log write is
-    // server-side noise, not a client error.
-    const { error: logError } = await admin.from('email_log').insert(
-      recipients.map((recipient) => ({
-        cohort_id: cohortId,
-        kind: 'announcement',
-        recipient_email: recipient,
-        ref_id: created.id,
-      })),
-    )
-    if (logError) console.error('email_log insert failed:', logError.message)
-
-    return NextResponse.json({
-      success: true,
-      announcementId: created.id,
-      recipientCount: recipients.length,
+    const { data: announcementId, error: queueError } = await admin.rpc('ascenso_queue_announcement', {
+      p_id: requestId, p_cohort: cohortId, p_actor: adminUser.id, p_subject: subject,
+      p_body: messageBody, p_audience: audience,
+      p_messages: recipients.map(email => buildAnnouncementMessage(email, cohort.name, subject, messageBody)),
     })
+    if (queueError) return NextResponse.json({ error: 'Could not queue: a full-cohort announcement may already be queued today, or this request ID was used for different content. Refresh to check history.' }, { status: 409 })
+    // The durable queue remains recoverable if this request times out.
+    await sendCohortDeliveries(admin, announcementId).catch(() => false)
+    return NextResponse.json({ success: true, announcementId, recipientCount: recipients.length, queued: true })
+
   } catch (err) {
     console.error('Announcement send crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

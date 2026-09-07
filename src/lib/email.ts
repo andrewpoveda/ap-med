@@ -340,77 +340,15 @@ export async function sendAscensoSignInLink(params: {
   }
 }
 
-/**
- * Cohort announcement blast (ascenso-prm.md §5.10) — the admin composes one
- * subject/body and the send route resolves recipients from cohort membership.
- * Sent as a Resend BATCH with one message per recipient (never a shared to/cc),
- * so the cohort roster is never disclosed to the recipients. Batch is
- * all-or-nothing at the API level: on success every recipient was accepted, on
- * error none were — the caller rolls back the announcement row and retries.
- * subject is pre-sanitized to a single line by the caller; body + subject +
- * cohort name are all escaped here before entering the markup.
- */
-export async function sendCohortAnnouncement(params: {
-  recipients: string[]
-  cohortName: string
-  subject: string
-  body: string
-}): Promise<{ sent: string[] }> {
-  const { recipients, cohortName, subject, body } = params
-  const html = buildAnnouncementHtml({ cohortName, subject, body })
 
-  const { error } = await resend.batch.send(
-    recipients.map((to) => ({
-      from: 'AP MED Mentors <mentors@ap-med.org>',
-      to,
-      replyTo: 'mentors@ap-med.org',
-      // Subject is plain text (not HTML); the caller has already collapsed any
-      // newlines out of it, so use the raw value, not the escaped one.
-      subject,
-      html,
-    })),
-  )
-
-  if (error) {
-    console.error('Announcement batch send failed:', error)
-    throw error
-  }
-  return { sent: recipients }
+export function buildDigestMessage(recipient: { email: string; firstName: string; memberType: 'mentor' | 'mentee'; cohortName: string; items: { text: string }[] }) {
+  return { from: 'AP MED Mentors <mentors@ap-med.org>', to: recipient.email, replyTo: 'mentors@ap-med.org',
+    subject: `Your ${recipient.cohortName} check-in — ${recipient.items.length} items waiting`, html: buildDigestHtml(recipient) }
 }
 
-/**
- * Daily digest batch (ascenso-prm.md §5.9) — one personalized email per member
- * with ALL of their pending items, sent by the cron route after the cooldown +
- * budget guards. Recipients/items are computed server-side from DB rows
- * (src/lib/digest.ts); every interpolated value is escaped here. Same Resend
- * batch semantics as announcements: one message per recipient, all-or-nothing
- * at the API level, so the caller logs email_log rows only on success.
- */
-export async function sendCohortDigests(
-  recipients: {
-    email: string
-    firstName: string
-    memberType: 'mentor' | 'mentee'
-    cohortName: string
-    items: { text: string }[]
-  }[],
-): Promise<void> {
-  const { error } = await resend.batch.send(
-    recipients.map((recipient) => ({
-      from: 'AP MED Mentors <mentors@ap-med.org>',
-      to: recipient.email,
-      replyTo: 'mentors@ap-med.org',
-      // Subject is plain text (not HTML) — raw values, not escaped ones.
-      subject: `Your ${recipient.cohortName} check-in — ${recipient.items.length} ${
-        recipient.items.length === 1 ? 'item' : 'items'
-      } waiting`,
-      html: buildDigestHtml(recipient),
-    })),
-  )
-  if (error) {
-    console.error('Digest batch send failed:', error)
-    throw error
-  }
+export function buildAnnouncementMessage(recipient: string, cohortName: string, subject: string, body: string) {
+  return { from: 'AP MED Mentors <mentors@ap-med.org>', to: recipient, replyTo: 'mentors@ap-med.org', subject,
+    html: buildAnnouncementHtml({ cohortName, subject, body }) }
 }
 
 function buildDigestHtml({
@@ -571,12 +509,13 @@ function buildEmailHtml({
 /** Phase 2 stores this complete message before sending, so configuration or
  * profile edits cannot change the payload under a reused idempotency key. */
 export function buildCohortOperationalEmail(delivery: {
-  kind: 'decision' | 'introduction'
+  kind: 'decision' | 'introduction' | 'announcement' | 'digest'
   variant: string
   recipient_email: string
   payload: Record<string, string>
 }) {
   const p = delivery.payload
+  if (delivery.kind === 'announcement' || delivery.kind === 'digest') throw new Error('Bulk delivery requires a stored message')
   const name = escapeHtml(p.name ?? '')
   const cohort = escapeHtml(p.cohortName ?? '')
   const login = escapeHtml(safeUrl(ascensoAbsoluteUrl('/login')))

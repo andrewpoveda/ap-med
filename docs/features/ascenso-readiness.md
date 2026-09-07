@@ -11,7 +11,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 1 — Security / Intake Integrity | Fixed | 1–2 |
 | 2 — Pilot Operational Correctness | Fixed | 3–9 |
 | 3 — Member Experience Consistency | Fixed | 10–14 |
-| 4 — Email / Delivery Reliability | Pending | 15–17 |
+| 4 — Email / Delivery Reliability | Fixed | 15–17 |
 | 5 — Reporting / Data Trustworthiness | Pending | 18–22 |
 | 6 — Cohort / Program Lifecycle | Pending | 23–27 |
 | 7 — Person / Role / Participation Model | Pending | 28–31 |
@@ -42,9 +42,9 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 12 | Meeting Cancellation / Rescheduling Recovery | Fixed | Mentor remains cancellation owner; mentee UI explicitly directs cancellation requests to the mentor, followed by either-party rebooking. AP MED cancellation commits first with durable calendar_cleanup_pending; failures remain visible and retryable after refresh. History is retained and completed-session/cancellation races are rejected. External account settings are unchanged. |
 | 13 | Member Accept / Decline / Rematch Request | Fixed | Authenticated cohort members have a program-directed email action for match help/reassignment with program and member reference, plus visible destination and instructions. Sending is explicit through their email client. Board-controlled disclosure/activation remains; no automatic acceptance/rematching or ticketing system. |
 | 14 | Support Ownership | Fixed | Admin member-management page configures support name, validated email, and optional instructions in the cohort's support configuration. Scoped server RPC preserves unrelated config and records an event. Defaults explicitly name AP MED program support; the program must assign an inbox owner. |
-| 15 | Shared Email Capacity / 90-Day Gates | Pending | Shared configurable daily cap, safe deferral, visible failures and practical cohort fairness. The source heading says “90-DAY”; this is the 90-per-day gate. |
-| 16 | Durable Email Send State | Pending | Durable intent, recipient status, idempotency and retry-safe introductions/decisions/digests. |
-| 17 | Delivery/Bounce Visibility | Pending | Honest provider-accepted versus delivered semantics; minimal webhook only if justified and straightforward. |
+| 15 | Shared Email Capacity / 90-Day Gates | Fixed | All live Ascenso Resend routes use the shared atomic reservation budget, including legacy sign-in links. Server-only singleton config defaults to 90/day; it is not the provider subscription limit. Excess announcement recipients remain pending; cron drains a bounded cohort-round-robin queue. Failed/deferred/expired entries are visible on paginated cohort email status. |
+| 16 | Durable Email Send State | Fixed | Decisions, introductions, announcements and digests persist recipient intent before provider calls. Announcement request UUID + transactional creation and digest member/day uniqueness preserve retries. Frozen messages and provider keys are retained. Expired reminders are superseded if never attempted; uncertain attempts require provider confirmation. Credentials remain request-bound, never stored in the queue. |
+| 17 | Delivery/Bounce Visibility | Fixed | UI distinguishes queued, provider-accepted and unresolved mail; historical announcement rows are not treated as confirmed delivery. Bounce/delivery webhooks intentionally deferred: no delivery-SLA or automated bounce suppression requirement is established. Trigger: first paid program requires delivery evidence, or manual provider checks cannot reliably handle volume. Then implement signed events, replay-safe provider-ID reconciliation and suppression policy together. |
 | 18 | Approval Vs Activation Timestamps | Pending | Real activation timestamp and honest labels; never invent historical activation dates. |
 | 19 | Inactivity / Engagement Definition | Pending | Separate booked activity from recorded meetings and pair activity from individual participation. |
 | 20 | Session-Linked Meeting Deduplication | Pending | Database session-log deduplication plus past/eligible, same-pair validation; preserve manual logs. |
@@ -120,10 +120,21 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 ## Phase 3 checkpoint
 
 - Repository changes: two-sided meeting UI; active-partner contact and support panel; scoped support editor/API; durable cancellation recovery and session-linked meeting integrity.
+- Commit: `76e24a2`.
 - Migration: `supabase/migrations/20260907192940_ascenso_member_recovery.sql`, unapplied to hosted databases. Apply after Phase 2 and before dependent code. Existing duplicate session-linked logs intentionally block the unique index and require deliberate operator review, not automatic deletion.
 - Validation: six focused Phase 3 Node tests (including both participant roles and wrong-cohort denial), focused ESLint, TypeScript, and `verify_phase3.sh` against disposable PostgreSQL 17 with the prior-phase SQL regression suite. No browser/provider end-to-end claim. No new dependencies or environment variables.
 - Operations: configure each cohort's support inbox and assign an owner; mentors retry failed Calendar cleanup after reconnecting or coordinate manual event removal. No external provider actions performed.
 - Later work: Phase 5 retains reporting/time attribution work despite the prerequisite session-log constraint added here. Phase 6 handles full cohort configuration; Phase 9 reuses the small support config. Broader event history stays Phase 8.
+
+## Phase 4 checkpoint
+
+- Items 15–17 explicitly addressed. Announcements/digests now use durable recipient intents and atomic capacity; legacy sign-in links reserve one slot. Public notification two-slot accounting remains unchanged. Obsolete unbudgeted bulk-send helpers removed.
+- Migration: `20260907194153_ascenso_email_queue.sql`, after Phase 3 and before dependent code; no hosted migration, deployment, dependencies or provider changes. Config is `email_budget_settings.daily_limit`, default 90. Adjust only after checking the actual Resend account plan, other users of that account and headroom; changing the database value does not change the provider limit.
+- Validation: 70 focused/prior-phase Node tests passed; focused lint and TypeScript passed; disposable PostgreSQL checks cover cap exhaustion/release, atomic campaign idempotency, scoped denial, historical intent preservation, acceptance accounting and expired digest suppression. No provider/browser end-to-end claim.
+- Queue: cron processes at most 40 candidates per invocation with a 40-second worker budget; it rotates across cohorts within each page. Announcements also attempt their own recipients immediately. Unprocessed mail remains durable. Existing daily cron configuration is unchanged; admins can retry on the cohort email-status page, or operators can invoke the existing authenticated digest cron again. Under sustained volume, schedule more frequent drains after checking the hosting plan; do not assume daily cron guarantees same-day completion. Inspect queue daily during pilot.
+- Provider acceptance remains distinct from delivery. Check the provider for bounces/unknown outcomes before recording acceptance or confirmed non-send. Resend key expiry is guarded; elapsed time alone never authorizes a fresh duplicate. Unknown transport failures retain capacity conservatively until day reset.
+- Reminders expire at the earliest included session or UTC day-end; the next run recomputes current needs. A prior unresolved digest blocks new sends for that member until reviewed. Phase 10 still addresses complete recipient query pagination; Phase 12 handles retention of stored message bodies and operator access.
+- Sign-in credentials are not persisted for delayed delivery. Budget exhaustion keeps the non-probeable generic response; users can use Google login or contact support. Known link-generation failure releases capacity, unknown mail outcomes retain it.
 
 ## Remaining audit boundaries
 

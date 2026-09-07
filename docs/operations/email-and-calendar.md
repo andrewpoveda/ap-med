@@ -19,3 +19,14 @@ Google Calendar authorization is separate from Google account sign-in. Calendar 
 Session helpers coordinate database rows with Google events and attempt rollback when one side fails. Cohort members can schedule only within their own active match. Cancellation and completion transitions are server-authorized.
 
 Do not infer whether Google OAuth is in testing or production, which accounts are connected, current send counts, remaining email quota, or provider configuration from this repository. Those require an authorized live check.
+# Ascenso delivery queue rollout (Phase 4)
+
+Decisions, introductions, announcements and digests persist recipient intent in `cohort_delivery` before sending. The cohort announcements page links to paginated email status and recovery. “Accepted” means accepted by Resend, not inbox delivery. Historical announcement records have no inferred acceptance.
+
+Apply `20260907194153_ascenso_email_queue.sql` after the Phase 3 migration and before deploying dependent code. No provider configuration is changed by that migration. `email_budget_settings.daily_limit` defaults to 90 and counts all logged/reserved application email against one UTC-day limit. Confirm the actual provider subscription and other senders before adjusting it; no commercial limit is inferred from repository configuration.
+
+The existing authenticated digest cron also drains up to 40 queued candidates, interleaving cohorts, within a 40-second worker budget. Excess recipients remain pending. Check email status daily during pilot. Use scoped retry or another authenticated cron invocation to progress backlog; a more frequent production schedule requires checking the hosting plan and separate authorization. Never assume a large campaign will finish in one daily run.
+
+Check the provider before resolving uncertain sends. Do not reset keys based solely on elapsed time. Expired, unattempted digests are discarded and recomputed; expired uncertain attempts require provider review. A retry reuses the frozen message/key within the guarded provider window. Unknown failures conservatively retain budget capacity for the day. Legacy sign-in credentials are request-bound and never put in this queue.
+
+Delivery/bounce webhooks are deliberately not added yet. Add signed, replay-safe provider events and a defined bounce-suppression policy when a paid program requires delivery evidence or manual provider checks cannot handle volume. Until then assign a named operator to inspect bounce reports; do not promise inbox delivery or automated suppression.

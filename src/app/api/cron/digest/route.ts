@@ -11,28 +11,9 @@ import {
   applyDigestCooldown,
   computeDigestRecipients,
   getCooldownDays,
-  DIGEST_KIND,
 } from '@/lib/digest'
-import { sendCohortDigests } from '@/lib/email'
-
-// Daily digest cron (ascenso-prm.md §5.9 / §7.12). Scheduled by vercel.json at
-// 0 13 * * * UTC (≈9am ET, fires within the hour on Hobby). Each run computes
-// every active-cohort member's pending items (src/lib/digest.ts), batches all
-// of a person's items into ONE email, writes email_log rows (kind 'digest'),
-// and enforces:
-//   - the 7-day cooldown (session-in-24h items exempt) — §5.9;
-//   - idempotency per day (a same-day re-invocation sends nothing);
-//   - the 90/day email_log soft cap → 429, refuse outright, no partial send.
-//
-// AUTH (§6.5): Authorization: Bearer ${CRON_SECRET}, 401 otherwise — the first
-// cron route, NOT session-authed. Vercel injects exactly this header on cron
-// invocations when the CRON_SECRET env var is set on the project. Vercel Cron
-// invokes with GET, so GET is the cron entrypoint; POST is the same handler for
-// manual/scripted invocation. ?test=1 is a side-effect-free dry-run: recipients
-// computed and every guard checked (a dry-run faithfully 429s when a real run
-// would refuse), but nothing sends and nothing is logged.
-
-const DAILY_EMAIL_SOFT_CAP = 90
+import { buildDigestMessage } from '@/lib/email'
+import { drainCohortDeliveryQueue } from '@/lib/cohort-delivery'
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET
@@ -76,37 +57,6 @@ async function runDigest(request: Request) {
       cooldownDays,
     }
 
-    if (toSend.length === 0) {
-      return NextResponse.json({ success: true, dryRun, sentCount: 0, ...summary })
-    }
-
-    // 90/day soft cap (§2, same check as the announcement route): refuse the
-    // whole run rather than silently sending a partial digest — a truncated
-    // "who got nagged" set would make the cooldown state misleading.
-    const todayUtcStart = new Date(now)
-    todayUtcStart.setUTCHours(0, 0, 0, 0)
-    const { count: sentToday, error: countError } = await admin
-      .from('email_log')
-      .select('id', { count: 'exact', head: true })
-      .gte('sent_at', todayUtcStart.toISOString())
-    if (countError) {
-      console.error('Digest email_log count failed:', countError.message)
-      return NextResponse.json(
-        { error: 'Could not verify the daily email budget' },
-        { status: 500 },
-      )
-    }
-    if ((sentToday ?? 0) + toSend.length > DAILY_EMAIL_SOFT_CAP) {
-      const remaining = Math.max(0, DAILY_EMAIL_SOFT_CAP - (sentToday ?? 0))
-      return NextResponse.json(
-        {
-          error: `Daily email budget reached — this digest needs ${toSend.length} but only ${remaining} remain today. Nothing was sent.`,
-          ...summary,
-        },
-        { status: 429 },
-      )
-    }
-
     if (dryRun) {
       return NextResponse.json({
         success: true,
@@ -121,36 +71,20 @@ async function runDigest(request: Request) {
       })
     }
 
-    try {
-      // Batch is all-or-nothing at the Resend API level (≤100 messages; the 90
-      // cap above keeps us under it), so on failure nothing went out and
-      // nothing gets logged — the next invocation retries cleanly.
-      await sendCohortDigests(toSend)
-    } catch {
-      return NextResponse.json(
-        { error: 'The digest batch failed to send — nothing was delivered', ...summary },
-        { status: 502 },
-      )
+    if (toSend.length) {
+      const expires = new Date(now)
+      expires.setUTCHours(24, 0, 0, 0)
+      const { error: queueError } = await admin.from('cohort_delivery').upsert(toSend.map(r => ({
+        cohort_id: r.cohortId, source_id: r.memberId, kind: 'digest',
+        variant: summary.date, recipient_email: r.email, payload: {},
+        message: buildDigestMessage(r), expires_at: r.validUntil && r.validUntil < expires.toISOString() ? r.validUntil : expires.toISOString(),
+      })), { onConflict: 'source_id,kind,variant', ignoreDuplicates: true })
+      if (queueError) throw new Error('Could not persist digest intents')
     }
+    const complete = await drainCohortDeliveryQueue(admin)
+    return NextResponse.json({ success: true, dryRun: false, queuedCount: toSend.length,
+      queuePageComplete: complete, note: 'Provider acceptance and unresolved mail are visible in cohort email status.', ...summary })
 
-    // One email_log row per recipient. These rows ARE the cooldown/idempotency
-    // state, so a failed write matters more than the announcement route's —
-    // log loudly, but the sends already happened, so still report success.
-    const { error: logError } = await admin.from('email_log').insert(
-      toSend.map((r) => ({
-        cohort_id: r.cohortId,
-        kind: DIGEST_KIND,
-        recipient_email: r.email,
-      })),
-    )
-    if (logError) {
-      console.error(
-        'Digest email_log insert failed — cooldown state is now missing for this run:',
-        logError.message,
-      )
-    }
-
-    return NextResponse.json({ success: true, dryRun: false, sentCount: toSend.length, ...summary })
   } catch (err) {
     console.error('Digest run crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

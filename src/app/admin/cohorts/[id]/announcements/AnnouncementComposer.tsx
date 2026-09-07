@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 
 // Announcement composer (ascenso-prm.md §5.10). Subject/body/audience → POST
@@ -46,6 +46,7 @@ export default function AnnouncementComposer({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const intent = useRef<{ signature: string; id: string } | null>(null)
 
   const recipientCount =
     audience === 'all' ? allCount : audience === 'mentors' ? mentorCount : menteeCount
@@ -65,28 +66,31 @@ export default function AnnouncementComposer({
     const confirmed = window.confirm(
       `Send "${subject.trim()}" to ${recipientCount} ${
         recipientCount === 1 ? 'recipient' : 'recipients'
-      }? This emails them right away.`,
+      }? Emails enter the delivery queue; daily capacity may defer some recipients.`,
     )
     if (!confirmed) return
 
     setPending(true)
     try {
+      const signature = JSON.stringify({ cohortId, subject, body, audience })
+      if (intent.current?.signature !== signature) intent.current = { signature, id: crypto.randomUUID() }
       const res = await fetch('/api/admin/announcements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cohortId, subject, body, audience }),
+        body: JSON.stringify({ cohortId, subject, body, audience, requestId: intent.current.id }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data.error ?? 'Could not send the announcement.')
       } else {
         setSuccess(
-          `Sent to ${data.recipientCount ?? recipientCount} ${
+          `Queued for ${data.recipientCount ?? recipientCount} ${
             (data.recipientCount ?? recipientCount) === 1 ? 'recipient' : 'recipients'
-          }.`,
+          }. Check email status for provider acceptance or recovery.`,
         )
         setSubject('')
         setBody('')
+        intent.current = null
         router.refresh()
       }
     } catch {
@@ -175,19 +179,19 @@ export default function AnnouncementComposer({
       <p className="text-[#6b6b6b]" style={{ margin: '0 0 0.5rem', fontSize: '0.82rem' }}>
         Sends to <strong className="text-[#1a1a2e]">{recipientCount}</strong>{' '}
         {recipientCount === 1 ? 'recipient' : 'recipients'} · {sentToday}/{softCap} emails
-        used today ({remaining} left)
+        logged today ({remaining} before outstanding reservations)
       </p>
 
       {blockedFullCohort && (
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: '#8a6d1f' }}>
-          A full-cohort announcement already went out today. Only one is allowed
+          A full-cohort announcement is already recorded today. Only one is allowed
           per day — send to mentors or mentees only, or wait until tomorrow.
         </p>
       )}
       {overCap && !blockedFullCohort && (
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: '#8a6d1f' }}>
           This send needs {recipientCount} emails but only {remaining} remain in
-          today&apos;s budget. It will be refused — try again tomorrow.
+          today&apos;s budget. Excess recipients stay pending for a later queue run.
         </p>
       )}
       {error && (

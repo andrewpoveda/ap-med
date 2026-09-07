@@ -83,6 +83,15 @@ const framework = { 'next/server': { NextResponse: { json: (body, init) => Respo
 const request = (body) => new Request('https://example.org/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
 function legacyRoute(db, sent) {
+  db.rpc = async (name, args) => {
+    if (name === 'reserve_email_budget') {
+      assert.equal(args.p_slots, 1)
+      return { data: '11111111-1111-4111-8111-111111111111' }
+    }
+    assert.equal(name, 'release_email_budget_slots')
+    assert.equal(args.p_slots, 1)
+    return { data: 0 }
+  }
   return loadTs('src/app/api/ascenso/signin-link/route.ts', {
     ...framework,
     '@/lib/supabase-admin': { getSupabaseAdmin: () => db },

@@ -42,6 +42,8 @@ export type DigestRecipient = {
   cohortId: string
   cohortName: string
   items: DigestItem[]
+  /** A queued reminder must not be sent after its earliest session starts. */
+  validUntil?: string
 }
 
 /** Cooldown window in days; DIGEST_COOLDOWN_DAYS overrides the default 7. */
@@ -301,6 +303,11 @@ async function computeCohortRecipients(
       cohortId: cohort.id,
       cohortName: cohort.name,
       items,
+      validUntil: matches.flatMap(match => {
+        if (member.id !== match.mentor_id && member.id !== match.mentee_id) return []
+        const at = sessionByPair.get(`${match.mentor_id}:${match.mentee_id}`)
+        return at ? [at] : []
+      }).sort()[0],
     })
   }
   return recipients

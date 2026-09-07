@@ -8,6 +8,7 @@ import { sendAscensoSignInLink } from '@/lib/email'
 import { getCohortName } from '@/lib/cohort-dashboard'
 import { isValidEmail } from '@/lib/validate'
 import { ascensoAbsoluteUrl } from '@/lib/site'
+import { releaseEmailBudgetSlots } from '@/lib/email-budget'
 import { normalizeEmail } from '@/lib/email-identity'
 
 /**
@@ -37,7 +38,6 @@ import { normalizeEmail } from '@/lib/email-identity'
  * bounds the damage a determined caller can do to the Resend quota.
  */
 
-const DAILY_EMAIL_SOFT_CAP = 90
 
 // Deliberately identical for "sent", "no such mentee", and "not yet matched".
 const GENERIC_OK = {
@@ -83,32 +83,11 @@ export async function POST(request: Request) {
 
     if (!mentee || mentee.membership_status !== 'active') return NextResponse.json(GENERIC_OK)
 
-    // Shared email budget (PRM §2). Checked before generating anything so a
-    // capped day doesn't churn auth users. Reported plainly: knowing the site
-    // is out of email for the day reveals nothing about who is a member.
-    const todayUtcStart = new Date()
-    todayUtcStart.setUTCHours(0, 0, 0, 0)
-    const { count, error: countError } = await admin
-      .from('email_log')
-      .select('id', { count: 'exact', head: true })
-      .gte('sent_at', todayUtcStart.toISOString())
-    if (countError) {
-      console.error('email_log count failed:', countError.message)
-      return NextResponse.json(
-        { error: 'Could not send a sign-in link right now — please try again.' },
-        { status: 500 },
-      )
-    }
-    if ((count ?? 0) + 1 > DAILY_EMAIL_SOFT_CAP) {
-      return NextResponse.json(
-        { error: "We've hit today's email limit — please try again tomorrow." },
-        { status: 429 },
-      )
-    }
-
-    // Recipient is the row's own address, NOT the submitted one.
     const recipient = String(mentee.email ?? '').trim()
     if (!isValidEmail(recipient)) return NextResponse.json(GENERIC_OK)
+    const { data: reservation, error: budgetError } = await admin.rpc('reserve_email_budget', { p_slots: 1 })
+    if (budgetError) return NextResponse.json({ error: 'Could not send a sign-in link right now.' }, { status: 500 })
+    if (!reservation) return NextResponse.json(GENERIC_OK)
 
     // The emailed credential must always return to the configured Ascenso
     // origin, regardless of which deployment alias received this request.
@@ -118,6 +97,7 @@ export async function POST(request: Request) {
       ascensoAbsoluteUrl(),
     )
     if (!signInUrl) {
+      await releaseEmailBudgetSlots(admin, reservation, 1)
       return NextResponse.json(
         { error: 'Could not send a sign-in link right now — please try again.' },
         { status: 500 },
@@ -152,6 +132,7 @@ export async function POST(request: Request) {
     // The send already happened — a failed log line is server-side noise, not a
     // client error (same posture as the match-notify logging).
     if (logError) console.error('email_log insert failed:', logError.message)
+    else await releaseEmailBudgetSlots(admin, reservation, 1)
 
     return NextResponse.json(GENERIC_OK)
   } catch (err) {

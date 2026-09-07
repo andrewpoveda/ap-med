@@ -20,8 +20,6 @@ export const metadata: Metadata = {
 // membership and enforces both email budget rules. This page shows the composer
 // with live recipient counts, today's budget headroom, and the send history.
 
-const DAILY_EMAIL_SOFT_CAP = 90
-
 const cardStyle: CSSProperties = {
   background: '#ffffff',
   border: '1px solid #e8e4dc',
@@ -35,6 +33,7 @@ type AnnouncementRow = {
   subject: string
   audience: string
   sent_at: string | null
+  queued_at: string | null
   recipient_count: number | null
 }
 
@@ -65,6 +64,8 @@ export default async function CohortAnnouncementsPage({
   if (!canAccessCohort(adminUser, cohortId)) notFound()
 
   const admin = getSupabaseAdmin()
+  const { data: budget, error: budgetError } = await admin.from('email_budget_settings').select('daily_limit').single()
+  if (budgetError || !budget) throw new Error('Could not load email budget')
   // Malformed uuid → lookup error → same 404 as a miss.
   const { data: cohort } = await admin
     .from('cohorts')
@@ -82,8 +83,8 @@ export default async function CohortAnnouncementsPage({
   // out today, and the recent send history.
   const [mentorsRes, menteesRes, sentTodayRes, fullTodayRes, historyRes] =
     await Promise.all([
-      admin.from('mentor').select('email').eq('cohort_id', cohortId),
-      admin.from('mentees').select('email').eq('cohort_id', cohortId),
+      admin.from('mentor').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active'),
+      admin.from('mentees').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active'),
       admin
         .from('email_log')
         .select('id', { count: 'exact', head: true })
@@ -93,12 +94,12 @@ export default async function CohortAnnouncementsPage({
         .select('id', { count: 'exact', head: true })
         .eq('cohort_id', cohortId)
         .eq('audience', 'all')
-        .gte('sent_at', todayUtcStart.toISOString()),
+        .or(`sent_at.gte.${todayUtcStart.toISOString()},queued_at.gte.${todayUtcStart.toISOString()}`),
       admin
         .from('announcements')
-        .select('id, subject, audience, sent_at, recipient_count')
+        .select('id, subject, audience, sent_at, queued_at, recipient_count')
         .eq('cohort_id', cohortId)
-        .order('sent_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
         .limit(10),
     ])
   if (mentorsRes.error) console.error('Announcement mentor pool fetch failed:', mentorsRes.error.message)
@@ -153,6 +154,7 @@ export default async function CohortAnnouncementsPage({
       </p>
 
       <div className="mt-6" style={cardStyle}>
+        <Link href={`/admin/cohorts/${cohortId}/delivery`}>View email status and recover unresolved sends →</Link>
         {allCount === 0 ? (
           <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.95rem' }}>
             No cohort members with an email yet — approve applications to build
@@ -165,7 +167,7 @@ export default async function CohortAnnouncementsPage({
             menteeCount={menteeCount}
             allCount={allCount}
             sentToday={sentToday}
-            softCap={DAILY_EMAIL_SOFT_CAP}
+            softCap={budget.daily_limit}
             fullCohortSentToday={fullCohortSentToday}
           />
         )}
@@ -176,11 +178,11 @@ export default async function CohortAnnouncementsPage({
           className="text-[#1a1a2e]"
           style={{ fontSize: '1.25rem', fontWeight: 400, margin: '0 0 0.75rem' }}
         >
-          Sent
+          Announcement history
         </h2>
         {history.length === 0 ? (
           <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.85rem' }}>
-            Nothing sent yet.
+            No announcements recorded yet.
           </p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -197,8 +199,9 @@ export default async function CohortAnnouncementsPage({
                     {a.subject}
                   </span>
                   <span className="text-[#6b6b6b]" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                    {a.sent_at
-                      ? new Date(a.sent_at).toLocaleString('en-US', {
+                    {a.queued_at ? 'Queued ' : 'Historical send '}
+                    {(a.queued_at ?? a.sent_at)
+                      ? new Date((a.queued_at ?? a.sent_at)!).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

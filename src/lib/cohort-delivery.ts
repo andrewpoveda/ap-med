@@ -5,7 +5,8 @@ import { buildCohortOperationalEmail, sendCohortOperationalEmail } from '@/lib/e
 export type CohortDelivery = {
   id: string
   source_id: string
-  kind: 'decision' | 'introduction'
+  kind: 'decision' | 'introduction' | 'announcement' | 'digest'
+  message?: ReturnType<typeof buildCohortOperationalEmail> | null
   variant: string
   recipient_email: string
   payload: Record<string, string>
@@ -19,11 +20,24 @@ export type CohortDelivery = {
 export async function sendCohortDeliveries(admin: SupabaseClient, sourceId: string) {
   const { data, error } = await admin.from('cohort_delivery').select('*').eq('source_id', sourceId)
   if (error || !data?.length) return false
+  return attemptDeliveries(admin, data as CohortDelivery[])
+}
+
+/** Bounded fair queue shared by cron invocations. */
+export async function drainCohortDeliveryQueue(admin: SupabaseClient) {
+  const { data, error } = await admin.rpc('ascenso_delivery_queue')
+  if (error) throw new Error('Could not read delivery queue')
+  return attemptDeliveries(admin, data ?? [])
+}
+
+async function attemptDeliveries(admin: SupabaseClient, deliveries: CohortDelivery[]) {
   let complete = true
-  for (const delivery of (data ?? []) as CohortDelivery[]) {
+  const deadline = Date.now() + 40_000
+  for (const delivery of deliveries) {
+    if (Date.now() >= deadline) return false
     if (['accepted', 'superseded'].includes(delivery.state)) continue
     try {
-      const message = buildCohortOperationalEmail(delivery)
+      const message = delivery.message ?? buildCohortOperationalEmail(delivery)
       const { data: claim, error: claimError } = await admin.rpc('ascenso_claim_delivery', {
         p_id: delivery.id, p_message: message,
       })
