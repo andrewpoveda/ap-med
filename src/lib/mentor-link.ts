@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Mentor } from '@/types/mentor'
+import { normalizeEmail } from '@/lib/email-identity'
 
 export type MentorLinkResult =
   | { status: 'linked'; mentor: Mentor }
@@ -21,14 +22,13 @@ export async function linkMentorByEmail(
   userId: string,
   email: string,
 ): Promise<MentorLinkResult> {
-  const normalized = email.trim().toLowerCase()
+  const normalized = normalizeEmail(email)
   if (!normalized) return { status: 'no-profile' }
 
   const { data: mentor, error } = await admin
     .from('mentor')
     .select('*')
-    // ilike with no wildcards is a case-insensitive exact match.
-    .ilike('email', normalized)
+    .eq('normalized_email', normalized)
     .maybeSingle<Mentor>()
 
   if (error) {
@@ -50,6 +50,7 @@ export async function linkMentorByEmail(
       .from('mentor')
       .update({ auth_user_id: userId })
       .eq('id', mentor.id)
+      .eq('normalized_email', normalized)
       // Guard against a race: only claim while still unclaimed.
       .is('auth_user_id', null)
       .select('*')

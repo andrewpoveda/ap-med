@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { normalizeEmail } from '@/lib/email-identity'
 
 export type AdminUser = {
   id: string
@@ -18,15 +19,13 @@ export type AdminSessionState =
 
 /**
  * The admin_users row for a Google-verified email, or null. Exact match on the
- * lowercased email — NOT ilike like linkMentorByEmail: an unescaped `_` in a
- * session email is an any-character wildcard under ilike, which for admin
- * gating would let one email match a different admin row. admin_users.email
+ * lowercased email. Pattern matching must never authorize an identity. admin_users.email
  * must therefore be stored lowercase. Fails closed: a lookup error reads as
  * "not an admin". Cached per request (layout + page share one lookup).
  */
 export const getAdminUserByEmail = cache(
   async (email: string): Promise<AdminUser | null> => {
-    const normalized = email.trim().toLowerCase()
+    const normalized = normalizeEmail(email)
     if (!normalized) return null
 
     const admin = getSupabaseAdmin()

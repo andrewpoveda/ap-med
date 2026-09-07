@@ -93,9 +93,9 @@ export type CohortApplication = {
   reviewed_at: string | null
   review_notes: string | null
   member_id: string | null
-  /** Null until the applicant resubmits (migration 0007). */
+  /** Legacy resubmission snapshot, retained for reviewers; public intake no longer overwrites. */
   previous_submission: PreviousSubmission | null
-  /** When the CURRENT version was submitted; null if never resubmitted. */
+  /** Legacy resubmission timestamp; new intake does not update an existing row. */
   updated_at: string | null
 }
 

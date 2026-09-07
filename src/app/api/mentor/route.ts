@@ -6,6 +6,7 @@ import { isHttpUrl } from '@/lib/url'
 import { cap, isValidEmail, LIMITS } from '@/lib/validate'
 import { SPECIALTIES } from '@/data/specialties'
 import { HELP_WITH_OPTIONS, IDENTITY_OPTIONS } from '@/data/tags'
+import { normalizeEmail } from '@/lib/email-identity'
 import {
   MENTOR_CAPACITY_OPTIONS,
   MENTOR_CONTACT_OPTIONS,
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
   const schedulingUrl = cap(data.scheduling_url, LIMITS.name).trim()
   const bio = cap(data.bio, LIMITS.text).trim()
   const notes = cap(data.notes, LIMITS.text).trim()
-  const email = cap(data.email, LIMITS.name).trim().toLowerCase()
+  const email = normalizeEmail(cap(data.email, LIMITS.name))
   const currentStage = pickOne(data.current_stage, MENTOR_STAGE_OPTIONS)
   const menteeCapacity = pickOne(data.mentee_capacity, MENTOR_CAPACITY_OPTIONS)
   const identity = pickTags(data.identity, IDENTITY_OPTIONS)
@@ -159,7 +160,7 @@ export async function POST(request: Request) {
     .from('mentor')
     .select('email')
     .is('cohort_id', null)
-    .ilike('email', email)
+    .eq('normalized_email', email)
 
   if (lookupError) {
     console.error('Mentor duplicate lookup failed:', lookupError.message)

@@ -26,3 +26,14 @@ Successful mentor sign-in lands on `/dashboard`; cohort-mentee sign-in lands on 
 The active migration chain removes direct `anon` and `authenticated` table privileges from `mentor` and `mentees`. Public reads and writes are therefore mediated by server routes. Consult `database/README.md` and active migrations before changing this boundary.
 
 Repository files do not prove which users, administrators, OAuth test users, redirect URIs, or policies currently exist in a deployed environment. Check live configuration only when authorized and necessary.
+
+## Exact email identity
+
+Member ownership and promotion use `normalizeEmail` (trim + lowercase) and exact
+`normalized_email` equality, never pattern matching. The additive migration
+`20260906152802_exact_member_email_identity.sql` generates indexed normalized
+columns without rewriting stored addresses or merging identities. Apply it before
+deploying the dependent code. Ambiguous normalized cohort identities fail closed;
+multiple general mentee submissions remain valid. Administrator lookup retains
+exact equality on lowercased `admin_users.email`. Claims also condition their write
+on the same normalized address and an unclaimed auth link.

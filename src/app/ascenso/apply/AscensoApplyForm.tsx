@@ -135,12 +135,9 @@ export default function AscensoApplyForm({
     agrees_participation: false,
   })
 
-  // One terminal state instead of a boolean per outcome: applying again with an
-  // address that already applied now UPDATES that application (migration 0007),
-  // so "received", "updated" and "already reviewed, can't change it" are three
-  // different things to say, and only one of them can be true.
+  // Public intake creates applications only; corrections require the program administrator.
   const [outcome, setOutcome] = useState<
-    { kind: 'submitted' | 'updated' } | { kind: 'locked'; message: string } | null
+    { kind: 'submitted' } | { kind: 'locked'; message: string } | null
   >(null)
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
@@ -330,16 +327,14 @@ export default function AscensoApplyForm({
 
       const resData = await res.json().catch(() => null)
 
-      // 409 now means only one thing: the board already reviewed this
-      // application, so it can't be rewritten. An un-reviewed one is updated in
-      // place and comes back 200 with `updated`.
+      // Duplicate submissions never replace an application, pending or reviewed.
       if (res.status === 409) {
         setOutcome({
           kind: 'locked',
           message:
             typeof resData?.error === 'string'
               ? resData.error
-              : 'Your application has already been reviewed.',
+              : 'An application already exists. Contact the program administrator for corrections. Your existing application has not been changed.',
         })
         return
       }
@@ -362,9 +357,8 @@ export default function AscensoApplyForm({
 
       posthog?.capture('ascenso_application_succeeded', {
         role: form.role,
-        updated: resData?.updated === true,
       })
-      setOutcome({ kind: resData?.updated === true ? 'updated' : 'submitted' })
+      setOutcome({ kind: 'submitted' })
     } catch (error) {
       console.error('Submit error:', error)
       const timedOut = isRequestTimeout(error)
@@ -412,18 +406,14 @@ export default function AscensoApplyForm({
       >
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
         <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>
-          {outcome.kind === 'updated'
-            ? 'Application updated'
-            : outcome.kind === 'locked'
-              ? 'You’ve already applied'
-              : 'Application received'}
+          {outcome.kind === 'locked'
+            ? 'You’ve already applied'
+            : 'Application received'}
         </h1>
         <p style={{ color: '#6b6b6b', maxWidth: '480px', lineHeight: 1.6 }}>
-          {outcome.kind === 'updated'
-            ? `We've replaced your earlier ${form.role} application for ${cohortName} with these answers — the board reviews this version. Your previous answers are kept alongside it, so nothing you wrote is lost.`
-            : outcome.kind === 'locked'
-              ? `${outcome.message} We already have a ${form.role} application under this email for ${cohortName} — you're all set, and the board will reach out by email once decisions are made.`
-              : `Thanks for applying to ${cohortName}. Every application is reviewed by the program board, and you'll hear back by email once decisions are made.`}
+          {outcome.kind === 'locked'
+            ? outcome.message
+            : `Thanks for applying to ${cohortName}. Every application is reviewed by the program board, and you'll hear back by email once decisions are made.`}
         </p>
         <Link
           href="/"

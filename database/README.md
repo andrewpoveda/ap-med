@@ -102,3 +102,31 @@ The focused client-contract tests use Node's built-in test runner:
 ```bash
 node --test database/verification/email_budget_client.test.mjs
 ```
+
+## Phase 1 email identity migration
+
+`../supabase/migrations/20260906152802_exact_member_email_identity.sql` adds
+indexed, stored generated `normalized_email` columns to `mentor` and `mentees`.
+It preserves original email values, member IDs, auth links, existing indexes,
+RLS and grants. It adds no unique constraint and does not merge legacy duplicates.
+
+Apply this additive migration before deploying code that queries those columns.
+Adding stored columns/indexes takes table locks and computes existing values;
+choose an appropriate maintenance window based on actual table size. This work
+does not establish that the migration has been applied to any hosted database.
+No environment variables or provider-dashboard changes are required. Do not replay
+the baseline against production. For a new blank database, run this migration after
+the previously listed migration chain.
+
+Focused verification (synthetic data in a disposable local PostgreSQL 17 cluster):
+
+```sh
+sh database/verification/verify_phase1.sh
+node --test database/verification/phase1_security.test.mjs
+```
+
+The existing `verify_postgres17.sh` remains the historical baseline/catalog check;
+the focused Phase 1 runner verifies this additive migration separately.
+Rollback: revert dependent application code before considering column removal.
+Prefer leaving the additive columns in place and fixing forward; reverting the
+security code restores the original exposure. No production rollback was tested.

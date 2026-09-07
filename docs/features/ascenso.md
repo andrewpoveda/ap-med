@@ -71,9 +71,9 @@ applications, bookings, and emails, so coordinate the test records and cleanup.
 
 ## Applications and membership
 
-`/api/cohort-applications` owns server validation. Applications require identity fields, current position and location, motivation, specialty/support selections, role-specific answers, and the four acknowledgments represented by the current form and route. Email plus cohort and role is unique. A repeat submission can update an existing application only while it remains unreviewed; reviewed applications reject resubmission.
+`/api/cohort-applications` owns server validation. Applications require identity fields, current position and location, motivation, specialty/support selections, role-specific answers, and the four acknowledgments represented by the current form and route. Email plus cohort and role is unique. Public intake creates new applications only. Duplicate submissions return 409 with administrator-correction guidance, regardless of review status; they never read or overwrite existing answers. Legacy previous-submission snapshots remain available to reviewers as historical records, not an edit/recovery mechanism.
 
-Admin approval creates or claims a cohort member without overriding a row already assigned to another cohort. Google sign-in then claims the member row by verified email. General-platform mentees remain outside this account flow.
+Admin approval creates or claims a cohort member without overriding a row already assigned to another cohort. Google sign-in then claims the member row by exact normalized verified email. The generated `normalized_email` columns preserve legacy address casing while supporting equality queries; ambiguous identities fail closed. General-platform mentees remain outside this account flow.
 
 ## Current feature areas
 
@@ -82,3 +82,9 @@ The repository contains cohort-scoped administration and member behavior for app
 General and Ascenso help-tag vocabularies are separate in `src/data/tags.ts`. Mentor capacity is collected for administrative judgment but is not an automatic matching constraint unless current source explicitly adds that behavior.
 
 Avoid embedding cohort size, participant names, current application counts, dates, partner approvals, or workflow status in canonical documentation. Those are changing operational facts.
+
+## Phased readiness implementation
+
+The persistent [Phase 1–15 checklist](ascenso-readiness.md) tracks all 64 items,
+validation and migration rollout notes. Work only on the next incomplete phase
+when explicitly authorized; never infer production rollout from a Fixed status.

@@ -8,6 +8,7 @@ import { sendAscensoSignInLink } from '@/lib/email'
 import { getCohortName } from '@/lib/cohort-dashboard'
 import { isValidEmail } from '@/lib/validate'
 import { ascensoAbsoluteUrl } from '@/lib/site'
+import { normalizeEmail } from '@/lib/email-identity'
 
 /**
  * DEPRECATED (superseded Jul 30 2026) — re-request an Ascenso mentee magic-link
@@ -57,21 +58,20 @@ export async function POST(request: Request) {
     if (!isValidEmail(data?.email)) {
       return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
     }
-    const email = String(data.email).trim().toLowerCase()
+    const email = normalizeEmail(String(data.email))
 
     const admin = getSupabaseAdmin()
 
     // Cohort mentees only. A general-platform mentee (cohort_id IS NULL) is
     // auth-less by design and must never be handed an account, and a cohort
     // MENTOR signs in with Google at /login — neither is reachable from here.
-    // ilike with no wildcards is a case-insensitive exact match.
-    const { data: rows, error } = await admin
+    // Ambiguous normalized identities fail closed; never choose by recency.
+    const { data: mentee, error } = await admin
       .from('mentees')
       .select('id, full_name, email, cohort_id')
-      .ilike('email', email)
+      .eq('normalized_email', email)
       .not('cohort_id', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
+      .maybeSingle()
 
     if (error) {
       console.error('Ascenso sign-in link lookup failed:', error.message)
@@ -81,7 +81,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const mentee = rows?.[0]
     if (!mentee) return NextResponse.json(GENERIC_OK)
 
     // Shared email budget (PRM §2). Checked before generating anything so a

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { normalizeEmail } from '@/lib/email-identity'
 
 /** A cohort mentee row owned by the signed-in auth user. */
 export type LinkedCohortMentee = {
@@ -26,14 +27,8 @@ export type CohortMenteeLinkResult =
  *   thesis (ascenso-prm.md §2) and must NEVER be claimed by a Google sign-in —
  *   both the lookup and the update carry `.not('cohort_id','is',null)`.
  *
- * Since migration 0007 (mentees_cohort_email_key) at most ONE cohort row can
- * carry a given email, so the "which row is theirs?" ambiguity this function
- * used to resolve by recency is gone at the database level. The multi-row
- * handling below is kept as defence in depth — the index is partial and a future
- * schema change could widen it — but in practice `rows` now holds 0 or 1 entry:
- * a row already claimed by THIS user wins (idempotent re-sign-in), else the
- * unclaimed row is claimed. A row claimed by someone else is a 'conflict' for
- * Andrew to resolve, never an override.
+ * Ambiguous normalized identities fail closed, including legacy whitespace
+ * duplicates. Never choose another person's record by recency.
  *
  * General-platform rows (cohort_id IS NULL) are still free to share an email and
  * are never claim targets — both queries carry `.not('cohort_id','is',null)`.
@@ -46,15 +41,13 @@ export async function linkCohortMenteeByEmail(
   userId: string,
   email: string,
 ): Promise<CohortMenteeLinkResult> {
-  const normalized = email.trim().toLowerCase()
+  const normalized = normalizeEmail(email)
   if (!normalized) return { status: 'no-profile' }
 
   const { data: rows, error } = await admin
     .from('mentees')
     .select('id, auth_user_id, cohort_id, full_name')
-    // ilike with no wildcards is a case-insensitive exact match. Cohort mentees
-    // only — a general mentee (cohort_id IS NULL) is never a claim target.
-    .ilike('email', normalized)
+    .eq('normalized_email', normalized)
     .not('cohort_id', 'is', null)
     .order('created_at', { ascending: false })
 
@@ -63,6 +56,7 @@ export async function linkCohortMenteeByEmail(
     return { status: 'error' }
   }
   if (!rows || rows.length === 0) return { status: 'no-profile' }
+  if (rows.length !== 1) return { status: 'error' }
 
   const asMentee = (r: (typeof rows)[number]): LinkedCohortMentee => ({
     id: r.id as string,
@@ -87,6 +81,7 @@ export async function linkCohortMenteeByEmail(
     .from('mentees')
     .update({ auth_user_id: userId })
     .eq('id', unclaimed.id)
+    .eq('normalized_email', normalized)
     // Race guard: only claim while still unclaimed. The cohort_id guard is belt
     // and braces — the row came from a cohort-scoped SELECT, but a concurrent
     // write must never let this update touch a general mentee row.
@@ -120,14 +115,14 @@ export async function cohortMenteeExistsForEmail(
   admin: SupabaseClient,
   email: string,
 ): Promise<boolean> {
-  const normalized = email.trim().toLowerCase()
+  const normalized = normalizeEmail(email)
   if (!normalized) return false
 
   const { count, error } = await admin
     .from('mentees')
     .select('id', { count: 'exact', head: true })
     // Same scoping as the claim above: cohort mentees only.
-    .ilike('email', normalized)
+    .eq('normalized_email', normalized)
     .not('cohort_id', 'is', null)
 
   if (error) {

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cap, LIMITS } from '@/lib/validate'
 import type { CohortApplication } from '@/types/cohort'
+import { normalizeEmail } from '@/lib/email-identity'
 
 export type PromoteResult =
   | { status: 'created' | 'claimed'; memberId: string }
@@ -112,16 +113,14 @@ async function backfillMemberTags(
  * partial failure is safe: a row already in this cohort is simply re-claimed.
  *
  * Requires the service-role client (member tables are RLS-locked and `email`
- * is server-only). Same ilike caveat as linkMentorByEmail: no-wildcard ilike is
- * a case-insensitive exact match (an unescaped `_` in the email is imprecise,
- * but this claims a membership marker, not an auth identity — admin gating
- * deliberately does NOT use ilike, see src/lib/admin.ts).
+ * is server-only). Normalized email equality is the same identity boundary
+ * used by sign-in. Never promote a pattern-matched address.
  */
 export async function promoteApplicationToMember(
   admin: SupabaseClient,
   application: CohortApplication,
 ): Promise<PromoteResult> {
-  const email = application.email.trim().toLowerCase()
+  const email = normalizeEmail(application.email)
   if (!email) return { status: 'error' }
 
   return application.role === 'mentor'
@@ -137,7 +136,7 @@ async function promoteMentor(
   const { data: existing, error } = await admin
     .from('mentor')
     .select('id, cohort_id')
-    .ilike('email', email)
+    .eq('normalized_email', email)
     .maybeSingle()
 
   if (error) {
@@ -156,7 +155,7 @@ async function promoteMentor(
       return { status: 'claimed', memberId: existing.id }
     }
     if (existing.cohort_id) return { status: 'conflict' }
-    const claimed = await claimRow(admin, 'mentor', existing.id, application.cohort_id)
+    const claimed = await claimRow(admin, 'mentor', existing.id, application.cohort_id, email)
     if (claimed.status === 'claimed') {
       await backfillMemberTags(admin, 'mentor', claimed.memberId, mentorTags(answers))
     }
@@ -219,7 +218,7 @@ async function promoteMentee(
   const { data: rows, error } = await admin
     .from('mentees')
     .select('id, cohort_id')
-    .ilike('email', email)
+    .eq('normalized_email', email)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -229,6 +228,12 @@ async function promoteMentee(
 
   const answers = application.answers ?? {}
   const tags = menteeTags(answers)
+
+  // Multiple general submissions are valid; multiple cohort identities are not.
+  const cohortRows = (rows ?? []).filter((r) => r.cohort_id)
+  if (cohortRows.length > 1 || cohortRows.some((r) => r.cohort_id !== application.cohort_id)) {
+    return { status: 'conflict' }
+  }
 
   const inCohort = rows?.find((r) => r.cohort_id === application.cohort_id)
   if (inCohort) {
@@ -240,7 +245,7 @@ async function promoteMentee(
 
   const unclaimed = rows?.find((r) => !r.cohort_id)
   if (unclaimed) {
-    const claimed = await claimRow(admin, 'mentees', unclaimed.id, application.cohort_id)
+    const claimed = await claimRow(admin, 'mentees', unclaimed.id, application.cohort_id, email)
     if (claimed.status === 'claimed') {
       await backfillMemberTags(admin, 'mentees', claimed.memberId, tags)
     }
@@ -293,11 +298,13 @@ async function claimRow(
   table: 'mentor' | 'mentees',
   id: string,
   cohortId: string,
+  email: string,
 ): Promise<PromoteResult> {
   const { data: claimed, error } = await admin
     .from(table)
     .update({ cohort_id: cohortId })
     .eq('id', id)
+    .eq('normalized_email', email)
     .is('cohort_id', null)
     .select('id')
 
