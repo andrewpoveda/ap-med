@@ -38,6 +38,8 @@ export function database(seed = {}, options = {}) {
     const query = {
       select() { return query },
       eq(key, value) { filters.push((r) => r[key] === value); return query },
+      neq(key, value) { filters.push((r) => r[key] !== value); return query },
+      in(key, values) { filters.push((r) => values.includes(r[key])); return query },
       is(key, value) { filters.push((r) => r[key] === value); return query },
       not(key, operator, value) { assert.equal(operator, 'is'); filters.push((r) => r[key] !== value); return query },
       gte() { return query },

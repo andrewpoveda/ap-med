@@ -186,6 +186,7 @@ export default async function CohortAnalyticsPage({
     milestones,
     goals,
     inactiveMembers,
+    sessionCounts,
     activityWindowDays,
     errors,
   } = analytics
@@ -494,19 +495,19 @@ export default async function CohortAnalyticsPage({
 
       {/* Zero-activity members */}
       <div className="report-card" style={{ ...cardStyle, marginTop: '1.5rem' }}>
-        <SectionHeading>No activity in {activityWindowDays} days</SectionHeading>
+        <SectionHeading>No recorded member action in {activityWindowDays} days</SectionHeading>
         <p className="text-[#6b6b6b]" style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.82rem', maxWidth: '46rem' }}>
-          Members in an active pair with no logged meeting, goal update, booked
-          session, completed milestone, or survey response in the last{' '}
-          {activityWindowDays} days.
+          Members in an active pair who have not personally submitted a meeting log or survey response in the last {activityWindowDays} days.
+          A partner&apos;s log, shared goal update, staff-marked milestone or booking is not attributed to both people. This is a follow-up list, not proof of absence or disengagement.
         </p>
+        <p className="text-sm">Active pairs have {sessionCounts.upcoming} upcoming bookings and {sessionCounts.completed} sessions marked completed in the last {activityWindowDays} days. These are scheduling records; logged meetings are reported separately and neither proves individual attendance.</p>
         {meetingTotals.activePairs === 0 ? (
           <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.9rem' }}>
             No active pairs to evaluate yet.
           </p>
         ) : inactiveMembers.length === 0 ? (
           <p style={{ margin: 0, fontSize: '0.9rem', color: '#2f8f5f' }}>
-            Everyone in an active pair has logged activity in the last {activityWindowDays} days.
+            Every member in an active pair has a recorded submission in the last {activityWindowDays} days.
           </p>
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }} className="space-y-2">

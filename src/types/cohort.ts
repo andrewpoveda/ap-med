@@ -45,6 +45,7 @@ export type MatchStatus = (typeof MATCH_STATUSES)[number]
 // Row shape of cohort_matches (migration 0006). `score` is numeric in the DB;
 // PostgREST serializes it as a JSON number.
 export type CohortMatch = {
+  activated_at?: string | null
   ended_at?: string | null
   ended_by?: string | null
   end_reason?: string | null

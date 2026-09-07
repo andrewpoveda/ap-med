@@ -86,6 +86,7 @@ export type CohortAnalytics = {
   pairs: PairMeetingSummary[]
   milestones: MilestoneCompletion
   goals: GoalCompletion
+  sessionCounts: { upcoming: number; completed: number }
   inactiveMembers: InactiveMember[]
   activityWindowDays: number
   errors: string[]
@@ -140,7 +141,6 @@ export async function getCohortAnalytics(
   const todayStr = utcDateString(now)
   const monthStart = `${todayStr.slice(0, 7)}-01`
   const windowStart = new Date(now.getTime() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-  const windowStartDate = utcDateString(windowStart)
   const windowStartIso = windowStart.toISOString()
 
   const [mentorsRes, menteesRes, matchesRes, milestonesRes] = await Promise.all([
@@ -181,7 +181,7 @@ export async function getCohortAnalytics(
   const activeMentorIds = [...new Set(activeMatches.map((m) => m.mentor_id as string))]
 
   const [logsRes, goalsRes, sessionsRes, responsesRes] = await Promise.all([
-    admin.from('meeting_logs').select('match_id, met_at').eq('cohort_id', cohort.id),
+    admin.from('meeting_logs').select('match_id, met_at, logged_by_type, logged_by_id, created_at').eq('cohort_id', cohort.id),
     admin.from('goals').select('match_id, status, updated_at').eq('cohort_id', cohort.id),
     activeMentorIds.length > 0
       ? admin
@@ -217,10 +217,9 @@ export async function getCohortAnalytics(
   }
 
   // ---- Meetings: per-match rollup, monthly buckets ----
-  const logs = logsRes.data ?? []
+  const logs = (logsRes.data ?? []).filter(l => String(l.met_at) <= todayStr)
   const perMatch = new Map<string, { total: number; thisMonth: number; lastMet: string | null }>()
   const monthCounts = new Map<string, number>()
-  const recentLogMatchIds = new Set<string>()
   for (const log of logs) {
     const matchId = log.match_id as string
     const metAt = log.met_at as string
@@ -232,7 +231,6 @@ export async function getCohortAnalytics(
 
     const bucket = metAt.slice(0, 7)
     monthCounts.set(bucket, (monthCounts.get(bucket) ?? 0) + 1)
-    if (metAt >= windowStartDate) recentLogMatchIds.add(matchId)
   }
 
   // Chart window: from the cohort's start month (or the earliest logged meeting,
@@ -289,11 +287,6 @@ export async function getCohortAnalytics(
   const doneMilestones = new Set(
     (milestonesRes.data ?? []).map((r) => `${r.member_type}:${r.member_id}:${r.milestone}`),
   )
-  const recentMilestoneMembers = new Set(
-    (milestonesRes.data ?? [])
-      .filter((r) => String(r.completed_at) >= windowStartIso)
-      .map((r) => `${r.member_type}:${r.member_id}`),
-  )
   const roster: Record<CohortMemberType, string[]> = {
     mentor: [...mentorNames.keys()],
     mentee: [...menteeNames.keys()],
@@ -316,13 +309,11 @@ export async function getCohortAnalytics(
 
   // ---- Goal completion ----
   const goalCounts = { active: 0, done: 0, dropped: 0 }
-  const recentGoalMatchIds = new Set<string>()
   for (const g of goalsRes.data ?? []) {
     const status = g.status as string
     if (status === 'active') goalCounts.active += 1
     else if (status === 'done') goalCounts.done += 1
     else if (status === 'dropped') goalCounts.dropped += 1
-    if (String(g.updated_at) >= windowStartIso) recentGoalMatchIds.add(g.match_id as string)
   }
   const liveGoals = goalCounts.active + goalCounts.done
   const goals: GoalCompletion = {
@@ -330,14 +321,18 @@ export async function getCohortAnalytics(
     completionPct: liveGoals > 0 ? Math.round((goalCounts.done / liveGoals) * 100) : null,
   }
 
-  // ---- Zero-activity members (active pairs only) ----
-  const recentSessionPairs = new Set<string>()
-  for (const s of sessionsRes.data ?? []) {
-    recentSessionPairs.add(`${s.mentor_id}:${s.mentee_id}`)
+  // Scheduling is a pair-level record, never proof of individual attendance.
+  const activePairKeys = new Set(activeMatches.map(m => `${m.mentor_id}:${m.mentee_id}`))
+  const ownSessions = (sessionsRes.data ?? []).filter(s => activePairKeys.has(`${s.mentor_id}:${s.mentee_id}`))
+  const sessionCounts = {
+    upcoming: ownSessions.filter(s => s.status === 'scheduled' && String(s.scheduled_at) > now.toISOString()).length,
+    completed: ownSessions.filter(s => s.status === 'completed' && String(s.scheduled_at) <= now.toISOString()).length,
   }
+  const recentLoggers = new Set(logs.filter(l => String(l.created_at) >= windowStartIso && String(l.created_at) <= now.toISOString())
+    .map(l => `${l.logged_by_type}:${l.logged_by_id}`))
   const recentSurveyMembers = new Set(
     (responsesRes.data ?? [])
-      .filter((r) => String(r.created_at) >= windowStartIso)
+      .filter((r) => String(r.created_at) >= windowStartIso && String(r.created_at) <= now.toISOString())
       .map((r) => `${r.member_type}:${r.member_id}`),
   )
 
@@ -347,7 +342,6 @@ export async function getCohortAnalytics(
     name: string
     partners: string[]
     track: string
-    pairActive: boolean
   }
   const memberActivity = new Map<string, MemberActivity>()
   const touch = (
@@ -357,12 +351,10 @@ export async function getCohortAnalytics(
     name: string,
     partner: string,
     track: string,
-    pairActive: boolean,
   ) => {
     const existing = memberActivity.get(key)
     if (existing) {
       existing.partners.push(partner)
-      existing.pairActive = existing.pairActive || pairActive
     } else {
       memberActivity.set(key, {
         memberType,
@@ -370,7 +362,6 @@ export async function getCohortAnalytics(
         name,
         partners: [partner],
         track,
-        pairActive,
       })
     }
   }
@@ -380,17 +371,13 @@ export async function getCohortAnalytics(
     const mentorName = mentorNames.get(mentorId)
     const menteeName = menteeNames.get(menteeId)
     if (!mentorName || !menteeName) continue
-    const pairActive =
-      recentLogMatchIds.has(m.id as string) ||
-      recentGoalMatchIds.has(m.id as string) ||
-      recentSessionPairs.has(`${mentorId}:${menteeId}`)
-    touch(`mentor:${mentorId}`, 'mentor', mentorId, mentorName, menteeName, m.track as string, pairActive)
-    touch(`mentee:${menteeId}`, 'mentee', menteeId, menteeName, mentorName, m.track as string, pairActive)
+    touch(`mentor:${mentorId}`, 'mentor', mentorId, mentorName, menteeName, m.track as string)
+    touch(`mentee:${menteeId}`, 'mentee', menteeId, menteeName, mentorName, m.track as string)
   }
 
   const inactiveMembers: InactiveMember[] = []
   for (const [key, a] of memberActivity) {
-    const active = a.pairActive || recentMilestoneMembers.has(key) || recentSurveyMembers.has(key)
+    const active = recentLoggers.has(key) || recentSurveyMembers.has(key)
     if (!active) {
       inactiveMembers.push({
         memberType: a.memberType,
@@ -417,6 +404,7 @@ export async function getCohortAnalytics(
     pairs,
     milestones: { completed: milestonesCompleted, total: milestonesTotal, byMilestone },
     goals,
+    sessionCounts,
     inactiveMembers,
     activityWindowDays: ACTIVITY_WINDOW_DAYS,
     errors,

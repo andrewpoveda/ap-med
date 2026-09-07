@@ -80,11 +80,11 @@ export async function getActiveMatchesForMember(
   const selfColumn = ref.type === 'mentor' ? 'mentor_id' : 'mentee_id'
   const { data: matches, error } = await admin
     .from('cohort_matches')
-    .select('id, mentor_id, mentee_id, track, approved_at')
+    .select('id, mentor_id, mentee_id, track, activated_at')
     .eq('cohort_id', ref.cohortId)
     .eq(selfColumn, ref.memberId)
     .eq('status', 'active')
-    .order('approved_at', { ascending: false })
+    .order('activated_at', { ascending: false, nullsFirst: false })
 
   if (error) {
     console.error('getActiveMatchesForMember failed:', error.message)
@@ -130,7 +130,7 @@ export async function getActiveMatchesForMember(
       partnerName: partner?.name ?? 'Your match',
       partnerDetail: partner?.detail ?? null,
       track: m.track as string,
-      activeSince: (m.approved_at as string) ?? null,
+      activeSince: (m.activated_at as string) ?? null,
     }
   })
 }

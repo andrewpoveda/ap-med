@@ -12,7 +12,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 2 — Pilot Operational Correctness | Fixed | 3–9 |
 | 3 — Member Experience Consistency | Fixed | 10–14 |
 | 4 — Email / Delivery Reliability | Fixed | 15–17 |
-| 5 — Reporting / Data Trustworthiness | Pending | 18–22 |
+| 5 — Reporting / Data Trustworthiness | Fixed | 18–22 |
 | 6 — Cohort / Program Lifecycle | Pending | 23–27 |
 | 7 — Person / Role / Participation Model | Pending | 28–31 |
 | 8 — Audit / Event History | Pending | 32–33 |
@@ -45,11 +45,11 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 15 | Shared Email Capacity / 90-Day Gates | Fixed | All live Ascenso Resend routes use the shared atomic reservation budget, including legacy sign-in links. Server-only singleton config defaults to 90/day; it is not the provider subscription limit. Excess announcement recipients remain pending; cron drains a bounded cohort-round-robin queue. Failed/deferred/expired entries are visible on paginated cohort email status. |
 | 16 | Durable Email Send State | Fixed | Decisions, introductions, announcements and digests persist recipient intent before provider calls. Announcement request UUID + transactional creation and digest member/day uniqueness preserve retries. Frozen messages and provider keys are retained. Expired reminders are superseded if never attempted; uncertain attempts require provider confirmation. Credentials remain request-bound, never stored in the queue. |
 | 17 | Delivery/Bounce Visibility | Fixed | UI distinguishes queued, provider-accepted and unresolved mail; historical announcement rows are not treated as confirmed delivery. Bounce/delivery webhooks intentionally deferred: no delivery-SLA or automated bounce suppression requirement is established. Trigger: first paid program requires delivery evidence, or manual provider checks cannot reliably handle volume. Then implement signed events, replay-safe provider-ID reconciliation and suppression policy together. |
-| 18 | Approval Vs Activation Timestamps | Pending | Real activation timestamp and honest labels; never invent historical activation dates. |
-| 19 | Inactivity / Engagement Definition | Pending | Separate booked activity from recorded meetings and pair activity from individual participation. |
-| 20 | Session-Linked Meeting Deduplication | Pending | Database session-log deduplication plus past/eligible, same-pair validation; preserve manual logs. |
-| 21 | Reporting Completeness | Pending | Stable export IDs, survey export, appropriate application fields and truthful lifecycle/activity data. |
-| 22 | Pilot Success Measures | Pending | Supported funnel/outcomes plus manual staff-time measurement; no causal retention or match-quality claims. |
+| 18 | Approval Vs Activation Timestamps | Fixed | Real immutable activation timestamp set on transition; backfill only from recorded activation events. Dashboard uses activation; export separates proposed, approved, activated and ended times. Unknown historical activation remains blank. |
+| 19 | Inactivity / Engagement Definition | Fixed | Follow-up list measures personal meeting-log/survey submission only, explicitly not disengagement. Partner logs, shared goals, staff milestones and bookings do not count as individual action. Future logs excluded; upcoming bookings and past completed session records shown separately from logged meetings and attendance. |
+| 20 | Session-Linked Meeting Deduplication | Fixed | Phase 3 supplied unique session linkage and transactional past/eligible/same-pair enforcement; manual logs remain supported. Its SQL regression is retained; reports distinguish source and warn against counting sessions plus logs as two meetings. |
+| 21 | Reporting Completeness | Fixed | Stable IDs across exports; named survey responses with question definitions; application answers and member linkage; match lifecycle dates/reasons; operational event export. Explicit sensitive-data notice; no auth IDs, credentials or previous-submission duplication exported. Full query pagination remains Phase 10. |
+| 22 | Pilot Success Measures | Fixed | `ascenso-pilot-measures.md` defines supported numerators, denominators, joins, timing limits and missing-data treatment. Staff-time and renewal willingness require explicit collection; no causal outcome or fabricated first-login timing. Phase 15 implements the funnel/support capture workflow. |
 | 23 | Cohort Creation / Configuration | Pending | Small supported cohort setup for name/program label/status/used dates and configuration; no arbitrary JSON UI. |
 | 24 | Cohort Status / Closeout | Pending | Safe cohort transitions govern intake/matching/reminders and retain closeout reports/history. |
 | 25 | Admin Invitation / Removal / Offboarding | Pending | Supported grant/add/view/revoke with attribution and subsequent-check revocation; no SCIM. |
@@ -129,12 +129,21 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 ## Phase 4 checkpoint
 
 - Items 15–17 explicitly addressed. Announcements/digests now use durable recipient intents and atomic capacity; legacy sign-in links reserve one slot. Public notification two-slot accounting remains unchanged. Obsolete unbudgeted bulk-send helpers removed.
+- Commit: `9063c91`.
 - Migration: `20260907194153_ascenso_email_queue.sql`, after Phase 3 and before dependent code; no hosted migration, deployment, dependencies or provider changes. Config is `email_budget_settings.daily_limit`, default 90. Adjust only after checking the actual Resend account plan, other users of that account and headroom; changing the database value does not change the provider limit.
 - Validation: 70 focused/prior-phase Node tests passed; focused lint and TypeScript passed; disposable PostgreSQL checks cover cap exhaustion/release, atomic campaign idempotency, scoped denial, historical intent preservation, acceptance accounting and expired digest suppression. No provider/browser end-to-end claim.
 - Queue: cron processes at most 40 candidates per invocation with a 40-second worker budget; it rotates across cohorts within each page. Announcements also attempt their own recipients immediately. Unprocessed mail remains durable. Existing daily cron configuration is unchanged; admins can retry on the cohort email-status page, or operators can invoke the existing authenticated digest cron again. Under sustained volume, schedule more frequent drains after checking the hosting plan; do not assume daily cron guarantees same-day completion. Inspect queue daily during pilot.
 - Provider acceptance remains distinct from delivery. Check the provider for bounces/unknown outcomes before recording acceptance or confirmed non-send. Resend key expiry is guarded; elapsed time alone never authorizes a fresh duplicate. Unknown transport failures retain capacity conservatively until day reset.
 - Reminders expire at the earliest included session or UTC day-end; the next run recomputes current needs. A prior unresolved digest blocks new sends for that member until reviewed. Phase 10 still addresses complete recipient query pagination; Phase 12 handles retention of stored message bodies and operator access.
 - Sign-in credentials are not persisted for delayed delivery. Budget exhaustion keeps the non-probeable generic response; users can use Google login or contact support. Known link-generation failure releases capacity, unknown mail outcomes retain it.
+
+## Phase 5 checkpoint
+
+- Items 18–22 explicitly addressed. Files: cohort dashboard/analytics/export helpers, analytics report/toolbar, pilot metric definitions, activation migration and focused tests.
+- Migration: `20260907235236_ascenso_truthful_reporting.sql`, after Phase 4, unapplied to hosted databases. Activation events are the only backfill evidence; approval timestamps are never reused. A trigger stamps future transitions and preserves the timestamp on other edits.
+- Validation: three focused reporting tests; TypeScript and focused lint; disposable PostgreSQL checks of known-event backfill, unknown historical activation, approval preservation and timestamp immutability, with Phase 2 SQL regression. Phase 3 session-log deduplication is retained as item 20's implementation.
+- Exports contain named sensitive program records and are available only through existing scoped admin authorization. Survey definitions accompany answers. No credentials/auth IDs are exported. Existing CSV formula escaping remains in the download path.
+- Manual steps: director chooses meeting cadence/response targets and a staff-time recording owner; use the documented missing-data denominators when discussing pilot outcomes. No environment/provider changes or deployment. Phase 10 still owns query completeness; Phase 15 adds operational collection and funnel presentation.
 
 ## Remaining audit boundaries
 

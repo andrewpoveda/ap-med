@@ -22,6 +22,8 @@ export const EXPORT_TABLES = [
   'goals',
   'milestones',
   'applications',
+  'surveys',
+  'events',
 ] as const
 export type ExportTable = (typeof EXPORT_TABLES)[number]
 
@@ -37,6 +39,8 @@ export const EXPORT_LABELS: Record<ExportTable, string> = {
   goals: 'Goals',
   milestones: 'Milestones',
   applications: 'Applications',
+  surveys: 'Named survey responses',
+  events: 'Operational events',
 }
 
 export type CohortExport = {
@@ -111,12 +115,12 @@ export async function buildCohortExport(
       const [mentorsRes, menteesRes] = await Promise.all([
         admin
           .from('mentor')
-          .select('first_name, last_name, email, auth_user_id, created_at')
+          .select('id, membership_status, first_name, last_name, email, auth_user_id, created_at')
           .eq('cohort_id', cohortId)
           .order('created_at', { ascending: true }),
         admin
           .from('mentees')
-          .select('full_name, email, auth_user_id, created_at')
+          .select('id, membership_status, full_name, email, auth_user_id, created_at')
           .eq('cohort_id', cohortId)
           .order('created_at', { ascending: true }),
       ])
@@ -124,6 +128,7 @@ export async function buildCohortExport(
       const rows: CsvCell[][] = []
       for (const m of mentorsRes.data ?? []) {
         rows.push([
+          m.id, m.membership_status,
           'mentor',
           mentorName(m),
           (m.email as string) ?? '',
@@ -133,6 +138,7 @@ export async function buildCohortExport(
       }
       for (const m of menteesRes.data ?? []) {
         rows.push([
+          m.id, m.membership_status,
           'mentee',
           (m.full_name as string) || 'Unnamed mentee',
           (m.email as string) ?? '',
@@ -141,7 +147,7 @@ export async function buildCohortExport(
         ])
       }
       return {
-        headers: ['Role', 'Name', 'Email', 'Account activated', 'Joined (UTC)'],
+        headers: ['Member ID', 'Membership status', 'Role', 'Name', 'Email', 'Auth identity linked (not attendance)', 'Record created (UTC)'],
         rows,
         error,
       }
@@ -151,10 +157,11 @@ export async function buildCohortExport(
       const { mentors, mentees, error: mapErr } = await loadNameMaps(admin, cohortId)
       const { data, error } = await admin
         .from('cohort_matches')
-        .select('mentor_id, mentee_id, track, status, score, created_at, approved_at')
+        .select('id, mentor_id, mentee_id, track, status, score, created_at, approved_at, activated_at, ended_at, end_reason')
         .eq('cohort_id', cohortId)
         .order('created_at', { ascending: true })
       const rows: CsvCell[][] = (data ?? []).map((m) => [
+        m.id, m.mentor_id, m.mentee_id,
         mentors.get(m.mentor_id as string) ?? 'Unknown mentor',
         mentees.get(m.mentee_id as string) ?? 'Unknown mentee',
         trackLabel(m.track as string),
@@ -162,9 +169,10 @@ export async function buildCohortExport(
         m.score == null ? '' : Number(m.score),
         fmtTs(m.created_at as string),
         fmtTs(m.approved_at as string),
+        fmtTs(m.activated_at as string), fmtTs(m.ended_at as string), m.end_reason ?? '',
       ])
       return {
-        headers: ['Mentor', 'Mentee', 'Track', 'Status', 'Score', 'Proposed (UTC)', 'Activated (UTC)'],
+        headers: ['Match ID', 'Mentor ID', 'Mentee ID', 'Mentor', 'Mentee', 'Track', 'Status', 'Score', 'Proposed (UTC)', 'Approved (UTC)', 'Activated (UTC; blank if unknown)', 'Ended (UTC)', 'End reason'],
         rows,
         error: error?.message ?? mapErr,
       }
@@ -174,12 +182,13 @@ export async function buildCohortExport(
       const { matches, error: mapErr } = await loadNameMaps(admin, cohortId)
       const { data, error } = await admin
         .from('meeting_logs')
-        .select('match_id, met_at, duration_minutes, mode, logged_by_type, session_id, notes, created_at')
+        .select('id, match_id, met_at, duration_minutes, mode, logged_by_type, logged_by_id, session_id, notes, created_at')
         .eq('cohort_id', cohortId)
         .order('met_at', { ascending: true })
       const rows: CsvCell[][] = (data ?? []).map((l) => {
         const pair = matches.get(l.match_id as string)
         return [
+          l.id, l.match_id, l.session_id ?? '', l.logged_by_id,
           (l.met_at as string) ?? '',
           pair?.mentor ?? 'Unknown mentor',
           pair?.mentee ?? 'Unknown mentee',
@@ -194,6 +203,7 @@ export async function buildCohortExport(
       })
       return {
         headers: [
+          'Log ID', 'Match ID', 'Session ID', 'Logger ID',
           'Met on',
           'Mentor',
           'Mentee',
@@ -214,12 +224,13 @@ export async function buildCohortExport(
       const { matches, error: mapErr } = await loadNameMaps(admin, cohortId)
       const { data, error } = await admin
         .from('goals')
-        .select('match_id, title, status, target_date, created_at, updated_at')
+        .select('id, match_id, title, status, target_date, created_at, updated_at')
         .eq('cohort_id', cohortId)
         .order('created_at', { ascending: true })
       const rows: CsvCell[][] = (data ?? []).map((g) => {
         const pair = matches.get(g.match_id as string)
         return [
+          g.id, g.match_id,
           pair?.mentor ?? 'Unknown mentor',
           pair?.mentee ?? 'Unknown mentee',
           trackLabel(pair?.track ?? null),
@@ -231,7 +242,7 @@ export async function buildCohortExport(
         ]
       })
       return {
-        headers: ['Mentor', 'Mentee', 'Track', 'Goal', 'Status', 'Target date', 'Created (UTC)', 'Updated (UTC)'],
+        headers: ['Goal ID', 'Match ID', 'Mentor', 'Mentee', 'Track', 'Goal', 'Status', 'Target date', 'Created (UTC)', 'Updated (UTC)'],
         rows,
         error: error?.message ?? mapErr,
       }
@@ -241,7 +252,7 @@ export async function buildCohortExport(
       const { mentors, mentees, error: mapErr } = await loadNameMaps(admin, cohortId)
       const { data, error } = await admin
         .from('member_milestones')
-        .select('member_type, member_id, milestone, completed_at')
+        .select('id, member_type, member_id, milestone, completed_at')
         .eq('cohort_id', cohortId)
         .order('completed_at', { ascending: true })
       const rows: CsvCell[][] = (data ?? []).map((r) => {
@@ -251,6 +262,7 @@ export async function buildCohortExport(
             ? mentors.get(r.member_id as string) ?? 'Unknown mentor'
             : mentees.get(r.member_id as string) ?? 'Unknown mentee'
         return [
+          r.id, r.member_id,
           name,
           type,
           MILESTONE_LABELS[r.milestone as string] ?? (r.milestone as string),
@@ -258,19 +270,40 @@ export async function buildCohortExport(
         ]
       })
       return {
-        headers: ['Member', 'Role', 'Milestone', 'Completed (UTC)'],
+        headers: ['Milestone ID', 'Member ID', 'Member', 'Role', 'Milestone', 'Completed (UTC)'],
         rows,
         error: error?.message ?? mapErr,
       }
     }
 
+    case 'surveys': {
+      const [surveys, responses] = await Promise.all([
+        admin.from('surveys').select('id,title,wave,questions').eq('cohort_id', cohortId),
+        admin.from('survey_responses').select('id,survey_id,member_type,member_id,answers,created_at').eq('cohort_id', cohortId).order('created_at', { ascending: true }),
+      ])
+      const definitions = new Map((surveys.data ?? []).map(s => [s.id, s]))
+      return { headers: ['Response ID', 'Survey ID', 'Survey', 'Wave', 'Member role', 'Member ID', 'Questions (JSON)', 'Named answers (JSON)', 'Responded (UTC)'],
+        rows: (responses.data ?? []).map(r => { const s = definitions.get(r.survey_id); return [
+          r.id, r.survey_id, s?.title ?? '', s?.wave ?? '', r.member_type, r.member_id,
+          JSON.stringify(s?.questions ?? []), JSON.stringify(r.answers), fmtTs(r.created_at),
+        ] }), error: surveys.error?.message ?? responses.error?.message ?? null }
+    }
+    case 'events': {
+      const { data, error } = await admin.from('cohort_operation_events').select('id,actor_id,target_id,action,reason,changes,created_at')
+        .eq('cohort_id', cohortId).order('created_at', { ascending: true })
+      return { headers: ['Event ID', 'Actor ID', 'Target ID', 'Action', 'Reason', 'Changes (JSON)', 'Recorded (UTC)'],
+        rows: (data ?? []).map(e => [e.id, e.actor_id ?? '', e.target_id, e.action, e.reason ?? '', JSON.stringify(e.changes), fmtTs(e.created_at)]),
+        error: error?.message ?? null }
+    }
+
     case 'applications': {
       const { data, error } = await admin
         .from('cohort_applications')
-        .select('full_name, email, role, track, status, review_notes, created_at, reviewed_at')
+        .select('id, member_id, full_name, email, role, track, status, answers, review_notes, created_at, reviewed_at')
         .eq('cohort_id', cohortId)
         .order('created_at', { ascending: true })
       const rows: CsvCell[][] = (data ?? []).map((a) => [
+        a.id, a.member_id ?? '', JSON.stringify(a.answers ?? {}),
         (a.full_name as string) ?? '',
         (a.email as string) ?? '',
         (a.role as string) ?? '',
@@ -281,7 +314,7 @@ export async function buildCohortExport(
         fmtTs(a.reviewed_at as string),
       ])
       return {
-        headers: ['Name', 'Email', 'Role', 'Track', 'Status', 'Review notes', 'Submitted (UTC)', 'Reviewed (UTC)'],
+        headers: ['Application ID', 'Member ID', 'Submitted answers (JSON; sensitive)', 'Name', 'Email', 'Role', 'Track', 'Status', 'Review notes', 'Submitted (UTC)', 'Reviewed (UTC)'],
         rows,
         error: error?.message ?? null,
       }

@@ -72,6 +72,7 @@ export default function ReportToolbar({
           {e.label}
         </a>
       ))}
+      <p style={{ fontSize: '0.82rem', width: '100%' }}>Exports contain identifiable program data, including application answers, named survey responses and staff notes. Share only with authorized program staff. Blank activation dates mean unknown; account linkage does not prove attendance.</p>
     </div>
   )
 }
