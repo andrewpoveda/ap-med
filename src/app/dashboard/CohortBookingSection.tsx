@@ -70,6 +70,7 @@ const mutedNote: CSSProperties = {
   lineHeight: 1.6,
   color: '#6b6b6b',
 }
+const NO_SLOTS: string[] = []
 
 export default function CohortBookingSection({
   role,
@@ -87,7 +88,7 @@ export default function CohortBookingSection({
 
   const current = matches.find((m) => m.matchId === matchId) ?? matches[0]
   const info = current?.info
-  const slots = info?.status === 'ok' ? info.slots : []
+  const slots = info?.status === 'ok' ? info.slots : NO_SLOTS
 
   const timezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -187,6 +188,12 @@ export default function CohortBookingSection({
         Book a 30-minute session with your {partnerNoun}{' '}
         through their bookable hours. You&apos;ll both get a calendar invite with
         a Google Meet link.
+      </p>
+      <p style={mutedNote}>
+        You can also arrange a time directly using the partner contact link in
+        your match panel. If booking is unavailable or fails, check Upcoming
+        sessions before trying again, then contact your partner. After meeting,
+        choose “off-platform meeting” in the shared meeting log.
       </p>
 
       {matches.length > 1 && (

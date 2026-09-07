@@ -16,7 +16,7 @@ import {
   type MilestoneView,
   type CohortMemberRef,
 } from '@/lib/cohort-dashboard'
-import { getMeetingLogsForMatches, type MeetingLogView } from '@/lib/meeting-logs'
+import { getMeetingLogsForMatches, getLoggableSessionsForMember, type MeetingLogView } from '@/lib/meeting-logs'
 import { getGoalsForMatches, type GoalView } from '@/lib/goals'
 import { getBookingInfoForMember, type MatchBookingInfo } from '@/lib/cohort-sessions'
 import { getMemberSurveys, type MemberSurveyView } from '@/lib/surveys'
@@ -47,7 +47,7 @@ import SignInLinkForm from './SignInLinkForm'
  * verified email (src/lib/account-role.ts).
  *
  * Sections, per the mentee's side of the program:
- *   - meeting log, READ-ONLY: the mentor records meetings, the mentee reads them
+ *   - meeting log, editable by either participant
  *   - shared goals, editable by either party (a goal belongs to the match)
  *   - session booking against the mentor's bookable hours (reuses the same
  *     freebusy/booking component and route as the mentor-initiated flow)
@@ -231,6 +231,7 @@ export default async function AscensoDashboardPage({
     matchId: m.matchId,
     partnerName: m.partnerName,
   }))
+  const loggableSessions = await getLoggableSessionsForMember(admin, ref)
 
   const bookingMatches: BookingMatch[] = matches
     .map((m) => {
@@ -267,13 +268,11 @@ export default async function AscensoDashboardPage({
                 <CohortBookingSection role="mentee" matches={bookingMatches} />
               )}
               <GoalSection role="mentee" matches={matchOptions} goals={goals} />
-              {/* readOnly: the mentor keeps the log, the mentee reads it. */}
               <MeetingLogSection
                 role="mentee"
                 matches={matchOptions}
                 logs={meetingLogs}
-                loggableSessions={{}}
-                readOnly
+                loggableSessions={loggableSessions}
               />
             </CohortRelationshipTools>
           )}

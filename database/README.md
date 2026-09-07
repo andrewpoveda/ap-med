@@ -165,3 +165,17 @@ cluster and local provider/framework stubs:
 sh database/verification/verify_phase2.sh
 node --test database/verification/phase2_operations.test.mjs
 ```
+
+## Phase 3 member recovery migration
+
+`../supabase/migrations/20260907192940_ascenso_member_recovery.sql` follows
+Phase 2. It adds a durable calendar-cleanup flag to sessions, a unique non-null
+meeting-log session index and a transactional session-log validation trigger,
+plus a scoped support-config update function. It requires no environment or
+external provider configuration changes. Apply before dependent code; no hosted
+migration has been performed. Existing duplicate session-linked meeting logs
+will block migration and must be reviewed without silently deleting history.
+
+`sh database/verification/verify_phase3.sh` validates this chain in a disposable
+PostgreSQL 17 database, including the Phase 2 SQL regression suite. It neither
+reads credentials nor connects to a configured hosted project.

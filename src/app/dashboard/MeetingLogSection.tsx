@@ -16,11 +16,7 @@ import {
  * both cohort mentors and mentees; the write route re-verifies the acting member
  * is a party to the match, so nothing here is a security boundary.
  *
- * `readOnly` drops the entry form and keeps the list — the shape the Ascenso
- * mentee dashboard uses, where the mentor does the logging and the mentee reads
- * it. It is presentation only: /api/meeting-logs still accepts writes from
- * either party (a mentee logging a meeting is legitimate, just not this
- * surface's job), so this is not an authorization control.
+ * `readOnly` is presentation only; both participant dashboards allow logging.
  */
 
 type MatchOption = { matchId: string; partnerName: string }
@@ -196,6 +192,8 @@ export default function MeetingLogSection({
       >
         Record any meeting with your {partnerNoun} — a call, a hallway chat, an
         async check-in, or a session you booked here.
+        Either participant can log it. Agree who will record each meeting and
+        check the shared list first so an off-platform meeting is entered once.
       </p>
 
       <form onSubmit={onSubmit} className="space-y-4">

@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { TRACK_LABELS, type CohortTrack } from '@/types/cohort'
 import type { ActiveMatchView, MilestoneView, CohortMemberType } from '@/lib/cohort-dashboard'
 import styles from './CohortRelationshipWorkspace.module.css'
+import CohortSupportPanel from './CohortSupportPanel'
 
 const cardStyle: CSSProperties = {
   background: '#ffffff',
@@ -82,6 +83,7 @@ export default function CohortMemberPanel({
         )}
       </div>
 
+      <CohortSupportPanel />
       <div style={cardStyle}>
         <p style={eyebrowStyle}>Onboarding</p>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-2">

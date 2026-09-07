@@ -178,23 +178,14 @@ export async function POST(request: Request) {
       .select('id')
       .single()
     if (insErr || !inserted) {
+      if (insErr?.code === '23505') return NextResponse.json({ error: 'This session is already logged. Refresh the shared log.' }, { status: 409 })
+      if (insErr?.code === '23514') return NextResponse.json({ error: 'Only a past, eligible session for this pair can be logged.' }, { status: 409 })
       console.error('Meeting-log insert failed:', insErr?.message)
       return NextResponse.json({ error: 'Could not log the meeting' }, { status: 500 })
     }
 
-    // Logging a booked session marks it held (§5.8). Conditional on still being
-    // 'scheduled' so a concurrently cancelled/completed session isn't stomped;
-    // 0 rows affected is fine — the meeting log stands either way.
-    if (sessionId) {
-      const { error: updErr } = await admin
-        .from('sessions')
-        .update({ status: 'completed' })
-        .eq('id', sessionId)
-        .eq('status', 'scheduled')
-      if (updErr) {
-        console.error('Marking session held failed (non-fatal):', updErr.message)
-      }
-    }
+    // The database trigger marks a booked session completed in this same
+    // transaction; a cancellation race cannot leave a contradictory meeting log.
 
     return NextResponse.json({ success: true, logId: inserted.id })
   } catch (err) {

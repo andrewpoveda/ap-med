@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import MemberEditor from './MemberEditor'
+import SupportEditor from './SupportEditor'
+import { readCohortSupport } from '@/lib/cohort-support'
 export const dynamic = 'force-dynamic'
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { adminUser } = await requireAdminSession()
@@ -10,7 +12,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   if (!canAccessCohort(adminUser, id)) notFound()
   const admin = getSupabaseAdmin()
   const [cohort, mentors, mentees, events] = await Promise.all([
-    admin.from('cohorts').select('name').eq('id', id).maybeSingle(),
+    admin.from('cohorts').select('name, config').eq('id', id).maybeSingle(),
     admin.from('mentor').select('id, first_name, last_name, institution, current_role, bio, membership_status').eq('cohort_id', id).order('first_name'),
     admin.from('mentees').select('id, full_name, school, membership_status').eq('cohort_id', id).order('full_name'),
     admin.from('cohort_operation_events').select('id, target_id, action, reason, created_at').eq('cohort_id', id).order('created_at', { ascending: false }).limit(30),
@@ -22,6 +24,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   return <div className="space-y-4">
     <Link href={`/admin/cohorts/${id}/matching`}>← Matching</Link>
     <h1 className="text-3xl">Members · {cohort.data.name}</h1>
+    <SupportEditor cohortId={id} initial={readCohortSupport(cohort.data.config)} />
     <p>End active matches and remove selections before withdrawal or offboarding. Both statuses block participant access, matching and future routine cohort mail; records and auth ownership are retained. Restoring Active restores access.</p>
     <p>Coordinate or cancel existing calendar bookings before offboarding. This changes program access; it does not cancel calendar events or revoke the participant’s Google account.</p>
     <p>This editor corrects names and profile details. Email ownership, application answers, matching tags and track changes require deliberate operator review; public resubmission cannot overwrite them.</p>

@@ -14,6 +14,7 @@ export type UpcomingSession = {
   meetLink: string | null
   status: string
   menteeFirstName: string
+  calendarCleanupPending?: boolean
 }
 
 /** Read-only upcoming session as shown on a cohort mentee's dashboard. */
@@ -101,10 +102,9 @@ export async function getUpcomingSessions(
 ): Promise<UpcomingSession[]> {
   const { data, error } = await admin
     .from('sessions')
-    .select('id, scheduled_at, meet_link, status, mentee:mentees(full_name)')
+    .select('id, scheduled_at, meet_link, status, calendar_cleanup_pending, mentee:mentees(full_name)')
     .eq('mentor_id', mentorId)
-    .eq('status', 'scheduled')
-    .gte('scheduled_at', new Date().toISOString())
+    .or(`and(status.eq.scheduled,scheduled_at.gte.${new Date().toISOString()}),calendar_cleanup_pending.eq.true`)
     .order('scheduled_at', { ascending: true })
   if (error) {
     console.error('getUpcomingSessions failed:', error.message)
@@ -116,6 +116,7 @@ export async function getUpcomingSessions(
     scheduled_at: string
     meet_link: string | null
     status: string
+    calendar_cleanup_pending: boolean
     mentee: RawEmbeddedMentee
   }
 
@@ -124,6 +125,7 @@ export async function getUpcomingSessions(
     scheduledAt: row.scheduled_at,
     meetLink: row.meet_link,
     status: row.status,
+    calendarCleanupPending: row.calendar_cleanup_pending,
     menteeFirstName: firstNameOf(row.mentee),
   }))
 }

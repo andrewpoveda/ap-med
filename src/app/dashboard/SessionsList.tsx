@@ -9,28 +9,34 @@ type UpcomingSession = {
   meetLink: string | null
   status: string
   menteeFirstName: string
+  calendarCleanupPending?: boolean
 }
 
 export default function SessionsList({ sessions }: { sessions: UpcomingSession[] }) {
   const router = useRouter()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
 
-  async function cancel(id: string) {
-    if (!window.confirm('Cancel this session? The mentee will be notified.')) return
+  async function cancel(id: string, retry = false) {
+    if (!retry && !window.confirm('Cancel this session? Confirm the change with your partner. To reschedule, cancel first and then book a replacement.')) return
     setBusyId(id)
     try {
       const res = await fetch(`/api/sessions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancel' }),
+        body: JSON.stringify({ action: retry ? 'retry_calendar_cleanup' : 'cancel' }),
       })
+      const data = await res.json().catch(() => ({}))
+      setMessage(data.error ?? data.warning ?? 'Cancelled in AP MED and calendar cleanup confirmed. Coordinate a replacement time with your partner.')
       if (res.ok) router.refresh()
+    } catch {
+      setMessage('Could not confirm the result. Refresh before retrying; check your calendar and contact your partner.')
     } finally {
       setBusyId(null)
     }
   }
 
-  if (sessions.length === 0) {
+  if (sessions.length === 0 && !message) {
     return (
       <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.95rem' }}>
         No upcoming sessions yet.
@@ -39,6 +45,8 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
   }
 
   return (
+    <>
+    {message && <p role="status" className="mb-3 text-sm">{message}</p>}
     <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-3">
       {sessions.map(s => (
         <li
@@ -54,6 +62,7 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
             <p className="text-[#1a1a2e]" style={{ margin: 0, fontWeight: 500 }}>
               {s.menteeFirstName}
             </p>
+            {s.calendarCleanupPending && <p className="text-sm">Cancelled in AP MED. Calendar removal is unconfirmed; reconnect Calendar and retry, or remove the event manually and confirm with your partner.</p>}
             <p className="text-[#6b6b6b]" style={{ margin: '0.15rem 0 0', fontSize: '0.85rem' }}>
               {new Date(s.scheduledAt).toLocaleString(undefined, {
                 dateStyle: 'medium',
@@ -62,7 +71,7 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {s.meetLink && (
+            {s.meetLink && s.status === 'scheduled' && (
               <a
                 href={s.meetLink}
                 target="_blank"
@@ -73,7 +82,7 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
               </a>
             )}
             <button
-              onClick={() => cancel(s.id)}
+              onClick={() => cancel(s.id, !!s.calendarCleanupPending)}
               disabled={busyId === s.id}
               style={{
                 background: 'transparent',
@@ -85,11 +94,12 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
                 cursor: busyId === s.id ? 'default' : 'pointer',
               }}
             >
-              {busyId === s.id ? 'Cancelling…' : 'Cancel'}
+              {busyId === s.id ? 'Working…' : s.calendarCleanupPending ? 'Retry calendar removal' : 'Cancel'}
             </button>
           </div>
         </li>
       ))}
     </ul>
+    </>
   )
 }

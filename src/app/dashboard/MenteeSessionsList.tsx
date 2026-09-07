@@ -13,12 +13,16 @@ export default function MenteeSessionsList({
   if (sessions.length === 0) {
     return (
       <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.95rem' }}>
-        No upcoming sessions yet. Your mentor will schedule time with you.
+        No upcoming sessions yet. Book a time above or contact your partner
+        directly. To cancel or reschedule a booking, contact your mentor: they
+        manage cancellation, then either participant can book a replacement.
       </p>
     )
   }
 
   return (
+    <>
+    <p className="text-sm mb-3">Need to change a time? Ask your mentor to cancel it, then book a replacement together. Confirm any calendar changes with each other.</p>
     <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-3">
       {sessions.map((s) => (
         <li
@@ -50,5 +54,6 @@ export default function MenteeSessionsList({
         </li>
       ))}
     </ul>
+    </>
   )
 }

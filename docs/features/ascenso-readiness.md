@@ -1,6 +1,6 @@
 # Ascenso phased readiness checklist
 
-Execution contract: implement **one phase per explicitly authorized run**. Phases 1–2 are locally complete. The next incomplete phase is Phase 3; wait for explicit authorization before beginning it. On a later “continue”, inspect the next incomplete phase and relevant current code; do not repeat the completed audit. Do not modify hosted services without separate authorization. Preserve unrelated working-tree changes.
+Execution contract: the current authorization is to process Phases 3–15 sequentially, validating and committing each phase before beginning the next. Phases 1–2 remain authoritative completed baselines. Do not repeat the completed audit. Do not modify hosted services, apply hosted migrations, or deploy. Preserve unrelated working-tree changes. Completion of a phase is a checkpoint; the active goal requires cumulative verification and a rollout inventory after the final phase.
 
 Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addressed**, **Intentionally deferred**, **Not applicable**. Fixed means implemented and locally validated, not deployed. A phase is complete only when every numbered item in it has a documented disposition. Later-phase deferral notes record the accepted scope, not permission to execute those phases.
 
@@ -10,7 +10,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 |---|---|---|
 | 1 — Security / Intake Integrity | Fixed | 1–2 |
 | 2 — Pilot Operational Correctness | Fixed | 3–9 |
-| 3 — Member Experience Consistency | Pending | 10–14 |
+| 3 — Member Experience Consistency | Fixed | 10–14 |
 | 4 — Email / Delivery Reliability | Pending | 15–17 |
 | 5 — Reporting / Data Trustworthiness | Pending | 18–22 |
 | 6 — Cohort / Program Lifecycle | Pending | 23–27 |
@@ -37,11 +37,11 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 7 | Match Activation Delivery Recovery | Fixed | Activation commits the active match and two recipient-specific introduction intents together. Provider-accepted recipients are never resent; unresolved recipients can retry with the same frozen message and Resend idempotency key. After the provider key window, an admin must record a checked accepted/non-send outcome before further action. UI labels acceptance honestly rather than claiming inbox delivery. |
 | 8 | Assignment Cardinality / Concurrency | Fixed | Partial unique indexes enforce one proposed/board-approved/active match per mentor and mentee, including stale tabs and concurrent transactions. Database guards require active same-cohort members. Lower-ranked manual pairing remains available, and the existing all-history exact-pair constraint remains. Migration intentionally fails if pre-existing live conflicts require operator resolution. |
 | 9 | Mentor Capacity | Fixed | Pilot policy is explicitly one live assignment per person and is enforced in the database. The application and matching UI explain that the capacity answer records future willingness only. Configurable capacity greater than one is deferred until a customer/program requirement justifies changing the assignment model. |
-| 10 | Meeting Logging Rule | Pending | Preferred two-sided pair logging; normal mentee UI and API must agree; explain who logs. |
-| 11 | Scheduling Fallback | Pending | Manual scheduling/contact fallback when Google connection, availability or booking fails. |
-| 12 | Meeting Cancellation / Rescheduling Recovery | Pending | Explicit cancel/rebook permissions and external-calendar failure recovery; no sync engine. |
-| 13 | Member Accept / Decline / Rematch Request | Pending | Lightweight match-issue/support path while preserving board-controlled activation. |
-| 14 | Support Ownership | Pending | Limited program support name/email/instructions; no ticketing system. |
+| 10 | Meeting Logging Rule | Fixed | Both dashboards expose the shared meeting form and eligible booked-session picker. Copy asks participants to agree who logs and check for an existing off-platform entry. Pair authorization is retained. A unique session index and transactional trigger prevent duplicate/future/cancelled/wrong-pair booked-session logs; item 20 builds on this. |
+| 11 | Scheduling Fallback | Fixed | An authenticated active pair can contact its partner from the match panel regardless of Calendar/availability status. Booking copy explains manual scheduling, checking for an existing booking after failure, and subsequent off-platform logging. Partner contact never comes from a proposed selection. |
+| 12 | Meeting Cancellation / Rescheduling Recovery | Fixed | Mentor remains cancellation owner; mentee UI explicitly directs cancellation requests to the mentor, followed by either-party rebooking. AP MED cancellation commits first with durable calendar_cleanup_pending; failures remain visible and retryable after refresh. History is retained and completed-session/cancellation races are rejected. External account settings are unchanged. |
+| 13 | Member Accept / Decline / Rematch Request | Fixed | Authenticated cohort members have a program-directed email action for match help/reassignment with program and member reference, plus visible destination and instructions. Sending is explicit through their email client. Board-controlled disclosure/activation remains; no automatic acceptance/rematching or ticketing system. |
+| 14 | Support Ownership | Fixed | Admin member-management page configures support name, validated email, and optional instructions in the cohort's support configuration. Scoped server RPC preserves unrelated config and records an event. Defaults explicitly name AP MED program support; the program must assign an inbox owner. |
 | 15 | Shared Email Capacity / 90-Day Gates | Pending | Shared configurable daily cap, safe deferral, visible failures and practical cohort fairness. The source heading says “90-DAY”; this is the 90-per-day gate. |
 | 16 | Durable Email Send State | Pending | Durable intent, recipient status, idempotency and retry-safe introductions/decisions/digests. |
 | 17 | Delivery/Bounce Visibility | Pending | Honest provider-accepted versus delivered semantics; minimal webhook only if justified and straightforward. |
@@ -117,7 +117,15 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 - Withdrawal and offboarding do not delete records, unlink auth ownership, revoke the external Google account, or cancel existing calendar events. Operators must end/remove matches and coordinate calendar cleanup first. Those scheduling recovery workflows remain Phase 3.
 - Configurable mentor capacity above one remains intentionally unimplemented. Supporting it later requires a program rule and a cardinality model that keeps mentee uniqueness and concurrency guarantees explicit.
 
-## Audit coverage and later boundaries
+## Phase 3 checkpoint
+
+- Repository changes: two-sided meeting UI; active-partner contact and support panel; scoped support editor/API; durable cancellation recovery and session-linked meeting integrity.
+- Migration: `supabase/migrations/20260907192940_ascenso_member_recovery.sql`, unapplied to hosted databases. Apply after Phase 2 and before dependent code. Existing duplicate session-linked logs intentionally block the unique index and require deliberate operator review, not automatic deletion.
+- Validation: six focused Phase 3 Node tests (including both participant roles and wrong-cohort denial), focused ESLint, TypeScript, and `verify_phase3.sh` against disposable PostgreSQL 17 with the prior-phase SQL regression suite. No browser/provider end-to-end claim. No new dependencies or environment variables.
+- Operations: configure each cohort's support inbox and assign an owner; mentors retry failed Calendar cleanup after reconnecting or coordinate manual event removal. No external provider actions performed.
+- Later work: Phase 5 retains reporting/time attribution work despite the prerequisite session-log constraint added here. Phase 6 handles full cohort configuration; Phase 9 reuses the small support config. Broader event history stays Phase 8.
+
+## Remaining audit boundaries
 
 All actionable audit recommendations are represented by items 1–64 except the explicit **stable organization entity/ownership boundary**. Track this as **Pending**, to be designed with items 23, 26, 28 and 34 before simultaneous organizations require it. A free-text organization label or multiple cohort grants must not be documented as a complete tenant model. Do not add this structural work in Phase 1.
 
