@@ -55,7 +55,7 @@ export default function ReviewActions({
       if (!res.ok) {
         setMessage({ ok: false, text: data.error ?? 'Could not save the review.' })
       } else {
-        setMessage({ ok: true, text: `Saved — application ${data.status}.` })
+        setMessage({ ok: true, text: `Saved — application ${data.status}. ${data.warning ?? ""}` })
         router.refresh()
       }
     } catch {

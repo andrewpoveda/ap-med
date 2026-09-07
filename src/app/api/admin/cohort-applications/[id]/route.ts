@@ -3,7 +3,8 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { promoteApplicationToMember } from '@/lib/cohort-members'
+import { sendCohortDeliveries } from '@/lib/cohort-delivery'
+import { normalizeEmail } from '@/lib/email-identity'
 import { cap, LIMITS } from '@/lib/validate'
 import type { CohortApplication } from '@/types/cohort'
 
@@ -61,63 +62,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // Approved is terminal for this route: a member row already exists, so
-    // walking the status back is a manual DB decision, not a button.
-    if (app.status === 'approved') {
-      return NextResponse.json(
-        { error: 'Application is already approved — changing it requires manual review' },
-        { status: 409 },
-      )
+    const { data: savedStatus, error: reviewError } = await admin.rpc('ascenso_review_application', {
+      p_id: app.id, p_actor: adminUser.id, p_status: status,
+      p_notes: notes, p_email: normalizeEmail(app.email),
+    })
+    if (reviewError) {
+      return NextResponse.json({ error: reviewError.code === '23514'
+        ? reviewError.message : 'Could not save the review; refresh and try again' }, { status: 409 })
     }
-
-    const update: Record<string, unknown> = {
-      status,
-      reviewed_by: adminUser.id,
-      reviewed_at: new Date().toISOString(),
-      review_notes: notes || null,
-    }
-
-    if (action === 'approve') {
-      const promoted = await promoteApplicationToMember(admin, app)
-      if (promoted.status === 'conflict') {
-        return NextResponse.json(
-          {
-            error:
-              'This email already belongs to a member of another cohort — resolve manually before approving',
-          },
-          { status: 409 },
-        )
-      }
-      if (promoted.status === 'error') {
-        return NextResponse.json(
-          { error: 'Could not create the member record' },
-          { status: 500 },
-        )
-      }
-      update.member_id = promoted.memberId
-    }
-
-    // .neq guard: if a concurrent approval landed between our read and this
-    // write, don't stomp its member_id/status.
-    const { data: updated, error: updateError } = await admin
-      .from('cohort_applications')
-      .update(update)
-      .eq('id', app.id)
-      .neq('status', 'approved')
-      .select('id')
-
-    if (updateError) {
-      console.error('Application review update failed:', updateError.message)
-      return NextResponse.json({ error: 'Could not save the review' }, { status: 500 })
-    }
-    if (!updated || updated.length === 0) {
-      return NextResponse.json(
-        { error: 'Application is already approved — changing it requires manual review' },
-        { status: 409 },
-      )
-    }
-
-    return NextResponse.json({ success: true, status })
+    const sent = await sendCohortDeliveries(admin, app.id)
+    return NextResponse.json({ success: true, status: savedStatus,
+      ...(!sent ? { warning: 'Decision saved. Email acceptance is incomplete; use delivery recovery below.' } : {}) })
   } catch (err) {
     console.error('Application review crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

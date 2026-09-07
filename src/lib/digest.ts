@@ -99,8 +99,8 @@ async function computeCohortRecipients(
   const [mentorsRes, menteesRes, matchesRes, milestonesRes, surveysRes] = await Promise.all([
     // Cohort member rows are scoped by cohort_id ONLY — no `approved` filter
     // (cohort mentors keep approved=false as defense in depth).
-    admin.from('mentor').select('id, first_name, last_name, email').eq('cohort_id', cohort.id),
-    admin.from('mentees').select('id, full_name, email').eq('cohort_id', cohort.id),
+    admin.from('mentor').select('id, first_name, last_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
+    admin.from('mentees').select('id, full_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
     admin
       .from('cohort_matches')
       .select('id, mentor_id, mentee_id')

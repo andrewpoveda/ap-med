@@ -18,6 +18,11 @@ application schema and Supabase compatibility concerns.
 - `../supabase/migrations/20260829065258_enforce_atomic_email_budget.sql` —
   adds the portable server-only reservation primitive used to enforce the
   account-wide email limit under concurrent notification requests.
+- `../supabase/migrations/20260906152802_exact_member_email_identity.sql` —
+  adds the exact normalized identity columns required by member claims.
+- `../supabase/migrations/20260907140501_ascenso_pilot_operations.sql` —
+  adds the Phase 2 member lifecycle, match cardinality/end controls, and
+  decision/introduction delivery recovery records.
 - `baseline/bootstrap_data.sql` — the required `app_settings` singleton only;
   it contains no production user or program data.
 - `baseline/supabase_compatibility_roles.sql` — optional `anon`,
@@ -41,7 +46,9 @@ Run as an administrative role:
 4. `../supabase/migrations/20260827014255_waitlist.sql`
 5. `../supabase/migrations/20260829042822_lock_down_mentor_mentee_direct_access.sql`
 6. `../supabase/migrations/20260829065258_enforce_atomic_email_budget.sql`
-7. `baseline/supabase_compatibility_grants.sql`
+7. `../supabase/migrations/20260906152802_exact_member_email_identity.sql`
+8. `../supabase/migrations/20260907140501_ascenso_pilot_operations.sql`
+9. `baseline/supabase_compatibility_grants.sql`
 
 The compatibility role/grant files are separable. A future non-Supabase
 runtime can replace them with its own login and role model without changing the
@@ -130,3 +137,31 @@ the focused Phase 1 runner verifies this additive migration separately.
 Rollback: revert dependent application code before considering column removal.
 Prefer leaving the additive columns in place and fixing forward; reverting the
 security code restores the original exposure. No production rollback was tested.
+
+## Phase 2 pilot operations migration
+
+`../supabase/migrations/20260907140501_ascenso_pilot_operations.sql` must follow
+the Phase 1 normalized identity migration and precede the dependent application
+deployment. The migration adds columns/tables/functions/triggers and partial
+unique indexes; it does not rewrite or delete existing relationships.
+
+The one-live-match indexes deliberately fail if existing proposed,
+board-approved, or active rows already assign a mentor or mentee more than once.
+Inspect and resolve any such conflicts deliberately before rollout. Take a
+database backup and choose a maintenance window: adding constrained columns and
+building indexes take locks. No hosted migration was run or production data
+inspected during Phase 2.
+
+The delivery state records provider acceptance, not inbox delivery. Its retry
+path freezes the original message and reuses the same Resend idempotency key
+inside the provider window. After that window, an administrator must check the
+provider and record the outcome; the application does not blindly generate a
+new key. No environment or provider configuration change is required.
+
+Focused verification uses only synthetic data in a disposable PostgreSQL 17
+cluster and local provider/framework stubs:
+
+```sh
+sh database/verification/verify_phase2.sh
+node --test database/verification/phase2_operations.test.mjs
+```

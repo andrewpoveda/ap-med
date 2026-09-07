@@ -11,6 +11,7 @@ import {
   type CohortTrack,
 } from '@/types/cohort'
 import { STATUS_CHIP_STYLES, NEUTRAL_CHIP } from '../chips'
+import DeliveryStatus from '../../DeliveryStatus'
 import ReviewActions from './ReviewActions'
 import SubmissionFields from './SubmissionFields'
 import SubmissionTabs from './SubmissionTabs'
@@ -84,6 +85,8 @@ export default async function ApplicationDetailPage({
   if (error || !data) notFound()
   const app = data as CohortApplication
   const answers = app.answers ?? {}
+  const { data: deliveries, error: deliveryError } = await admin.from('cohort_delivery').select('id, variant, state, detail').eq('cohort_id', cohortId).eq('source_id', appId)
+  if (deliveryError) throw new Error('Could not load delivery status')
 
   // Reviewer attribution for the review card (display name over raw uuid).
   let reviewerName: string | null = null
@@ -206,13 +209,15 @@ export default async function ApplicationDetailPage({
           </div>
         )}
 
+        <Link href={`/admin/cohorts/${cohortId}/members`}>Manage members →</Link>
+        <DeliveryStatus deliveries={deliveries ?? []} />
         {app.status === 'approved' ? (
           <div style={cardStyle}>
             <Field label="Member record">
               <p style={{ margin: 0 }}>
                 Approved — {app.role} record{' '}
                 <code style={{ fontSize: '0.85rem' }}>{app.member_id}</code> is in the
-                cohort. Changing an approved application is a manual DB decision.
+                cohort. Use member management for profile corrections or withdrawal.
               </p>
             </Field>
           </div>

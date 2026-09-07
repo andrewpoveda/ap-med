@@ -14,6 +14,7 @@ import {
 } from '@/types/cohort'
 import SelectMatchButton from './SelectMatchButton'
 import MatchActions from './MatchActions'
+import DeliveryStatus from '../DeliveryStatus'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
 // until the board selects a pair.
 
 type CohortMentor = {
+  membership_status: string
   id: string
   first_name: string
   last_name: string
@@ -37,6 +39,7 @@ type CohortMentor = {
 }
 
 type CohortMentee = {
+  membership_status: string
   id: string
   full_name: string
   interests: string[] | null
@@ -125,11 +128,11 @@ export default async function CohortMatchingPage({
   const [mentorsRes, menteesRes, matchesRes] = await Promise.all([
     admin
       .from('mentor')
-      .select('id, first_name, last_name, specialty, identity, can_help_with')
+      .select('id, first_name, last_name, specialty, identity, can_help_with, membership_status')
       .eq('cohort_id', cohortId),
     admin
       .from('mentees')
-      .select('id, full_name, interests, identity, help_with')
+      .select('id, full_name, interests, identity, help_with, membership_status')
       .eq('cohort_id', cohortId),
     admin
       .from('cohort_matches')
@@ -151,6 +154,8 @@ export default async function CohortMatchingPage({
     )
 
   const tracks = await getMemberTrackMaps(admin, cohortId)
+  const { data: deliveries, error: deliveryError } = await admin.from('cohort_delivery').select('id, source_id, variant, state, detail').eq('cohort_id', cohortId).eq('kind', 'introduction')
+  if (deliveryError) throw new Error('Could not load introduction status')
 
   // Reviewer attribution for approved matches (display name over raw uuid).
   const approverIds = [...new Set(matches.map((m) => m.approved_by).filter(Boolean))] as string[]
@@ -186,15 +191,16 @@ export default async function CohortMatchingPage({
   if (tracks) {
     for (const track of COHORT_TRACKS) {
       const trackMentors = mentors.filter(
-        (m) => tracks.mentorTrackById.get(m.id) === track && !takenMentors.has(m.id),
+        (m) => m.membership_status === 'active' && tracks.mentorTrackById.get(m.id) === track && !takenMentors.has(m.id),
       )
       const trackMentees = mentees.filter(
-        (m) => tracks.menteeTrackById.get(m.id) === track && !takenMentees.has(m.id),
+        (m) => m.membership_status === 'active' && tracks.menteeTrackById.get(m.id) === track && !takenMentees.has(m.id),
       )
       freeCounts.set(track, { mentors: trackMentors.length, mentees: trackMentees.length })
       const pairs: Candidate[] = []
       for (const mentor of trackMentors) {
         for (const mentee of trackMentees) {
+          if (matches.some(m => m.mentor_id === mentor.id && m.mentee_id === mentee.id)) continue
           const menteePrefs = {
             interests: Array.isArray(mentee.interests) ? mentee.interests : [],
             identity: Array.isArray(mentee.identity) ? mentee.identity : [],
@@ -229,8 +235,12 @@ export default async function CohortMatchingPage({
   }
 
   const tracklessCount = tracks
-    ? mentors.filter((m) => !tracks.mentorTrackById.has(m.id)).length +
-      mentees.filter((m) => !tracks.menteeTrackById.has(m.id)).length
+    ? mentors.filter(
+        (m) => m.membership_status === 'active' && !tracks.mentorTrackById.has(m.id),
+      ).length +
+      mentees.filter(
+        (m) => m.membership_status === 'active' && !tracks.menteeTrackById.has(m.id),
+      ).length
     : 0
 
   return (
@@ -272,6 +282,8 @@ export default async function CohortMatchingPage({
         </Link>
       </p>
 
+      <p className="mt-4">Pilot rule: one live selection or active match per person. Capacity answers record future willingness only. Ended pairs remain history; rematching selects a different partner.</p>
+      <Link href={`/admin/cohorts/${cohortId}/members`}>Manage members →</Link>
       <h2
         className="text-[#1a1a2e]"
         style={{ fontSize: '1.25rem', fontWeight: 400, margin: '2rem 0 0' }}
@@ -310,6 +322,8 @@ export default async function CohortMatchingPage({
                     </>
                   )}
                 </p>
+                {match.status === 'ended' && <p>Ended {match.ended_at ? new Date(match.ended_at).toLocaleDateString('en-US') : '(historical date unknown)'} · {match.end_reason ?? 'Historical reason not recorded'}{matches.some(other => other.id !== match.id && other.status !== 'ended' && (other.mentor_id === match.mentor_id || other.mentee_id === match.mentee_id)) ? ' · Participant rematched / replacement selected' : ''}</p>}
+                <DeliveryStatus deliveries={(deliveries ?? []).filter(d => d.source_id === match.id)} />
                 <MatchActions
                   matchId={match.id}
                   status={match.status}

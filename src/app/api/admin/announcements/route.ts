@@ -78,10 +78,10 @@ export async function POST(request: Request) {
     const wantMentees = audience === 'all' || audience === 'mentees'
     const [mentorsRes, menteesRes] = await Promise.all([
       wantMentors
-        ? admin.from('mentor').select('email').eq('cohort_id', cohortId)
+        ? admin.from('mentor').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active')
         : Promise.resolve({ data: [], error: null }),
       wantMentees
-        ? admin.from('mentees').select('email').eq('cohort_id', cohortId)
+        ? admin.from('mentees').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active')
         : Promise.resolve({ data: [], error: null }),
     ])
     if (mentorsRes.error || menteesRes.error) {

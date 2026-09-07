@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     // Ambiguous normalized identities fail closed; never choose by recency.
     const { data: mentee, error } = await admin
       .from('mentees')
-      .select('id, full_name, email, cohort_id')
+      .select('id, full_name, email, cohort_id, membership_status')
       .eq('normalized_email', email)
       .not('cohort_id', 'is', null)
       .maybeSingle()
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!mentee) return NextResponse.json(GENERIC_OK)
+    if (!mentee || mentee.membership_status !== 'active') return NextResponse.json(GENERIC_OK)
 
     // Shared email budget (PRM §2). Checked before generating anything so a
     // capped day doesn't churn auth users. Reported plainly: knowing the site

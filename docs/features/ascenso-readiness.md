@@ -1,6 +1,6 @@
 # Ascenso phased readiness checklist
 
-Execution contract: implement **one phase per explicitly authorized run**. Phase 1 is locally complete. The next incomplete phase is Phase 2; wait for explicit authorization before beginning it. On a later “continue”, inspect the next incomplete phase and relevant current code; do not repeat the completed audit. Do not modify hosted services without separate authorization. Preserve unrelated working-tree changes.
+Execution contract: implement **one phase per explicitly authorized run**. Phases 1–2 are locally complete. The next incomplete phase is Phase 3; wait for explicit authorization before beginning it. On a later “continue”, inspect the next incomplete phase and relevant current code; do not repeat the completed audit. Do not modify hosted services without separate authorization. Preserve unrelated working-tree changes.
 
 Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addressed**, **Intentionally deferred**, **Not applicable**. Fixed means implemented and locally validated, not deployed. A phase is complete only when every numbered item in it has a documented disposition. Later-phase deferral notes record the accepted scope, not permission to execute those phases.
 
@@ -9,7 +9,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | Phase | Status | Items |
 |---|---|---|
 | 1 — Security / Intake Integrity | Fixed | 1–2 |
-| 2 — Pilot Operational Correctness | Pending | 3–9 |
+| 2 — Pilot Operational Correctness | Fixed | 3–9 |
 | 3 — Member Experience Consistency | Pending | 10–14 |
 | 4 — Email / Delivery Reliability | Pending | 15–17 |
 | 5 — Reporting / Data Trustworthiness | Pending | 18–22 |
@@ -30,13 +30,13 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 |---|---|---|---|
 | 1 | Exact Email Identity Matching | Fixed | Exact normalized equality across mentor/mentee claims, promotion, existence probe, legacy sign-in link and public mentor duplicate lookup. Administrator equality and ownership/race guards preserved; ambiguity fails closed. Covered by focused regression tests. |
 | 2 | Application Ownership / Overwrite Flaw | Fixed | Public intake is insert-only; duplicates return 409 with administrator-correction guidance, without reading or overwriting existing answers. Replacement UI/path removed; historical snapshots preserved. Covered by focused regression tests. |
-| 3 | Admin Entry / Auth Routing | Pending | Route admin-only accounts without changing member precedence or grant boundaries. |
-| 4 | Application Decision Communications | Pending | Authoritative decisions plus idempotent, recoverable decision notifications; use existing email infrastructure. |
-| 5 | Member Management / Routine Corrections | Pending | Cohort-scoped corrections, withdrawal and offboarding while retaining history; no CRM. |
-| 6 | Match End / Rematch Lifecycle | Pending | Controlled end/rematch with reason, history and eligibility; no automatic participant rematching. |
-| 7 | Match Activation Delivery Recovery | Pending | Recipient-level introduction state and retry of failed recipients only. |
-| 8 | Assignment Cardinality / Concurrency | Pending | Transactional live-assignment rule for stale tabs/concurrent reviewers; preserve manual lower-ranked selection. |
-| 9 | Mentor Capacity | Pending | Explicit pilot cardinality or real capacity enforcement; do not silently ignore the capacity field. |
+| 3 | Admin Entry / Auth Routing | Fixed | OAuth routes an admin-only authenticated identity to `/admin`. Mentor-first and mentee resolution still take precedence; admin access still requires an exact `admin_users` record, and existing super/cohort boundaries are unchanged. |
+| 4 | Application Decision Communications | Fixed | Approve/reject/waitlist now commits the authoritative decision, promotion and a durable email intent atomically. Repeated same-status actions do not create another intent or event. Provider acceptance state and safe recovery are shown on the review page; send failure never rolls the decision back. |
+| 5 | Member Management / Routine Corrections | Fixed | Cohort-scoped admin UI/API supports a small allowlist of name/profile corrections and active/withdrawn/offboarded status. Email, auth ownership, cohort, application answers, tags and track remain outside the editor. Reasons and before/after fields are recorded; history/auth links remain. Stale edits, cross-cohort access and offboarding with a live selection/match are rejected. Inactive members lose participant access and routine cohort mail. |
+| 6 | Match End / Rematch Lifecycle | Fixed | Admins can end an active match with a reason; actor/time/reason and the row remain. Ended participants return to the candidate pool and can be paired with a different participant. Historical active/ended rows cannot be deleted or reactivated, and the retained exact-pair uniqueness means repeating the same pair remains intentionally unsupported for this pilot. No automatic participant rematch was added. |
+| 7 | Match Activation Delivery Recovery | Fixed | Activation commits the active match and two recipient-specific introduction intents together. Provider-accepted recipients are never resent; unresolved recipients can retry with the same frozen message and Resend idempotency key. After the provider key window, an admin must record a checked accepted/non-send outcome before further action. UI labels acceptance honestly rather than claiming inbox delivery. |
+| 8 | Assignment Cardinality / Concurrency | Fixed | Partial unique indexes enforce one proposed/board-approved/active match per mentor and mentee, including stale tabs and concurrent transactions. Database guards require active same-cohort members. Lower-ranked manual pairing remains available, and the existing all-history exact-pair constraint remains. Migration intentionally fails if pre-existing live conflicts require operator resolution. |
+| 9 | Mentor Capacity | Fixed | Pilot policy is explicitly one live assignment per person and is enforced in the database. The application and matching UI explain that the capacity answer records future willingness only. Configurable capacity greater than one is deferred until a customer/program requirement justifies changing the assignment model. |
 | 10 | Meeting Logging Rule | Pending | Preferred two-sided pair logging; normal mentee UI and API must agree; explain who logs. |
 | 11 | Scheduling Fallback | Pending | Manual scheduling/contact fallback when Google connection, availability or booking fails. |
 | 12 | Meeting Cancellation / Rescheduling Recovery | Pending | Explicit cancel/rebook permissions and external-calendar failure recovery; no sync engine. |
@@ -104,6 +104,18 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 - No environment-variable changes, provider-dashboard actions, dependency installation, new auth provider, verified edit link, or applicant portal.
 - Exact normalized duplicates are not merged. They fail closed for identity claiming/legacy links and require deliberate operator correction; general mentee submission duplicates remain supported.
 - Migration timing must account for stored-column/index table locks; see [database rollout notes](../../database/README.md#phase-1-email-identity-migration).
+
+## Phase 2 implementation and rollout
+
+- Items 3–9: **Fixed** and reviewed locally on 2026-09-07. No Phase 3 work was started.
+- Validation passed: 18 focused Phase 2 route/helper tests, all 43 Phase 1 and email-budget regression tests, focused ESLint, TypeScript, `git diff --check`, and disposable PostgreSQL 17 lifecycle/security/concurrency checks. The Node module-type warning remains non-failing and package configuration is unchanged.
+- New migration: `supabase/migrations/20260907140501_ascenso_pilot_operations.sql`. It adds member status, match end metadata, server-only delivery/event tables, transaction functions/guards, and one-live-match partial unique indexes. No hosted migration was performed.
+- The migration must run after the Phase 1 normalized-email migration and before this application code. It deliberately aborts on an existing conflicting live assignment rather than choosing or ending a relationship. Review conflicts and take a database backup before production rollout.
+- Durable delivery in this phase covers application decisions and match introductions. Broader campaign/digest queuing and bounce/delivery webhooks remain items 15–17; the UI reports provider acceptance only.
+- Operational events in this phase cover Phase 2 decisions, member changes, match activation/end and manual delivery resolution. Full event taxonomy and access/export auditing remain items 32–33.
+- No dependency, environment-variable, auth-provider or provider-dashboard changes were added. Resend's existing API key and existing account-wide 90-message reservation mechanism are reused one message at a time.
+- Withdrawal and offboarding do not delete records, unlink auth ownership, revoke the external Google account, or cancel existing calendar events. Operators must end/remove matches and coordinate calendar cleanup first. Those scheduling recovery workflows remain Phase 3.
+- Configurable mentor capacity above one remains intentionally unimplemented. Supporting it later requires a program rule and a cardinality model that keeps mentee uniqueness and concurrency guarantees explicit.
 
 ## Audit coverage and later boundaries
 

@@ -25,6 +25,7 @@ export type Mentor = {
   // on first Google sign-in (migration 0004); `cohort_id` marks Ascenso cohort
   // members (migration 0006) — non-null rows are excluded from every public
   // surface and must never be added to PUBLIC_MENTOR_COLUMNS.
+  membership_status?: 'active' | 'withdrawn' | 'offboarded'
   approved: boolean
   auth_user_id: string | null
   cohort_id: string | null

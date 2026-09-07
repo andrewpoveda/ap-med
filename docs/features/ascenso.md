@@ -73,13 +73,15 @@ applications, bookings, and emails, so coordinate the test records and cleanup.
 
 `/api/cohort-applications` owns server validation. Applications require identity fields, current position and location, motivation, specialty/support selections, role-specific answers, and the four acknowledgments represented by the current form and route. Email plus cohort and role is unique. Public intake creates new applications only. Duplicate submissions return 409 with administrator-correction guidance, regardless of review status; they never read or overwrite existing answers. Legacy previous-submission snapshots remain available to reviewers as historical records, not an edit/recovery mechanism.
 
-Admin approval creates or claims a cohort member without overriding a row already assigned to another cohort. Google sign-in then claims the member row by exact normalized verified email. The generated `normalized_email` columns preserve legacy address casing while supporting equality queries; ambiguous identities fail closed. General-platform mentees remain outside this account flow.
+Admin approval creates or claims a cohort member without overriding a row already assigned to another cohort. The decision and its email intent commit together; provider acceptance can fail without undoing the decision. Google sign-in then claims the member row by exact normalized verified email. The generated `normalized_email` columns preserve legacy address casing while supporting equality queries; ambiguous identities fail closed. General-platform mentees remain outside this account flow. Admin-only identities route directly to `/admin` without needing a participant row.
+
+Program administrators can correct a limited set of profile fields and mark cohort members active, withdrawn, or offboarded. Those actions are cohort-scoped and reasoned; they preserve application, auth and relationship history. End or remove a member's live match before making them inactive. Inactive cohort members cannot sign into participant surfaces, enter matching, or receive routine announcements/digests.
 
 ## Current feature areas
 
 The repository contains cohort-scoped administration and member behavior for applications, proposed and active matches, orientation state, meeting logs, goals, scheduling, surveys, announcements, digest reminders, and analytics. Authorization belongs in the route or server helper for each operation; UI hiding alone is insufficient.
 
-General and Ascenso help-tag vocabularies are separate in `src/data/tags.ts`. Mentor capacity is collected for administrative judgment but is not an automatic matching constraint unless current source explicitly adds that behavior.
+General and Ascenso help-tag vocabularies are separate in `src/data/tags.ts`. The pilot enforces one proposed, board-approved, or active match per person. Mentor capacity is collected as future willingness and is explicitly non-operational until a program requires a configurable capacity model. Active matches can be ended by an administrator with a retained actor, timestamp and reason; ended participants may be paired with a different person, while the original pair remains historical.
 
 Avoid embedding cohort size, participant names, current application counts, dates, partner approvals, or workflow status in canonical documentation. Those are changing operational facts.
 

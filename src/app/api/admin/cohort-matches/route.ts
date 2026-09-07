@@ -58,12 +58,14 @@ export async function POST(request: Request) {
         .select('id, specialty, identity, can_help_with')
         .eq('id', mentorId)
         .eq('cohort_id', cohortId)
+        .eq('membership_status', 'active')
         .maybeSingle(),
       admin
         .from('mentees')
         .select('id, interests, identity, help_with')
         .eq('id', menteeId)
         .eq('cohort_id', cohortId)
+        .eq('membership_status', 'active')
         .maybeSingle(),
     ])
     if (mentorRes.error || !mentorRes.data || menteeRes.error || !menteeRes.data) {
@@ -118,9 +120,9 @@ export async function POST(request: Request) {
 
     if (insertError || !created) {
       // unique (cohort_id, mentor_id, mentee_id) → the pair is already selected.
-      if (insertError?.code === '23505') {
+      if (insertError?.code === '23505' || insertError?.code === '23514') {
         return NextResponse.json(
-          { error: 'This pair already has a match row' },
+          { error: 'A participant already has a live selection, or this exact pair is retained in match history' },
           { status: 409 },
         )
       }

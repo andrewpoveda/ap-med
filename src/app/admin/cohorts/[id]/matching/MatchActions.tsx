@@ -3,7 +3,7 @@
 import { useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Action = 'approve' | 'activate' | 'remove'
+type Action = 'approve' | 'activate' | 'remove' | 'end'
 
 const buttonBase: CSSProperties = {
   borderRadius: '8px',
@@ -42,28 +42,38 @@ export default function MatchActions({
     ) {
       return
     }
+    const reason = action === 'end'
+      ? window
+          .prompt(
+            'Why is this match ending? History will be retained. Coordinate any existing calendar bookings separately.',
+          )
+          ?.trim()
+      : undefined
+    if (action === 'end' && !reason) return
     setPending(action)
     setMessage(null)
     try {
       const res = await fetch(`/api/admin/cohort-matches/${matchId}`, {
         method: action === 'remove' ? 'DELETE' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        ...(action !== 'remove' ? { body: JSON.stringify({ action }) } : {}),
+        ...(action !== 'remove' ? { body: JSON.stringify({ action, reason }) } : {}),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setMessage({ ok: false, text: data.error ?? 'Could not update the match.' })
       } else if (data.warning) {
-        setMessage({ ok: true, text: `Match activated. ${data.warning}.` })
+        setMessage({ ok: true, text: data.warning })
         router.refresh()
       } else {
         setMessage({
           ok: true,
           text:
-            action === 'remove'
+            action === 'end'
+              ? 'Match ended. Both active members are eligible for a different partner.'
+              : action === 'remove'
               ? 'Selection removed.'
               : action === 'activate'
-                ? 'Match activated — both parties have been emailed.'
+                ? 'Match activated — introductions accepted by the email provider.'
                 : 'Match board-approved.',
         })
         router.refresh()
@@ -78,6 +88,15 @@ export default function MatchActions({
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-2">
+        {status === 'active' && (
+          <button
+            style={buttonBase}
+            disabled={pending !== null}
+            onClick={() => submit('end')}
+          >
+            {pending === 'end' ? 'Ending…' : 'End match'}
+          </button>
+        )}
         {status === 'proposed' && (
           <button
             onClick={() => submit('approve')}

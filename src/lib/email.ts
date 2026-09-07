@@ -567,3 +567,40 @@ function buildEmailHtml({
         If you're unable to take on a mentee right now, just reply and let us know — no worries at all.`,
   })
 }
+
+/** Phase 2 stores this complete message before sending, so configuration or
+ * profile edits cannot change the payload under a reused idempotency key. */
+export function buildCohortOperationalEmail(delivery: {
+  kind: 'decision' | 'introduction'
+  variant: string
+  recipient_email: string
+  payload: Record<string, string>
+}) {
+  const p = delivery.payload
+  const name = escapeHtml(p.name ?? '')
+  const cohort = escapeHtml(p.cohortName ?? '')
+  const login = escapeHtml(safeUrl(ascensoAbsoluteUrl('/login')))
+  const decision = delivery.kind === 'decision'
+  const decisionCopy: Record<string, string> = {
+    approved: 'Your application has been approved. You can sign in with Google using this email address. The program team will notify you separately when your match is activated.',
+    waitlisted: 'Your application is on the waitlist. The program team will contact you if a place becomes available. You do not need to submit another application.',
+    rejected: 'The program team has reviewed your application and is unable to offer you a place in this cohort. Thank you for taking the time to apply.',
+  }
+  const body = decision
+    ? `<p>Hi ${name},</p><p>${decisionCopy[delivery.variant] ?? ''}</p>${delivery.variant === 'approved' ? primaryButton(login, 'Sign in with Google') : ''}`
+    : `<p>Hi ${name}, the ${cohort} team has matched you with ${escapeHtml(p.partnerName ?? '')}.</p><p>Contact your ${delivery.variant === 'mentor' ? 'mentee' : 'mentor'} at <a href="mailto:${escapeHtml(p.partnerEmail ?? '')}">${escapeHtml(p.partnerEmail ?? '')}</a> to arrange your first conversation.</p>${primaryButton(login, 'Open your dashboard')}<p>Sign in with the Google account for this email address.</p>`
+  return {
+    from: 'AP MED Mentors <mentors@ap-med.org>',
+    to: delivery.recipient_email,
+    replyTo: decision ? 'mentors@ap-med.org' : p.partnerEmail,
+    subject: decision ? `Application ${delivery.variant} — ${p.cohortName}` : `You've been matched with ${p.partnerName} — ${p.cohortName}`,
+    html: emailShell({ eyebrow: `AP MED MENTORS · ${cohort}`, heading: decision ? 'Your application decision' : 'Your match is confirmed', body,
+      footer: 'Questions? Contact your program team or mentors@ap-med.org.' }),
+  }
+}
+
+export async function sendCohortOperationalEmail(message: ReturnType<typeof buildCohortOperationalEmail>, idempotencyKey: string): Promise<string> {
+  const { data, error } = await resend.emails.send(message, { idempotencyKey })
+  if (error || !data?.id) throw new Error('Provider acceptance unconfirmed')
+  return data.id
+}

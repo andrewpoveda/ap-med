@@ -741,6 +741,7 @@ export default function AscensoApplyForm({
                       How many mentees would you be willing to mentor during the 2026–27 program
                       year? *
                     </h3>
+                    <p>The pilot assigns one live match per person. This answer records future willingness only; it does not increase your assignment limit.</p>
                     <div className="ascenso-choice-list">
                       {ASCENSO_MENTEE_CAPACITY_OPTIONS.map(option => (
                         <label key={option} style={radioCardStyle(form.mentee_capacity === option)}>

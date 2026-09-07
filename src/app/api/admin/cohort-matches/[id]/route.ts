@@ -3,26 +3,12 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { notifyCohortMatchActivated } from '@/lib/email'
+import { sendCohortDeliveries } from '@/lib/cohort-delivery'
 import { isMutationDryRunAllowed } from '@/lib/test-mode'
-import { isValidEmail } from '@/lib/validate'
-import { ascensoAbsoluteUrl } from '@/lib/site'
+import { cap, LIMITS } from '@/lib/validate'
 import type { AdminUser } from '@/lib/admin'
 import type { CohortMatch } from '@/types/cohort'
 import type { SupabaseClient } from '@supabase/supabase-js'
-
-// Match lifecycle actions (ascenso-prm.md §5.4). PATCH `approve` moves a
-// proposed row to board_approved (only used if rows are ever seeded as
-// `proposed`, e.g. by hand in SQL — the UI's Select creates board_approved rows
-// directly); PATCH `activate` is the go-live step: status → active + one
-// introduction email to each party, logged in email_log and refused past the
-// 90/day soft cap (Resend free tier is 100/day). `active` is reachable ONLY
-// from board_approved — no auto-matching goes live without board approval.
-// DELETE un-selects a not-yet-active row so the pair returns to the candidate
-// list. Same posture as the other admin routes: 401 anon, 404 non-admin or
-// wrong cohort, non-probeable.
-
-const DAILY_EMAIL_SOFT_CAP = 90
 
 export async function PATCH(
   request: Request,
@@ -45,8 +31,16 @@ export async function PATCH(
     if (action === 'approve') {
       return approveMatch(admin, adminUser, match)
     }
-    if (action === 'activate') {
-      return activateMatch(admin, match, dryRun)
+    if (action === 'activate' || action === 'end') {
+      if (dryRun) return NextResponse.json({ success: true, dryRun: true })
+      const { data: status, error } = await admin.rpc('ascenso_match_action', {
+        p_id: match.id, p_actor: adminUser.id, p_action: action,
+        p_reason: cap(body.reason, LIMITS.text).trim(),
+      })
+      if (error) return NextResponse.json({ error: error.code === '23514' ? error.message : 'Could not update match; refresh and try again' }, { status: 409 })
+      const sent = action === 'activate' ? await sendCohortDeliveries(admin, match.id) : true
+      return NextResponse.json({ success: true, status,
+        ...(!sent ? { warning: 'Match is active. Introduction acceptance is incomplete; use delivery recovery below.' } : {}) })
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (err) {
@@ -150,177 +144,4 @@ async function approveMatch(
     )
   }
   return NextResponse.json({ success: true, status: 'board_approved' })
-}
-
-async function activateMatch(
-  admin: SupabaseClient,
-  match: CohortMatch,
-  dryRun: boolean,
-) {
-  if (match.status !== 'board_approved') {
-    return NextResponse.json(
-      { error: 'Only a board-approved match can be activated' },
-      { status: 409 },
-    )
-  }
-
-  // Recipients are resolved server-side from the member rows, still scoped to
-  // the match's cohort (and with no `approved` filter — see the select route).
-  const [mentorRes, menteeRes, cohortRes] = await Promise.all([
-    admin
-      .from('mentor')
-      .select('id, first_name, last_name, email')
-      .eq('id', match.mentor_id)
-      .eq('cohort_id', match.cohort_id)
-      .maybeSingle(),
-    admin
-      .from('mentees')
-      .select('id, full_name, email')
-      .eq('id', match.mentee_id)
-      .eq('cohort_id', match.cohort_id)
-      .maybeSingle(),
-    admin.from('cohorts').select('id, name').eq('id', match.cohort_id).maybeSingle(),
-  ])
-  const mentor = mentorRes.data
-  const mentee = menteeRes.data
-  const cohort = cohortRes.data
-  if (!mentor || !mentee || !cohort) {
-    return NextResponse.json(
-      { error: 'Member or cohort records are no longer intact for this match' },
-      { status: 409 },
-    )
-  }
-  if (!isValidEmail(mentor.email) || !isValidEmail(mentee.email)) {
-    return NextResponse.json(
-      { error: 'A member record is missing a valid email address' },
-      { status: 409 },
-    )
-  }
-
-  // Email budget (PRM §2): refuse when this activation's 2 sends would push
-  // today past the soft cap. Soft = concurrent activations can slightly
-  // overshoot; the Resend hard limit (100/day) has the remaining headroom.
-  const todayUtcStart = new Date()
-  todayUtcStart.setUTCHours(0, 0, 0, 0)
-  const { count, error: countError } = await admin
-    .from('email_log')
-    .select('id', { count: 'exact', head: true })
-    .gte('sent_at', todayUtcStart.toISOString())
-  if (countError) {
-    console.error('email_log count failed:', countError.message)
-    return NextResponse.json(
-      { error: 'Could not verify the daily email budget' },
-      { status: 500 },
-    )
-  }
-  if ((count ?? 0) + 2 > DAILY_EMAIL_SOFT_CAP) {
-    return NextResponse.json(
-      { error: 'Daily email budget reached — activate this match tomorrow' },
-      { status: 429 },
-    )
-  }
-
-  // Flip status first with a conditional update: a concurrent activation loses
-  // here (0 rows) and never double-emails the pair.
-  const { data: activated, error: updateError } = await admin
-    .from('cohort_matches')
-    .update({ status: 'active' })
-    .eq('id', match.id)
-    .eq('status', 'board_approved')
-    .select('id')
-  if (updateError) {
-    console.error('Match activate failed:', updateError.message)
-    return NextResponse.json({ error: 'Could not activate the match' }, { status: 500 })
-  }
-  if (!activated || activated.length === 0) {
-    return NextResponse.json(
-      { error: 'Only a board-approved match can be activated' },
-      { status: 409 },
-    )
-  }
-
-  const mentorName = `${mentor.first_name} ${mentor.last_name}`.trim()
-  const menteeName = mentee.full_name.trim()
-
-  if (dryRun) {
-    // Mirrors /api/notify ?test=1: the status flip is real, the sends are
-    // skipped, and nothing lands in email_log (it records actual sends only).
-    console.log(
-      `[dry-run] Skipped match activation emails — mentor ${mentor.id}, mentee ${mentee.id}`,
-    )
-    return NextResponse.json({ success: true, status: 'active', dryRun: true })
-  }
-
-  // Both parties get the same "sign in with Google" CTA: /login resolves mentor
-  // vs. cohort mentee from the verified email and routes each to their own
-  // dashboard. Activation no longer mints a magic link or pre-creates the
-  // mentee's auth user — Google sign-in does both on first use — so there is no
-  // credential in either copy of this email and no expiry racing the recipient.
-  // Cohort messages use the configured Ascenso origin regardless of which
-  // alias an administrator used. This keeps customer-facing links deterministic
-  // and avoids trusting the incoming Host header for email destinations.
-  const loginUrl = ascensoAbsoluteUrl('/login')
-
-  const results = await Promise.allSettled([
-    notifyCohortMatchActivated({
-      recipientEmail: mentor.email,
-      recipientName: mentorName,
-      recipientRole: 'mentor',
-      partnerName: menteeName,
-      partnerEmail: mentee.email,
-      cohortName: cohort.name,
-      loginUrl,
-    }),
-    notifyCohortMatchActivated({
-      recipientEmail: mentee.email,
-      recipientName: menteeName,
-      recipientRole: 'mentee',
-      partnerName: mentorName,
-      partnerEmail: mentor.email,
-      cohortName: cohort.name,
-      loginUrl,
-    }),
-  ])
-  const [mentorSend, menteeSend] = results
-  const sentTo = [
-    ...(mentorSend.status === 'fulfilled' ? [mentor.email] : []),
-    ...(menteeSend.status === 'fulfilled' ? [mentee.email] : []),
-  ]
-
-  if (sentTo.length > 0) {
-    const { error: logError } = await admin.from('email_log').insert(
-      sentTo.map((recipient) => ({
-        cohort_id: match.cohort_id,
-        kind: 'match_notify',
-        recipient_email: recipient,
-        ref_id: match.id,
-      })),
-    )
-    // The sends already happened — a failed log line is server-side noise, not
-    // a client error.
-    if (logError) console.error('email_log insert failed:', logError.message)
-  }
-
-  if (sentTo.length === 0) {
-    // Neither party was notified — walk the status back so activate can simply
-    // be retried.
-    await admin
-      .from('cohort_matches')
-      .update({ status: 'board_approved' })
-      .eq('id', match.id)
-      .eq('status', 'active')
-    return NextResponse.json(
-      { error: 'Activation emails failed — the match was returned to board-approved, try again' },
-      { status: 500 },
-    )
-  }
-  if (sentTo.length === 1) {
-    const failedParty = mentorSend.status === 'fulfilled' ? 'mentee' : 'mentor'
-    return NextResponse.json({
-      success: true,
-      status: 'active',
-      warning: `The ${failedParty}'s email failed to send — reach out to them directly`,
-    })
-  }
-  return NextResponse.json({ success: true, status: 'active' })
 }

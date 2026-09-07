@@ -6,6 +6,7 @@ export type LinkedCohortMentee = {
   id: string
   full_name: string
   cohort_id: string
+  membership_status: 'active' | 'withdrawn' | 'offboarded'
 }
 
 export type CohortMenteeLinkResult =
@@ -46,7 +47,7 @@ export async function linkCohortMenteeByEmail(
 
   const { data: rows, error } = await admin
     .from('mentees')
-    .select('id, auth_user_id, cohort_id, full_name')
+    .select('id, auth_user_id, cohort_id, full_name, membership_status')
     .eq('normalized_email', normalized)
     .not('cohort_id', 'is', null)
     .order('created_at', { ascending: false })
@@ -57,11 +58,13 @@ export async function linkCohortMenteeByEmail(
   }
   if (!rows || rows.length === 0) return { status: 'no-profile' }
   if (rows.length !== 1) return { status: 'error' }
+  if (rows[0].membership_status !== 'active') return { status: 'error' }
 
   const asMentee = (r: (typeof rows)[number]): LinkedCohortMentee => ({
     id: r.id as string,
     full_name: (r.full_name as string) ?? '',
     cohort_id: r.cohort_id as string,
+    membership_status: r.membership_status as LinkedCohortMentee['membership_status'],
   })
 
   // Already claimed by this user: idempotent re-sign-in.
@@ -144,7 +147,7 @@ export async function getCohortMenteeForUser(
 ): Promise<LinkedCohortMentee | null> {
   const { data, error } = await admin
     .from('mentees')
-    .select('id, full_name, cohort_id')
+    .select('id, full_name, cohort_id, membership_status')
     .eq('auth_user_id', userId)
     .not('cohort_id', 'is', null)
     .maybeSingle()
@@ -152,5 +155,6 @@ export async function getCohortMenteeForUser(
     console.error('getCohortMenteeForUser failed:', error.message)
     return null
   }
+  if (data?.membership_status !== 'active') return null
   return (data as LinkedCohortMentee) ?? null
 }

@@ -36,6 +36,7 @@ export async function linkMentorByEmail(
     return { status: 'error' }
   }
   if (!mentor) return { status: 'no-profile' }
+  if (mentor.cohort_id && mentor.membership_status !== 'active') return { status: 'error' }
 
   if (mentor.auth_user_id && mentor.auth_user_id !== userId) {
     // No row identifiers in the message: Sentry's console integration attaches
@@ -90,5 +91,6 @@ export async function getMentorForUser(
     console.error('getMentorForUser failed:', error.message)
     return null
   }
+  if (data?.cohort_id && data.membership_status !== 'active') return null
   return (data as Mentor) ?? null
 }

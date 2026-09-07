@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { getAdminUserByEmail } from '@/lib/admin'
 import { resolveAccountForUser, signInDestination } from '@/lib/account-role'
 
 /**
@@ -50,9 +51,10 @@ export async function GET(request: Request) {
   if (user?.email) {
     try {
       const admin = getSupabaseAdmin()
-      destination = signInDestination(
-        await resolveAccountForUser(admin, user.id, user.email),
-      )
+      const resolution = await resolveAccountForUser(admin, user.id, user.email)
+      destination = resolution === 'none' && await getAdminUserByEmail(user.email)
+        ? '/admin'
+        : signInDestination(resolution)
     } catch (err) {
       console.error('Account resolution during callback failed (non-fatal):', err)
     }
