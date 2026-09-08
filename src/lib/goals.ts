@@ -98,9 +98,8 @@ export type ActingMember = {
 /**
  * Resolve the signed-in user to their OWN cohort member row. A general-platform
  * mentor (cohort_id null) or a non-member has no match to act on → null (the
- * routes turn that into a 403). A user is a cohort mentor OR a cohort mentee,
- * never both, so only look for a mentee row when no cohort mentor matched. Mirror
- * of the item-9 meeting-log route's actor resolution.
+ * routes turn that into a 403). The shared participation resolver chooses one
+ * owned active role for this request; another program's role cannot fall through.
  */
 export async function resolveActingMember(
   admin: SupabaseClient,

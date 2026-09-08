@@ -15,10 +15,13 @@ export async function POST(request: Request) {
   }
   if (body.reason.trim().length < 3 || !['setup', 'applications_open', 'matching', 'active', 'closed'].includes(body.status)) return NextResponse.json({ error: 'Valid status and reason required' }, { status: 400 })
   const orientation = body.orientation || null
+  const organizationId = body.organizationId || null
+  if (organizationId !== null && (id || typeof organizationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(organizationId))) return NextResponse.json({ error: 'Choose an organization for a new cohort only' }, { status: 400 })
   if (orientation !== null && (typeof orientation !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(orientation) || Number.isNaN(Date.parse(orientation)) || new Date(orientation).toISOString().slice(0, 10) !== orientation)) return NextResponse.json({ error: 'Valid orientation date required' }, { status: 400 })
   const { data, error } = await getSupabaseAdmin().rpc('ascenso_configure_cohort', {
     p_id: id, p_actor: session.adminUser.id, p_name: body.name.trim(), p_org: body.org.trim(),
     p_orientation: orientation, p_status: body.status, p_expected: body.expected ?? null, p_reason: body.reason.trim(),
+    p_organization: organizationId,
   })
   if (error) return NextResponse.json({ error: 'Could not save. Refresh for current status. Closeout requires ending matches, removing selections, cancelling future sessions, resolving calendar cleanup and uncertain email.' }, { status: 409 })
   return NextResponse.json({ success: true, id: data })

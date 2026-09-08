@@ -25,8 +25,8 @@ psql_local <<'SQL'
 do $$ declare pair uuid; booked uuid; c uuid:='11111111-1111-4111-8111-111111111111'; begin
   insert into public.cohort_matches(cohort_id,mentor_id,mentee_id,track,status)
     values(c,'33333333-3333-4333-8333-333333333333','66666666-6666-4666-8666-666666666666','test','active') returning id into pair;
-  insert into public.sessions(mentor_id,mentee_id,scheduled_at,status)
-    values('33333333-3333-4333-8333-333333333333','66666666-6666-4666-8666-666666666666',now()-interval '1 day','scheduled') returning id into booked;
+  insert into public.sessions(mentor_id,mentee_id,scheduled_at,status,cohort_id,match_id)
+    values('33333333-3333-4333-8333-333333333333','66666666-6666-4666-8666-666666666666',now()-interval '1 day','scheduled',c,pair) returning id into booked;
   insert into public.meeting_logs(cohort_id,match_id,session_id,logged_by_type,logged_by_id,met_at)
     values(c,pair,booked,'mentee','66666666-6666-4666-8666-666666666666',current_date);
   assert (select status from public.sessions where id=booked)='completed';

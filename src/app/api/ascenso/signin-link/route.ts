@@ -66,12 +66,11 @@ export async function POST(request: Request) {
     // auth-less by design and must never be handed an account, and a cohort
     // MENTOR signs in with Google at /login — neither is reachable from here.
     // Ambiguous normalized identities fail closed; never choose by recency.
-    const { data: mentee, error } = await admin
+    const { data: memberships, error } = await admin
       .from('mentees')
-      .select('id, full_name, email, cohort_id, membership_status')
+      .select('id, person_id, full_name, email, cohort_id, membership_status')
       .eq('normalized_email', email)
       .not('cohort_id', 'is', null)
-      .maybeSingle()
 
     if (error) {
       console.error('Ascenso sign-in link lookup failed:', error.message)
@@ -81,7 +80,13 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!mentee || mentee.membership_status !== 'active') return NextResponse.json(GENERIC_OK)
+    const active = (memberships ?? []).filter(m => m.membership_status === 'active')
+    if (!active.length) return NextResponse.json(GENERIC_OK)
+    const identities = new Set(active.map(m => m.person_id))
+    if (identities.size !== 1 || !active[0].person_id) return NextResponse.json(GENERIC_OK)
+    // All qualifying rows are the same stable person. The callback presents
+    // their owned programs instead of choosing an arbitrary cohort as authority.
+    const mentee = active[0]
 
     const recipient = String(mentee.email ?? '').trim()
     if (!isValidEmail(recipient)) return NextResponse.json(GENERIC_OK)
@@ -104,7 +109,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const cohortName = await getCohortName(admin, String(mentee.cohort_id))
+    const cohortName = active.length === 1 ? await getCohortName(admin, String(mentee.cohort_id)) : 'your Ascenso programs'
 
     try {
       await sendAscensoSignInLink({

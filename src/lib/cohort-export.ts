@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { TRACK_LABELS } from '@/types/cohort'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
 import type { CsvCell } from '@/lib/csv'
+import { hasLinkedPerson } from '@/lib/email-identity'
 
 /**
  * Per-table CSV exports for the annual report (ascenso-prm.md §5.14). Each
@@ -24,6 +25,7 @@ export const EXPORT_TABLES = [
   'applications',
   'surveys',
   'events',
+  'sessions',
 ] as const
 export type ExportTable = (typeof EXPORT_TABLES)[number]
 
@@ -41,6 +43,7 @@ export const EXPORT_LABELS: Record<ExportTable, string> = {
   applications: 'Applications',
   surveys: 'Named survey responses',
   events: 'Operational events',
+  sessions: 'Attributed session records',
 }
 
 export type CohortExport = {
@@ -115,12 +118,12 @@ export async function buildCohortExport(
       const [mentorsRes, menteesRes] = await Promise.all([
         admin
           .from('mentor')
-          .select('id, membership_status, first_name, last_name, email, auth_user_id, created_at')
+          .select('id, person_id, membership_status, first_name, last_name, email, people(auth_user_id), created_at')
           .eq('cohort_id', cohortId)
           .order('created_at', { ascending: true }),
         admin
           .from('mentees')
-          .select('id, membership_status, full_name, email, auth_user_id, created_at')
+          .select('id, person_id, membership_status, full_name, email, people(auth_user_id), created_at')
           .eq('cohort_id', cohortId)
           .order('created_at', { ascending: true }),
       ])
@@ -128,26 +131,26 @@ export async function buildCohortExport(
       const rows: CsvCell[][] = []
       for (const m of mentorsRes.data ?? []) {
         rows.push([
-          m.id, m.membership_status,
+          m.id, m.person_id, m.membership_status,
           'mentor',
           mentorName(m),
           (m.email as string) ?? '',
-          m.auth_user_id ? 'yes' : 'no',
+          hasLinkedPerson(m.people) ? 'yes' : 'no',
           fmtTs(m.created_at as string),
         ])
       }
       for (const m of menteesRes.data ?? []) {
         rows.push([
-          m.id, m.membership_status,
+          m.id, m.person_id, m.membership_status,
           'mentee',
           (m.full_name as string) || 'Unnamed mentee',
           (m.email as string) ?? '',
-          m.auth_user_id ? 'yes' : 'no',
+          hasLinkedPerson(m.people) ? 'yes' : 'no',
           fmtTs(m.created_at as string),
         ])
       }
       return {
-        headers: ['Member ID', 'Membership status', 'Role', 'Name', 'Email', 'Auth identity linked (not attendance)', 'Record created (UTC)'],
+        headers: ['Participation ID', 'Person ID', 'Membership status', 'Role', 'Name', 'Email', 'Auth identity linked (not attendance)', 'Record created (UTC)'],
         rows,
         error,
       }
@@ -287,6 +290,13 @@ export async function buildCohortExport(
           r.id, r.survey_id, s?.title ?? '', s?.wave ?? '', r.member_type, r.member_id,
           JSON.stringify(s?.questions ?? []), JSON.stringify(r.answers), fmtTs(r.created_at),
         ] }), error: surveys.error?.message ?? responses.error?.message ?? null }
+    }
+    case 'sessions': {
+      const { data, error } = await admin.from('sessions').select('id,match_id,mentor_id,mentee_id,scheduled_at,status,calendar_cleanup_pending')
+        .eq('cohort_id', cohortId).order('scheduled_at', { ascending: true })
+      return { headers: ['Session ID', 'Match ID', 'Mentor participation ID', 'Mentee participation ID', 'Scheduled (UTC)', 'Status (not attendance)', 'Calendar cleanup pending'],
+        rows: (data ?? []).map(s => [s.id, s.match_id, s.mentor_id, s.mentee_id, fmtTs(s.scheduled_at), s.status, s.calendar_cleanup_pending ? 'yes' : 'no']),
+        error: error?.message ?? null }
     }
     case 'events': {
       const { data, error } = await admin.from('cohort_operation_events').select('id,actor_id,target_id,action,reason,changes,created_at')

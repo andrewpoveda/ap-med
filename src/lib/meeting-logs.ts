@@ -106,6 +106,7 @@ export async function getLoggableSessionsForMatch(
     .select('id, scheduled_at')
     .eq('mentor_id', match.mentor_id)
     .eq('mentee_id', match.mentee_id)
+    .eq('match_id', match.id)
     .eq('status', 'scheduled')
     .lt('scheduled_at', nowISO)
     .order('scheduled_at', { ascending: false })

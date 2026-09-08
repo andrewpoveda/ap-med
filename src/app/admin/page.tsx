@@ -74,6 +74,8 @@ export default async function AdminCohortsPage() {
   // the service-role client never crosses the boundary.
   const isSuper = adminUser.role === 'super'
   const ascensoVisibility = isSuper ? await readAscensoVisibility() : null
+  const organizations = isSuper ? await admin.from('organizations').select('id,name').order('name') : { data: [], error: null }
+  if (organizations.error) throw new Error('Could not load organization owners')
 
   // Cohort admins see only their cohort; a scoped admin with no cohort assigned
   // sees nothing (fail closed on a misconfigured row). Supers see everything.
@@ -135,7 +137,7 @@ export default async function AdminCohortsPage() {
           />
         </div>
       )}
-      {isSuper && <div className="mt-8" style={cardStyle}><CohortConfiguration /></div>}
+      {isSuper && <div className="mt-8" style={cardStyle}><CohortConfiguration organizations={organizations.data ?? []} /></div>}
 
       {cohorts.length === 0 ? (
         <p className="mt-6 text-[#6b6b6b]" style={{ fontSize: '0.95rem' }}>

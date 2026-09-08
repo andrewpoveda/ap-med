@@ -24,6 +24,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     return NextResponse.json({ success: true })
   }
   if (body.action !== 'retry') return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-  const complete = await sendCohortDeliveries(admin, delivery.source_id)
+  const complete = await sendCohortDeliveries(admin, delivery.source_id, delivery.cohort_id)
   return NextResponse.json({ success: true, warning: complete ? null : 'Some emails still need attention. Refresh delivery status below.' })
 }

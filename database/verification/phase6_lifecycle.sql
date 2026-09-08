@@ -47,8 +47,8 @@ do $$ declare c uuid; a uuid; pair uuid; booked uuid; s uuid:='cccccccc-cccc-4cc
     perform public.ascenso_configure_cohort(c,s,'Pilot','Test',null,'closed','active','Close pilot');
     raise exception 'Expected live match closeout denial';
   exception when check_violation then null; end;
+  insert into public.sessions(mentor_id,mentee_id,scheduled_at,status,cohort_id,match_id) values('33333333-3333-4333-8333-333333333333','66666666-6666-4666-8666-666666666666',now()+interval '1 day','scheduled',c,pair) returning id into booked;
   perform public.ascenso_match_action(pair,s,'end','Program completed');
-  insert into public.sessions(mentor_id,mentee_id,scheduled_at,status) values('33333333-3333-4333-8333-333333333333','66666666-6666-4666-8666-666666666666',now()+interval '1 day','scheduled') returning id into booked;
   begin
     perform public.ascenso_configure_cohort(c,s,'Pilot','Test',null,'closed','active','Close pilot');
     raise exception 'Expected future session closeout denial';

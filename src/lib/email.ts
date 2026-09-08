@@ -353,7 +353,6 @@ export function buildAnnouncementMessage(recipient: string, cohortName: string, 
 
 function buildDigestHtml({
   firstName,
-  memberType,
   cohortName,
   items,
 }: {
@@ -380,7 +379,7 @@ function buildDigestHtml({
       </p>
       ${panel(`<ul style="margin:0;padding-left:18px;">${itemsHtml}</ul>`)}
       ${primaryButton(
-        ascensoAbsoluteUrl(memberType === 'mentee' ? '/ascenso/dashboard' : '/dashboard'),
+        ascensoAbsoluteUrl('/ascenso/programs'),
         'Open your dashboard →',
       )}`,
     footer: `You received this because you're part of ${safeCohort} on AP MED Mentors.

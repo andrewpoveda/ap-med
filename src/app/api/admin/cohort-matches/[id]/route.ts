@@ -38,7 +38,7 @@ export async function PATCH(
         p_reason: cap(body.reason, LIMITS.text).trim(),
       })
       if (error) return NextResponse.json({ error: error.code === '23514' ? error.message : 'Could not update match; refresh and try again' }, { status: 409 })
-      const sent = action === 'activate' ? await sendCohortDeliveries(admin, match.id) : true
+      const sent = action === 'activate' ? await sendCohortDeliveries(admin, match.id, match.cohort_id) : true
       return NextResponse.json({ success: true, status,
         ...(!sent ? { warning: 'Match is active. Introduction acceptance is incomplete; use delivery recovery below.' } : {}) })
     }

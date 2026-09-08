@@ -39,6 +39,7 @@ export type DigestRecipient = {
   firstName: string
   memberType: CohortMemberType
   memberId: string
+  personId: string
   cohortId: string
   cohortName: string
   items: DigestItem[]
@@ -82,6 +83,7 @@ type MemberInfo = {
   id: string
   name: string
   email: string
+  personId: string
 }
 
 /**
@@ -101,8 +103,8 @@ async function computeCohortRecipients(
   const [mentorsRes, menteesRes, matchesRes, milestonesRes, surveysRes] = await Promise.all([
     // Cohort member rows are scoped by cohort_id ONLY — no `approved` filter
     // (cohort mentors keep approved=false as defense in depth).
-    admin.from('mentor').select('id, first_name, last_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
-    admin.from('mentees').select('id, full_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
+    admin.from('mentor').select('id, person_id, first_name, last_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
+    admin.from('mentees').select('id, person_id, full_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
     admin
       .from('cohort_matches')
       .select('id, mentor_id, mentee_id')
@@ -124,6 +126,7 @@ async function computeCohortRecipients(
   for (const m of mentorsRes.data ?? []) {
     members.set(`mentor:${m.id}`, {
       type: 'mentor',
+      personId: m.person_id,
       id: m.id as string,
       name: `${m.first_name ?? ''} ${m.last_name ?? ''}`.trim() || 'Your mentor',
       email: String(m.email ?? ''),
@@ -132,6 +135,7 @@ async function computeCohortRecipients(
   for (const m of menteesRes.data ?? []) {
     members.set(`mentee:${m.id}`, {
       type: 'mentee',
+      personId: m.person_id,
       id: m.id as string,
       name: (m.full_name as string) || 'Your mentee',
       email: String(m.email ?? ''),
@@ -177,6 +181,8 @@ async function computeCohortRecipients(
       ? admin
           .from('sessions')
           .select('mentor_id, mentee_id, scheduled_at')
+          .eq('cohort_id', cohort.id)
+          .in('match_id', matchIds)
           .in('mentor_id', mentorIds)
           .eq('status', 'scheduled')
           .gte('scheduled_at', now.toISOString())
@@ -300,6 +306,7 @@ async function computeCohortRecipients(
       firstName: member.name.trim().split(/\s+/)[0],
       memberType: member.type,
       memberId: member.id,
+      personId: member.personId,
       cohortId: cohort.id,
       cohortName: cohort.name,
       items,
@@ -315,8 +322,8 @@ async function computeCohortRecipients(
 
 /**
  * Everyone with pending items across every ACTIVE cohort, before cooldown.
- * A shared email across cohorts (shouldn't happen, but cheap to be correct)
- * merges into one recipient so nobody is double-mailed in one run.
+ * Combine a person's roles only inside the same cohort. Different programs
+ * retain separate content, cooldown and delivery context.
  */
 export async function computeDigestRecipients(
   admin: SupabaseClient,
@@ -340,9 +347,12 @@ export async function computeDigestRecipients(
       now,
     )
     for (const r of cohortRecipients) {
-      const key = r.email.toLowerCase()
+      const key = `${r.cohortId}:${r.personId}`
       const existing = byEmail.get(key)
-      if (existing) existing.items.push(...r.items)
+      if (existing) {
+        existing.items.push(...r.items)
+        if (r.validUntil && (!existing.validUntil || r.validUntil < existing.validUntil)) existing.validUntil = r.validUntil
+      }
       else byEmail.set(key, r)
     }
   }
@@ -380,7 +390,7 @@ export async function applyDigestCooldown(
 
   const { data: recent, error } = await admin
     .from('email_log')
-    .select('recipient_email, sent_at')
+    .select('cohort_id, recipient_email, sent_at')
     .eq('kind', DIGEST_KIND)
     .gte('sent_at', cooldownStart.toISOString())
     .in('recipient_email', recipients.map((r) => r.email))
@@ -388,7 +398,7 @@ export async function applyDigestCooldown(
 
   const lastSent = new Map<string, string>()
   for (const row of recent ?? []) {
-    const key = String(row.recipient_email).toLowerCase()
+    const key = `${row.cohort_id}:${String(row.recipient_email).toLowerCase()}`
     const at = row.sent_at as string
     const existing = lastSent.get(key)
     if (!existing || at > existing) lastSent.set(key, at)
@@ -396,7 +406,7 @@ export async function applyDigestCooldown(
 
   const result: CooldownResult = { toSend: [], skippedAlreadySentToday: 0, skippedCooldown: 0 }
   for (const recipient of recipients) {
-    const last = lastSent.get(recipient.email.toLowerCase())
+    const last = lastSent.get(`${recipient.cohortId}:${recipient.email.toLowerCase()}`)
     if (!last) {
       result.toSend.push(recipient)
       continue

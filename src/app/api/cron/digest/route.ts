@@ -75,8 +75,8 @@ async function runDigest(request: Request) {
       const expires = new Date(now)
       expires.setUTCHours(24, 0, 0, 0)
       const { error: queueError } = await admin.from('cohort_delivery').upsert(toSend.map(r => ({
-        cohort_id: r.cohortId, source_id: r.memberId, kind: 'digest',
-        variant: summary.date, recipient_email: r.email, payload: {},
+        cohort_id: r.cohortId, source_id: r.personId, kind: 'digest',
+        variant: `${r.cohortId}:${summary.date}`, recipient_email: r.email, payload: {},
         message: buildDigestMessage(r), expires_at: r.validUntil && r.validUntil < expires.toISOString() ? r.validUntil : expires.toISOString(),
       })), { onConflict: 'source_id,kind,variant', ignoreDuplicates: true })
       if (queueError) throw new Error('Could not persist digest intents')

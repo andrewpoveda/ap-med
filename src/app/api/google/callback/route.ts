@@ -32,6 +32,8 @@ export async function GET(request: Request) {
   // CSRF: the state must match the cookie we set in /connect. Clear it either way.
   const cookieStore = await cookies()
   const expectedState = cookieStore.get('google_oauth_state')?.value
+  const expectedParticipation = cookieStore.get('google_oauth_participation')?.value
+  cookieStore.set('google_oauth_participation', '', { ...GOOGLE_OAUTH_STATE_COOKIE_OPTIONS, maxAge: 0 })
   cookieStore.set('google_oauth_state', '', {
     ...GOOGLE_OAUTH_STATE_COOKIE_OPTIONS,
     maxAge: 0,
@@ -51,7 +53,7 @@ export async function GET(request: Request) {
 
   const admin = getSupabaseAdmin()
   const mentor = await getMentorForUser(admin, user.id)
-  if (!mentor) {
+  if (!mentor || mentor.id !== expectedParticipation) {
     return dash('no_profile')
   }
 

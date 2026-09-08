@@ -18,6 +18,7 @@ export function loadTs(relative, stubs = {}, cache = new Map()) {
   })
   const require = (name) => {
     if (Object.hasOwn(stubs, name)) return stubs[name]
+    if (name === 'next/headers') return { cookies: async () => ({ get: () => undefined }) }
     assert.ok(name.startsWith('@/'), `Unexpected provider import: ${name}`)
     return loadTs(`src/${name.slice(2)}.ts`, stubs, cache)
   }
@@ -43,7 +44,9 @@ export function database(seed = {}, options = {}) {
       is(key, value) { filters.push((r) => r[key] === value); return query },
       not(key, operator, value) { assert.equal(operator, 'is'); filters.push((r) => r[key] !== value); return query },
       gte() { return query },
-      order(key, { ascending }) { sort = { key, ascending }; return query },
+      lt(key, value) { filters.push(r => r[key] < value); return query },
+      lte(key, value) { filters.push(r => r[key] <= value); return query },
+      order(key, { ascending = true } = {}) { sort = { key, ascending }; return query },
       maybeSingle() { single = true; return query },
       single() { single = true; return query },
       update(value) { action = 'update'; payload = value; return query },

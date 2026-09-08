@@ -345,7 +345,7 @@ export default async function DashboardPage({
                   New sessions are added to this calendar with a Meet link.
                 </p>
                 <p style={{ margin: '0.75rem 0 0' }}>
-                  <a href="/api/google/connect" style={{ color: '#8a6a2f', fontSize: '0.85rem' }}>
+                  <a href={`/api/google/connect?participation=${mentor.id}`} style={{ color: '#8a6a2f', fontSize: '0.85rem' }}>
                     Reconnect
                   </a>
                 </p>
@@ -359,7 +359,7 @@ export default async function DashboardPage({
                   Connect your Google Calendar to schedule sessions with an
                   automatic Meet link and calendar invite for you and your mentee.
                 </p>
-                <a href="/api/google/connect" style={goldButton}>
+                <a href={`/api/google/connect?participation=${mentor.id}`} style={goldButton}>
                   Connect Google Calendar
                 </a>
               </>
@@ -386,6 +386,7 @@ export default async function DashboardPage({
               </p>
             )}
             <AvailabilityForm
+              mentorId={mentor.id}
               initialTimezone={availability?.timezone ?? null}
               initialRules={availability?.rules ?? []}
             />

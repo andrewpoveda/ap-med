@@ -122,7 +122,7 @@ export async function POST(request: Request) {
     })
     if (queueError) return NextResponse.json({ error: 'Could not queue: a full-cohort announcement may already be queued today, or this request ID was used for different content. Refresh to check history.' }, { status: 409 })
     // The durable queue remains recoverable if this request times out.
-    await sendCohortDeliveries(admin, announcementId).catch(() => false)
+    await sendCohortDeliveries(admin, announcementId, cohortId).catch(() => false)
     return NextResponse.json({ success: true, announcementId, recipientCount: recipients.length, queued: true })
 
   } catch (err) {

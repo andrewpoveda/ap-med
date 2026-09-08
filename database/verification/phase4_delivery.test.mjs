@@ -5,8 +5,8 @@ import { loadTs, database } from './test-support.mjs'
 test('bulk messages use stored content and claims before any provider effect', async () => {
   const order = []
   const db = database({ cohort_delivery: [
-    { id: 'accepted', source_id: 'campaign', state: 'accepted' },
-    { id: 'pending', source_id: 'campaign', state: 'pending', kind: 'announcement', message: { subject: 'Frozen' } },
+    { id: 'accepted', source_id: 'campaign', cohort_id: 'cohort', state: 'accepted' },
+    { id: 'pending', source_id: 'campaign', cohort_id: 'cohort', state: 'pending', kind: 'announcement', message: { subject: 'Frozen' } },
   ] })
   db.rpc = async (name, args) => {
     order.push(name)
@@ -23,7 +23,7 @@ test('bulk messages use stored content and claims before any provider effect', a
       },
     },
   })
-  assert.equal(await sendCohortDeliveries(db, 'campaign'), true)
+  assert.equal(await sendCohortDeliveries(db, 'campaign', 'cohort'), true)
   assert.deepEqual(order, ['ascenso_claim_delivery', 'provider', 'ascenso_finish_delivery'])
 })
 

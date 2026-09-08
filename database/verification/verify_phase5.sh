@@ -17,7 +17,8 @@ trap cleanup EXIT INT TERM
 psql_local() { "$pg_bin/psql" -X -q -v ON_ERROR_STOP=1 -h "$work_dir/socket" -p 55445 -d postgres "$@"; }
 psql_local -f "$repo_root/database/baseline/supabase_compatibility_roles.sql"
 for migration in "$repo_root"/supabase/migrations/*.sql; do
-  case "$migration" in *20260907235236_ascenso_truthful_reporting.sql) continue ;; esac
+  # Backfill fixtures must be created before this migration and its successors.
+  case "$migration" in *20260907235236_ascenso_truthful_reporting.sql) break ;; esac
   psql_local -f "$migration"
 done
 psql_local -f "$repo_root/database/baseline/supabase_compatibility_grants.sql"

@@ -7,7 +7,7 @@ This file is the canonical automatic context for the repository. Keep it short a
 - AP MED is a Next.js App Router/TypeScript platform for public mentor matching and Ascenso cohort administration. `package.json` is authoritative for framework versions and commands.
 - Supabase provides data and authentication; Resend sends transactional email; Turnstile protects public writes. Secrets and service-role clients must remain server-only.
 - General-platform mentor and mentee records use `cohort_id is null`. Cohort records must be scoped to the authenticated member or administrator and the relevant `cohort_id`.
-- Google sign-in is shared by mentors and Ascenso members. A matching mentor account takes precedence. General-platform mentees do not have accounts.
+- Google sign-in is shared by mentors and Ascenso members. Default resolution is mentor-first; an explicit participation selection must be owned and active. General-platform mentees do not have accounts.
 
 ## Invariants
 

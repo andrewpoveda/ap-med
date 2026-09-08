@@ -14,8 +14,8 @@ test('future bookings and partner logs do not prove individual activity', async 
       { cohort_id: 'other', match_id: 'pair', met_at: '2026-09-01', logged_by_type: 'mentee', logged_by_id: 'n' },
     ],
     sessions: [
-      { mentor_id: 'm', mentee_id: 'n', scheduled_at: '2026-09-10T10:00:00Z', status: 'scheduled' },
-      { mentor_id: 'm', mentee_id: 'n', scheduled_at: '2026-09-02T10:00:00Z', status: 'completed' },
+      { cohort_id: 'c', match_id: 'pair', mentor_id: 'm', mentee_id: 'n', scheduled_at: '2026-09-10T10:00:00Z', status: 'scheduled' },
+      { cohort_id: 'c', match_id: 'pair', mentor_id: 'm', mentee_id: 'n', scheduled_at: '2026-09-02T10:00:00Z', status: 'completed' },
       { mentor_id: 'm', mentee_id: 'other', scheduled_at: '2026-09-10T10:00:00Z', status: 'scheduled' },
     ],
   })

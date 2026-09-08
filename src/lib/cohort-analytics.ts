@@ -186,7 +186,9 @@ export async function getCohortAnalytics(
     activeMentorIds.length > 0
       ? admin
           .from('sessions')
-          .select('mentor_id, mentee_id, scheduled_at, status')
+          .select('mentor_id, mentee_id, scheduled_at, status, match_id')
+          .eq('cohort_id', cohort.id)
+          .in('match_id', activeMatches.map(m => m.id))
           .in('mentor_id', activeMentorIds)
           .neq('status', 'cancelled')
           .gte('scheduled_at', windowStartIso)

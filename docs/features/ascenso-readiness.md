@@ -14,7 +14,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 4 — Email / Delivery Reliability | Fixed | 15–17 |
 | 5 — Reporting / Data Trustworthiness | Fixed | 18–22 |
 | 6 — Cohort / Program Lifecycle | Fixed | 23–27 |
-| 7 — Person / Role / Participation Model | Pending | 28–31 |
+| 7 — Person / Role / Participation Model | Fixed | 28–31 |
 | 8 — Audit / Event History | Pending | 32–33 |
 | 9 — Branding / Program Configuration | Pending | 34–36 |
 | 10 — Scale / Query Completeness | Pending | 37–38 |
@@ -55,10 +55,10 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 25 | Admin Invitation / Removal / Offboarding | Fixed | Super-only add/view/revoke/restore workflow on cohort settings; exact Google email grants, no automatic invitation email. Actor/reason events preserve attribution. Revocation applies on subsequent checks, and zero-grant identities have no admin session. Other-cohort grants are preserved. Global admin management remains deliberately operator-owned. |
 | 26 | Multi-Cohort Admin Grants | Fixed | `admin_cohort_grants` separates identity from zero or more cohort grants. Existing single-cohort access is backfilled with unknown original grantor left null; legacy `cohort_id` is no longer authoritative. Scoped multi-cohort directors are not supers. Disabled identities fail closed. |
 | 27 | Reviewer / Read-Only Roles | Intentionally deferred | Institutional. Defer fine roles until distinct reviewer/reader responsibilities exist; first establish correct scoped grants (25–26). |
-| 28 | Person, Role, And Cohort Coupling | Pending | Plan a backward-compatible person/participation migration before implementation; preserve role changes, returners and historical references. |
-| 29 | Session / Match / Participation Attribution | Pending | Attribute sessions and logs to the correct relationship/cycle alongside participation migration. |
-| 30 | Same-Cohort Database Invariants | Pending | Strengthen same-cohort relationships with database constraints/FKs or equivalent; preserve historical integrity. |
-| 31 | Authorization Centralization | Pending | Central actor/grant/participation resolution with denial-by-default and cross-cohort negative tests. |
+| 28 | Person, Role, And Cohort Coupling | Fixed | Planned before implementation; stable server-only people own auth identity, existing role rows become immutable cohort participations. Enrollment creates a new role/cohort row without moving history. Exact claims, ambiguity rollback and ownership denial retained. Owned active participation chooser supports returners and role changes; Calendar setup remains per participation. |
+| 29 | Session / Match / Participation Attribution | Fixed | New cohort sessions carry explicit match/cohort IDs and exact pair validation; logs and reports use that context. Historical backfill uses linked logs or known activation windows; unknown remains unknown. Cross-role/program personal booking conflicts are rejected. |
+| 30 | Same-Cohort Database Invariants | Fixed | Composite FKs protect match/member, goal/log/match and survey/response context. Triggers validate polymorphic member references and session pairs, reject self-matches and freeze participation/organization ownership. Legacy contradictions abort migration. |
+| 31 | Authorization Centralization | Fixed | Shared person/participation resolver revalidates owned active selection; stale/forged selection fails closed. Member writes retain pair/cohort guards; Phase 6 central scoped grants remain authoritative. Negative participant, removed-grant, multi-grant and super tests pass. Digest content, cooldown and admin retries are cohort-scoped. |
 | 32 | Operational Event History | Pending | Small durable actor/action/target/time/reason history for meaningful program transitions; no SIEM. |
 | 33 | Access / Export Audit | Intentionally deferred | Institutional. Defer deeper access auditing until procurement requires it; minimal export events may use item 32 plumbing first. |
 | 34 | Limited Branding Configuration | Pending | Limited program/org/asset/support/email identity/origin configuration preserving AP MED and Ascenso; no theme/domain console. |
@@ -149,15 +149,22 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 ## Phase 6 checkpoint
 
 - Items 23–26 implemented; 27 intentionally deferred until a customer has distinct reviewer/read-only responsibilities. Creation and grant management are super-only; authorized cohort administrators manage that cohort's basic settings. This is assisted onboarding, not automated tenant provisioning.
+- Commit: `25d9542`.
 - Migration: `20260907235949_ascenso_cohort_lifecycle.sql`, after Phase 5 and before dependent code. It backfills existing grants, preserves legacy identity rows/event references, introduces lifecycle transactions/guards and serializes delivery claims with closeout. No hosted migration/deployment or provider changes.
 - Validation: 59 focused Phase 6/Phase 1/Phase 2 Node tests; local PostgreSQL lifecycle/grant/closeout checks plus prior Phase 2 SQL invariants; focused lint and TypeScript. Tests cover multiple grants, missing/revoked/disabled access, super-only management, stale state, invalid dates, closed-history preservation, live-match and calendar closeout refusal. Original synthetic fixtures now explicitly create open cohorts and grants where that table exists.
 - Manual onboarding: create cohort, configure support inbox/owner, grant each director's exact Google email, and directly share login/admin instructions. No emails are sent by grant management. The existing configured public intake cohort/origin still needs an operator-selected deployment configuration; creating a cohort alone does not make it public. Review this before launching simultaneous intakes.
 - Manual offboarding: revoke each intended cohort grant; removal preserves other grants and history. Global super identities and emergency `disabled_at` controls remain operator-managed. Cohort closure requires ending matches, clearing selections, cancelling future appointments and confirming provider/calendar outcomes first. Archived reporting remains accessible to remaining authorized staff.
 - Later work: Phase 7 owns person/participation attribution and the stable organization ownership boundary; the editable organization label is not a tenant model. Phase 9 owns versioned branding/program definitions. No reviewer/reader roles, SCIM, automatic invitations or domain console were added.
 
+## Phase 7 checkpoint
+
+- Items 28–31 implemented and reviewed. Required pre-implementation plan and rollout decisions: `docs/architecture/ascenso-participation-migration.md`. Migration `20260908001057_ascenso_person_participations.sql` follows Phase 6 and must precede dependent code; no hosted migration or deployment performed. Preflight ambiguity review and backup are operator prerequisites. No dependencies or environment/provider changes.
+- Resumption verification on 2026-09-08: seven focused participation Node tests passed. Disposable PostgreSQL Phase 7 verification passed, including rollback on ambiguous legacy identity, literal email ownership, historical session attribution (unknown stays unknown), cross-role booking conflicts and client denial. Phase 5 backfill verification also passed after fixing its migration boundary; backfill runners now stop before the target migration instead of applying successors before it. These are local synthetic checks, not hosted/provider validation.
+- Further regression review: all 67 Node tests and TypeScript passed. Current-migration Phase 3 meeting and Phase 6 closeout SQL checks passed after their booking fixtures supplied explicit relationship context and created bookings before ending the match. Phase 7 SQL also verifies explicit organization reuse, immutable ownership and self-match rejection. New booking validation holds cohort/match locks against concurrent lifecycle changes. These local tests do not claim production/provider end-to-end verification.
+
 ## Remaining audit boundaries
 
-All actionable audit recommendations are represented by items 1–64 except the explicit **stable organization entity/ownership boundary**. Track this as **Pending**, to be designed with items 23, 26, 28 and 34 before simultaneous organizations require it. A free-text organization label or multiple cohort grants must not be documented as a complete tenant model. Do not add this structural work in Phase 1.
+All actionable audit recommendations are represented by items 1–64 except the explicit **stable organization entity/ownership boundary**, now **Fixed** in Phase 7: server-only organization identities, immutable cohort ownership and explicit owner reuse for new cohorts. Historical equal labels are not automatically merged. This structural boundary is not a claim of separate infrastructure or a complete self-service tenant platform; cohort grants still control access.
 
 Current custom-domain readiness is preserved, not reopened. The audit’s existing strengths (board control, cohort/party checks, public mentor projection, CSV defenses) are regression invariants, not new phases. Future enhancements retain the triggers/dependencies in the item table. Phase 1 does not resolve operational pilot blockers in Phase 2, member consistency, email capacity, privacy/telemetry, or the later paid/institutional requirements.
 

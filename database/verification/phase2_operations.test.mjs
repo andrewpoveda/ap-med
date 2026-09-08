@@ -79,10 +79,11 @@ for (const table of ['mentor', 'mentees']) {
   test(`${table}: withdrawn/offboarded members cannot claim or use existing sessions`, async () => {
     const lib = loadTs(`src/lib/${table === 'mentor' ? 'mentor' : 'mentee'}-link.ts`)
     for (const membership_status of ['withdrawn', 'offboarded']) {
-      const db = database({ [table]: [{ id: 'm', cohort_id: 'cohort', membership_status, normalized_email: 'member@example.org', auth_user_id: 'owner' }] })
+      const db = database({ people: [{ id: 'p', auth_user_id: 'owner' }], [table]: [{ id: 'm', person_id: 'p', cohort_id: 'cohort', membership_status, normalized_email: 'member@example.org', auth_user_id: 'owner' }] })
+      db.rpc = async () => ({ data: null })
       const claim = table === 'mentor' ? lib.linkMentorByEmail : lib.linkCohortMenteeByEmail
       const get = table === 'mentor' ? lib.getMentorForUser : lib.getCohortMenteeForUser
-      assert.equal((await claim(db, 'owner', 'member@example.org')).status, 'error')
+      assert.equal((await claim(db, 'owner', 'member@example.org')).status, 'no-profile')
       assert.equal(await get(db, 'owner'), null)
       assert.ok(db.calls.every(c => c.action === 'read'))
     }
@@ -113,10 +114,11 @@ test('activation persists active state and surfaces a partial-send warning', asy
 })
 
 function deliveryWorker(db, send) {
+  for (const row of db.tables.cohort_delivery ?? []) row.cohort_id ??= 'cohort'
   return loadTs('src/lib/cohort-delivery.ts', {
     'server-only': {},
     '@/lib/email': { buildCohortOperationalEmail: d => ({ to: d.recipient_email }), sendCohortOperationalEmail: send },
-  }).sendCohortDeliveries(db, 'source')
+  }).sendCohortDeliveries(db, 'source', 'cohort')
 }
 
 test('delivery worker skips accepted/superseded recipients and uses persisted message/key', async () => {

@@ -23,9 +23,11 @@ const inputStyle: CSSProperties = {
 }
 
 export default function AvailabilityForm({
+  mentorId,
   initialTimezone,
   initialRules,
 }: {
+  mentorId: string
   initialTimezone: string | null
   initialRules: AvailabilityRule[]
 }) {
@@ -57,7 +59,7 @@ export default function AvailabilityForm({
       const res = await fetch('/api/availability', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezone, rules }),
+        body: JSON.stringify({ mentorId, timezone, rules }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {

@@ -141,6 +141,8 @@ export async function POST(request: Request) {
       whenISO: when.toISOString(),
       notes,
       dryRun,
+      matchId,
+      cohortId: actor.cohortId,
     })
 
     if (!outcome.ok) {

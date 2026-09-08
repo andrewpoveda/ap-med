@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   const admin = getSupabaseAdmin()
   const mentor = await getMentorForUser(admin, user.id)
-  if (!mentor) {
+  if (!mentor || new URL(request.url).searchParams.get('participation') !== mentor.id) {
     return NextResponse.redirect(`${origin}/dashboard?calendar=no_profile`)
   }
 
@@ -41,6 +41,7 @@ export async function GET(request: Request) {
       ...GOOGLE_OAUTH_STATE_COOKIE_OPTIONS,
       maxAge: 600,
     })
+    cookieStore.set('google_oauth_participation', mentor.id, { ...GOOGLE_OAUTH_STATE_COOKIE_OPTIONS, maxAge: 600 })
     consentUrl = buildConsentUrl({
       redirectUri: getRedirectUri(request.url, getRequestHostname(request.headers)),
       state,

@@ -30,6 +30,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json().catch(() => null)
+    if (body?.mentorId !== mentor.id) return NextResponse.json({ error: 'Program selection changed. Refresh before saving hours.' }, { status: 409 })
     const parsed = parseAvailabilityInput(body)
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 })

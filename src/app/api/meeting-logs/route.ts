@@ -3,8 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
-import { getMentorForUser } from '@/lib/mentor-link'
-import { getCohortMenteeForUser } from '@/lib/mentee-link'
+import { resolveActingMember } from '@/lib/goals'
 import { cap, LIMITS } from '@/lib/validate'
 import { isMeetingMode } from '@/lib/meeting-logs'
 
@@ -40,17 +39,7 @@ export async function POST(request: Request) {
 
     // Resolve the acting member to their OWN cohort row. A general-platform
     // mentor (cohort_id null) or a non-member has no match to log against — 403.
-    let actor: { type: 'mentor' | 'mentee'; id: string; cohortId: string } | null = null
-    const mentor = await getMentorForUser(admin, user.id)
-    if (mentor?.cohort_id) {
-      actor = { type: 'mentor', id: mentor.id, cohortId: mentor.cohort_id }
-    } else if (!mentor) {
-      // A user is a mentor OR a cohort mentee, never both.
-      const mentee = await getCohortMenteeForUser(admin, user.id)
-      if (mentee) {
-        actor = { type: 'mentee', id: mentee.id, cohortId: mentee.cohort_id }
-      }
-    }
+    const actor = await resolveActingMember(admin, user.id)
     if (!actor) {
       return NextResponse.json({ error: 'No linked cohort member profile' }, { status: 403 })
     }

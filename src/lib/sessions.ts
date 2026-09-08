@@ -239,16 +239,10 @@ export async function getScheduledBusyIntervals(
   windowEndISO: string,
   slotMinutes: number,
 ): Promise<BusyInterval[]> {
-  const { data, error } = await admin
-    .from('sessions')
-    .select('scheduled_at')
-    .eq('mentor_id', mentorId)
-    .eq('status', 'scheduled')
-    .gte('scheduled_at', windowStartISO)
-    .lte('scheduled_at', windowEndISO)
+  const { data, error } = await admin.rpc('ascenso_person_busy', { p_mentor: mentorId, p_start: windowStartISO, p_end: windowEndISO })
   if (error) {
     console.error('getScheduledBusyIntervals failed:', error.message)
-    return []
+    throw new Error('Could not verify personal booking conflicts')
   }
   return (data as Array<{ scheduled_at: string }>).map(row => {
     const start = new Date(row.scheduled_at)
@@ -288,6 +282,8 @@ export async function bookSession(
     whenISO: string
     notes: string
     dryRun: boolean
+    matchId?: string
+    cohortId?: string
   },
 ): Promise<BookSessionOutcome> {
   const { mentor, menteeId, menteeEmail, menteeName, whenISO, notes, dryRun } = params
@@ -297,6 +293,8 @@ export async function bookSession(
       .from('sessions')
       .insert({
         mentor_id: mentor.id,
+        match_id: params.matchId ?? null,
+        cohort_id: params.cohortId ?? null,
         mentee_id: menteeId,
         scheduled_at: whenISO,
         notes: notes || null,
@@ -345,6 +343,8 @@ export async function bookSession(
     .from('sessions')
     .insert({
       mentor_id: mentor.id,
+      match_id: params.matchId ?? null,
+      cohort_id: params.cohortId ?? null,
       mentee_id: menteeId,
       scheduled_at: whenISO,
       google_event_id: event.eventId,

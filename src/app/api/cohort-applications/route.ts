@@ -30,7 +30,7 @@ type Track = (typeof TRACKS)[number]
 
 /**
  * Structured matching tags, hardened to the canonical vocabulary. These end up
- * verbatim on the promoted mentor/mentees row (src/lib/cohort-members.ts) and
+ * verbatim on the enrolled mentor/mentee participation by the review RPC and
  * are scored by exact string equality (src/lib/match.ts), so an off-vocabulary
  * value isn't merely untrusted input — it's a tag that can never match anything.
  * Unknown entries are DROPPED rather than 400'd: the applicant picked from a

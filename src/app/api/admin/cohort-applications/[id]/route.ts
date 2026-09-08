@@ -70,7 +70,7 @@ export async function PATCH(
       return NextResponse.json({ error: reviewError.code === '23514'
         ? reviewError.message : 'Could not save the review; refresh and try again' }, { status: 409 })
     }
-    const sent = await sendCohortDeliveries(admin, app.id)
+    const sent = await sendCohortDeliveries(admin, app.id, app.cohort_id)
     return NextResponse.json({ success: true, status: savedStatus,
       ...(!sent ? { warning: 'Decision saved. Email acceptance is incomplete; use delivery recovery below.' } : {}) })
   } catch (err) {

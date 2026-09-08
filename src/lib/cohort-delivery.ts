@@ -17,8 +17,9 @@ export type CohortDelivery = {
 
 /** Attempt only unresolved intents. The database claim serializes workers and
  * freezes the exact message; retries reuse its provider idempotency key. */
-export async function sendCohortDeliveries(admin: SupabaseClient, sourceId: string) {
-  const { data, error } = await admin.from('cohort_delivery').select('*').eq('source_id', sourceId)
+export async function sendCohortDeliveries(admin: SupabaseClient, sourceId: string, cohortId: string) {
+  if (!cohortId) return false
+  const { data, error } = await admin.from('cohort_delivery').select('*').eq('source_id', sourceId).eq('cohort_id', cohortId)
   if (error || !data?.length) return false
   return attemptDeliveries(admin, data as CohortDelivery[])
 }

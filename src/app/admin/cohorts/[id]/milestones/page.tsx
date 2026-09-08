@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { hasLinkedPerson } from '@/lib/email-identity'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
 import MilestoneCheckbox from './MilestoneCheckbox'
 
@@ -26,14 +27,14 @@ type MentorRow = {
   first_name: string
   last_name: string
   email: string
-  auth_user_id: string | null
+  people: unknown
 }
 
 type MenteeRow = {
   id: string
   full_name: string
   email: string
-  auth_user_id: string | null
+  people: unknown
 }
 
 type MilestoneRow = {
@@ -166,11 +167,11 @@ export default async function CohortMilestonesPage({
   const [mentorsRes, menteesRes, milestonesRes] = await Promise.all([
     admin
       .from('mentor')
-      .select('id, first_name, last_name, email, auth_user_id')
+      .select('id, first_name, last_name, email, people(auth_user_id)')
       .eq('cohort_id', cohortId),
     admin
       .from('mentees')
-      .select('id, full_name, email, auth_user_id')
+      .select('id, full_name, email, people(auth_user_id)')
       .eq('cohort_id', cohortId),
     admin
       .from('member_milestones')
@@ -187,7 +188,7 @@ export default async function CohortMilestonesPage({
       id: m.id,
       name: `${m.first_name} ${m.last_name}`.trim() || 'Unnamed mentor',
       email: m.email,
-      activated: m.auth_user_id != null,
+      activated: hasLinkedPerson(m.people),
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
   const mentees = ((menteesRes.data as MenteeRow[]) ?? [])
@@ -195,7 +196,7 @@ export default async function CohortMilestonesPage({
       id: m.id,
       name: m.full_name || 'Unnamed mentee',
       email: m.email,
-      activated: m.auth_user_id != null,
+      activated: hasLinkedPerson(m.people),
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
