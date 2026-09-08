@@ -1,6 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
+import { completeQuery } from '@/lib/complete-query'
 import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { buildAnnouncementMessage } from '@/lib/email'
@@ -63,10 +64,10 @@ export async function POST(request: Request) {
     const wantMentees = audience === 'all' || audience === 'mentees'
     const [mentorsRes, menteesRes] = await Promise.all([
       wantMentors
-        ? admin.from('mentor').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active')
+        ? completeQuery(admin.from('mentor').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active'))
         : Promise.resolve({ data: [], error: null }),
       wantMentees
-        ? admin.from('mentees').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active')
+        ? completeQuery(admin.from('mentees').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active'))
         : Promise.resolve({ data: [], error: null }),
     ])
     if (mentorsRes.error || menteesRes.error) {

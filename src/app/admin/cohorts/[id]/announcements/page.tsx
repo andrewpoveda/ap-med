@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -83,8 +84,8 @@ export default async function CohortAnnouncementsPage({
   // out today, and the recent send history.
   const [mentorsRes, menteesRes, sentTodayRes, fullTodayRes, historyRes] =
     await Promise.all([
-      admin.from('mentor').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active'),
-      admin.from('mentees').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active'),
+      completeQuery(admin.from('mentor').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active')),
+      completeQuery(admin.from('mentees').select('email').eq('cohort_id', cohortId).eq('membership_status', 'active')),
       admin
         .from('email_log')
         .select('id', { count: 'exact', head: true })

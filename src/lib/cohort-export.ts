@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { TRACK_LABELS } from '@/types/cohort'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
@@ -80,9 +81,9 @@ function fmtTs(ts: string | null | undefined): string {
 /** Loads the mentor/mentee name maps + a match→(mentor, mentee, track) map. */
 async function loadNameMaps(admin: SupabaseClient, cohortId: string) {
   const [mentorsRes, menteesRes, matchesRes] = await Promise.all([
-    admin.from('mentor').select('id, first_name, last_name').eq('cohort_id', cohortId),
-    admin.from('mentees').select('id, full_name').eq('cohort_id', cohortId),
-    admin.from('cohort_matches').select('id, mentor_id, mentee_id, track').eq('cohort_id', cohortId),
+    completeQuery(admin.from('mentor').select('id, first_name, last_name').eq('cohort_id', cohortId)),
+    completeQuery(admin.from('mentees').select('id, full_name').eq('cohort_id', cohortId)),
+    completeQuery(admin.from('cohort_matches').select('id, mentor_id, mentee_id, track').eq('cohort_id', cohortId)),
   ])
   const error =
     mentorsRes.error?.message ?? menteesRes.error?.message ?? matchesRes.error?.message ?? null
@@ -116,16 +117,16 @@ export async function buildCohortExport(
   switch (table) {
     case 'members': {
       const [mentorsRes, menteesRes] = await Promise.all([
-        admin
+        completeQuery(admin
           .from('mentor')
           .select('id, person_id, membership_status, first_name, last_name, email, people(auth_user_id), created_at')
           .eq('cohort_id', cohortId)
-          .order('created_at', { ascending: true }),
-        admin
+          .order('created_at', { ascending: true })),
+        completeQuery(admin
           .from('mentees')
           .select('id, person_id, membership_status, full_name, email, people(auth_user_id), created_at')
           .eq('cohort_id', cohortId)
-          .order('created_at', { ascending: true }),
+          .order('created_at', { ascending: true })),
       ])
       const error = mentorsRes.error?.message ?? menteesRes.error?.message ?? null
       const rows: CsvCell[][] = []
@@ -158,11 +159,11 @@ export async function buildCohortExport(
 
     case 'matches': {
       const { mentors, mentees, error: mapErr } = await loadNameMaps(admin, cohortId)
-      const { data, error } = await admin
+      const { data, error } = await completeQuery(admin
         .from('cohort_matches')
         .select('id, mentor_id, mentee_id, track, status, score, created_at, approved_at, activated_at, ended_at, end_reason')
         .eq('cohort_id', cohortId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: true }))
       const rows: CsvCell[][] = (data ?? []).map((m) => [
         m.id, m.mentor_id, m.mentee_id,
         mentors.get(m.mentor_id as string) ?? 'Unknown mentor',
@@ -183,11 +184,11 @@ export async function buildCohortExport(
 
     case 'meetings': {
       const { matches, error: mapErr } = await loadNameMaps(admin, cohortId)
-      const { data, error } = await admin
+      const { data, error } = await completeQuery(admin
         .from('meeting_logs')
         .select('id, match_id, met_at, duration_minutes, mode, logged_by_type, logged_by_id, session_id, notes, created_at')
         .eq('cohort_id', cohortId)
-        .order('met_at', { ascending: true })
+        .order('met_at', { ascending: true }))
       const rows: CsvCell[][] = (data ?? []).map((l) => {
         const pair = matches.get(l.match_id as string)
         return [
@@ -225,11 +226,11 @@ export async function buildCohortExport(
 
     case 'goals': {
       const { matches, error: mapErr } = await loadNameMaps(admin, cohortId)
-      const { data, error } = await admin
+      const { data, error } = await completeQuery(admin
         .from('goals')
         .select('id, match_id, title, status, target_date, created_at, updated_at')
         .eq('cohort_id', cohortId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: true }))
       const rows: CsvCell[][] = (data ?? []).map((g) => {
         const pair = matches.get(g.match_id as string)
         return [
@@ -253,11 +254,11 @@ export async function buildCohortExport(
 
     case 'milestones': {
       const { mentors, mentees, error: mapErr } = await loadNameMaps(admin, cohortId)
-      const { data, error } = await admin
+      const { data, error } = await completeQuery(admin
         .from('member_milestones')
         .select('id, member_type, member_id, milestone, completed_at')
         .eq('cohort_id', cohortId)
-        .order('completed_at', { ascending: true })
+        .order('completed_at', { ascending: true }))
       const rows: CsvCell[][] = (data ?? []).map((r) => {
         const type = r.member_type as string
         const name =
@@ -281,8 +282,8 @@ export async function buildCohortExport(
 
     case 'surveys': {
       const [surveys, responses] = await Promise.all([
-        admin.from('surveys').select('id,title,wave,questions').eq('cohort_id', cohortId),
-        admin.from('survey_responses').select('id,survey_id,member_type,member_id,answers,created_at').eq('cohort_id', cohortId).order('created_at', { ascending: true }),
+        completeQuery(admin.from('surveys').select('id,title,wave,questions').eq('cohort_id', cohortId)),
+        completeQuery(admin.from('survey_responses').select('id,survey_id,member_type,member_id,answers,created_at').eq('cohort_id', cohortId).order('created_at', { ascending: true })),
       ])
       const definitions = new Map((surveys.data ?? []).map(s => [s.id, s]))
       return { headers: ['Response ID', 'Survey ID', 'Survey', 'Wave', 'Member role', 'Member ID', 'Questions (JSON)', 'Named answers (JSON)', 'Responded (UTC)'],
@@ -292,26 +293,26 @@ export async function buildCohortExport(
         ] }), error: surveys.error?.message ?? responses.error?.message ?? null }
     }
     case 'sessions': {
-      const { data, error } = await admin.from('sessions').select('id,match_id,mentor_id,mentee_id,scheduled_at,status,calendar_cleanup_pending')
-        .eq('cohort_id', cohortId).order('scheduled_at', { ascending: true })
+      const { data, error } = await completeQuery(admin.from('sessions').select('id,match_id,mentor_id,mentee_id,scheduled_at,status,calendar_cleanup_pending')
+        .eq('cohort_id', cohortId).order('scheduled_at', { ascending: true }))
       return { headers: ['Session ID', 'Match ID', 'Mentor participation ID', 'Mentee participation ID', 'Scheduled (UTC)', 'Status (not attendance)', 'Calendar cleanup pending'],
         rows: (data ?? []).map(s => [s.id, s.match_id, s.mentor_id, s.mentee_id, fmtTs(s.scheduled_at), s.status, s.calendar_cleanup_pending ? 'yes' : 'no']),
         error: error?.message ?? null }
     }
     case 'events': {
-      const { data, error } = await admin.from('cohort_operation_events').select('id,actor_id,target_id,action,reason,changes,created_at')
-        .eq('cohort_id', cohortId).order('created_at', { ascending: true })
+      const { data, error } = await completeQuery(admin.from('cohort_operation_events').select('id,actor_id,target_id,action,reason,changes,created_at')
+        .eq('cohort_id', cohortId).order('created_at', { ascending: true }))
       return { headers: ['Event ID', 'Actor ID', 'Target ID', 'Action', 'Reason', 'Changes (JSON)', 'Recorded (UTC)'],
         rows: (data ?? []).map(e => [e.id, e.actor_id ?? '', e.target_id, e.action, e.reason ?? '', JSON.stringify(e.changes), fmtTs(e.created_at)]),
         error: error?.message ?? null }
     }
 
     case 'applications': {
-      const { data, error } = await admin
+      const { data, error } = await completeQuery(admin
         .from('cohort_applications')
         .select('id, member_id, full_name, email, role, track, status, answers, review_notes, created_at, reviewed_at')
         .eq('cohort_id', cohortId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: true }))
       const rows: CsvCell[][] = (data ?? []).map((a) => [
         a.id, a.member_id ?? '', JSON.stringify(a.answers ?? {}),
         (a.full_name as string) ?? '',

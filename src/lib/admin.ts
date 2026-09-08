@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import { cache } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
@@ -44,8 +45,8 @@ export const getAdminUserByEmail = cache(
     }
     if (!data || data.disabled_at || !['super', 'cohort_admin'].includes(data.role)) return null
     if (data.role === 'super') return { ...data, cohort_ids: [] } as AdminUser
-    const { data: grants, error: grantError } = await admin.from('admin_cohort_grants')
-      .select('cohort_id').eq('admin_id', data.id).is('revoked_at', null)
+    const { data: grants, error: grantError } = await completeQuery(admin.from('admin_cohort_grants')
+      .select('cohort_id').eq('admin_id', data.id).is('revoked_at', null), 100_000, 'cohort_id')
     if (grantError || !grants?.length) return null
     return { ...data, cohort_ids: grants.map(g => g.cohort_id) } as AdminUser
   },

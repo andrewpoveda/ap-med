@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { completeQuery } from '@/lib/complete-query'
 import { cookies } from 'next/headers'
 import { normalizeEmail } from '@/lib/email-identity'
 
@@ -20,8 +21,8 @@ export async function listParticipations(admin: SupabaseClient, userId: string):
   if (error) throw new Error('Could not resolve account identity')
   if (!person) return []
   const [mentors, mentees] = await Promise.all([
-    admin.from('mentor').select('id,cohort_id,first_name,last_name,membership_status').eq('person_id', person.id).order('created_at', { ascending: true }).order('id'),
-    admin.from('mentees').select('id,cohort_id,full_name,membership_status').eq('person_id', person.id).not('cohort_id', 'is', null).order('created_at', { ascending: true }).order('id'),
+    completeQuery(admin.from('mentor').select('id,cohort_id,first_name,last_name,membership_status').eq('person_id', person.id).order('created_at', { ascending: true })),
+    completeQuery(admin.from('mentees').select('id,cohort_id,full_name,membership_status').eq('person_id', person.id).not('cohort_id', 'is', null).order('created_at', { ascending: true })),
   ])
   if (mentors.error || mentees.error) throw new Error('Could not resolve program participation')
   return [

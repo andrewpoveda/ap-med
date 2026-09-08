@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildCohortOperationalEmail, sendCohortOperationalEmail } from '@/lib/email'
@@ -19,7 +20,7 @@ export type CohortDelivery = {
  * freezes the exact message; retries reuse its provider idempotency key. */
 export async function sendCohortDeliveries(admin: SupabaseClient, sourceId: string, cohortId: string) {
   if (!cohortId) return false
-  const { data, error } = await admin.from('cohort_delivery').select('*').eq('source_id', sourceId).eq('cohort_id', cohortId)
+  const { data, error } = await completeQuery(admin.from('cohort_delivery').select('*').eq('source_id', sourceId).eq('cohort_id', cohortId))
   if (error || !data?.length) return false
   return attemptDeliveries(admin, data as CohortDelivery[])
 }

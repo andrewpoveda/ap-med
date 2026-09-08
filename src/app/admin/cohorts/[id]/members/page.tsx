@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -13,8 +14,8 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const admin = getSupabaseAdmin()
   const [cohort, mentors, mentees, events] = await Promise.all([
     admin.from('cohorts').select('name, config').eq('id', id).maybeSingle(),
-    admin.from('mentor').select('id, first_name, last_name, institution, current_role, bio, membership_status').eq('cohort_id', id).order('first_name'),
-    admin.from('mentees').select('id, full_name, school, membership_status').eq('cohort_id', id).order('full_name'),
+    completeQuery(admin.from('mentor').select('id, first_name, last_name, institution, current_role, bio, membership_status').eq('cohort_id', id).order('first_name')),
+    completeQuery(admin.from('mentees').select('id, full_name, school, membership_status').eq('cohort_id', id).order('full_name')),
     admin.from('cohort_operation_events').select('id, target_id, action, reason, created_at').eq('cohort_id', id).order('created_at', { ascending: false }).limit(30),
   ])
   if (!cohort.data) notFound()

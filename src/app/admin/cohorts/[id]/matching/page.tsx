@@ -1,3 +1,4 @@
+import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -126,19 +127,19 @@ export default async function CohortMatchingPage({
   // (public surfaces require approved=true AND cohort_id IS NULL) — filtering
   // on it here would hide the entire cohort mentor pool.
   const [mentorsRes, menteesRes, matchesRes] = await Promise.all([
-    admin
+    completeQuery(admin
       .from('mentor')
       .select('id, first_name, last_name, specialty, identity, can_help_with, membership_status')
-      .eq('cohort_id', cohortId),
-    admin
+      .eq('cohort_id', cohortId)),
+    completeQuery(admin
       .from('mentees')
       .select('id, full_name, interests, identity, help_with, membership_status')
-      .eq('cohort_id', cohortId),
-    admin
+      .eq('cohort_id', cohortId)),
+    completeQuery(admin
       .from('cohort_matches')
       .select('*')
       .eq('cohort_id', cohortId)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })),
   ])
   if (mentorsRes.error) console.error('Cohort mentors fetch failed:', mentorsRes.error.message)
   if (menteesRes.error) console.error('Cohort mentees fetch failed:', menteesRes.error.message)
@@ -154,17 +155,17 @@ export default async function CohortMatchingPage({
     )
 
   const tracks = await getMemberTrackMaps(admin, cohortId)
-  const { data: deliveries, error: deliveryError } = await admin.from('cohort_delivery').select('id, source_id, variant, state, detail').eq('cohort_id', cohortId).eq('kind', 'introduction')
+  const { data: deliveries, error: deliveryError } = await completeQuery(admin.from('cohort_delivery').select('id, source_id, variant, state, detail').eq('cohort_id', cohortId).eq('kind', 'introduction'))
   if (deliveryError) throw new Error('Could not load introduction status')
 
   // Reviewer attribution for approved matches (display name over raw uuid).
   const approverIds = [...new Set(matches.map((m) => m.approved_by).filter(Boolean))] as string[]
   const approverNames = new Map<string, string>()
   if (approverIds.length > 0) {
-    const { data: approvers } = await admin
+    const { data: approvers } = await completeInQuery(approverIds, batch => admin
       .from('admin_users')
       .select('id, display_name, email')
-      .in('id', approverIds)
+      .in('id', batch))
     for (const a of approvers ?? []) {
       approverNames.set(a.id, a.display_name ?? a.email)
     }
@@ -187,6 +188,8 @@ export default async function CohortMatchingPage({
   // shared deterministic scorer. Members without an approved application on
   // file (no track) can't be matched and are surfaced below instead.
   const candidatesByTrack = new Map<CohortTrack, Candidate[]>()
+  const oversizedTracks = new Set<CohortTrack>()
+  const historicalPairs = new Set(matches.map(m => `${m.mentor_id}:${m.mentee_id}`))
   const freeCounts = new Map<CohortTrack, { mentors: number; mentees: number }>()
   if (tracks) {
     for (const track of COHORT_TRACKS) {
@@ -197,10 +200,14 @@ export default async function CohortMatchingPage({
         (m) => m.membership_status === 'active' && tracks.menteeTrackById.get(m.id) === track && !takenMentees.has(m.id),
       )
       freeCounts.set(track, { mentors: trackMentors.length, mentees: trackMentees.length })
+      if (trackMentors.length * trackMentees.length > 10_000) {
+        oversizedTracks.add(track)
+        continue
+      }
       const pairs: Candidate[] = []
       for (const mentor of trackMentors) {
         for (const mentee of trackMentees) {
-          if (matches.some(m => m.mentor_id === mentor.id && m.mentee_id === mentee.id)) continue
+          if (historicalPairs.has(`${mentor.id}:${mentee.id}`)) continue
           const menteePrefs = {
             interests: Array.isArray(mentee.interests) ? mentee.interests : [],
             identity: Array.isArray(mentee.identity) ? mentee.identity : [],
@@ -383,7 +390,9 @@ export default async function CohortMatchingPage({
                     {free.mentees} unmatched {free.mentees === 1 ? 'mentee' : 'mentees'}
                   </span>
                 </div>
-                {pairs.length === 0 ? (
+                {oversizedTracks.has(track) ? (
+                  <p role="alert">This track exceeds the supported 10,000 candidate combinations. Contact AP MED to arrange a matching review before proceeding; no partial ranking is shown.</p>
+                ) : pairs.length === 0 ? (
                   <p className="text-[#6b6b6b]" style={{ margin: '0.75rem 0 0', fontSize: '0.85rem' }}>
                     {free.mentors === 0 && free.mentees === 0
                       ? 'No unmatched members in this track.'

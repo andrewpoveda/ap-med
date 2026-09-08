@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -165,18 +166,18 @@ export default async function CohortMilestonesPage({
   // (public surfaces require approved=true AND cohort_id IS NULL) — filtering
   // on it here would hide the entire cohort mentor pool.
   const [mentorsRes, menteesRes, milestonesRes] = await Promise.all([
-    admin
+    completeQuery(admin
       .from('mentor')
       .select('id, first_name, last_name, email, people(auth_user_id)')
-      .eq('cohort_id', cohortId),
-    admin
+      .eq('cohort_id', cohortId)),
+    completeQuery(admin
       .from('mentees')
       .select('id, full_name, email, people(auth_user_id)')
-      .eq('cohort_id', cohortId),
-    admin
+      .eq('cohort_id', cohortId)),
+    completeQuery(admin
       .from('member_milestones')
       .select('member_type, member_id, milestone, completed_at')
-      .eq('cohort_id', cohortId),
+      .eq('cohort_id', cohortId)),
   ])
   if (mentorsRes.error) console.error('Cohort mentors fetch failed:', mentorsRes.error.message)
   if (menteesRes.error) console.error('Cohort mentees fetch failed:', menteesRes.error.message)

@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -137,7 +138,7 @@ export default async function CohortApplicationsPage({
   if (filters.track) query = query.eq('track', filters.track)
   if (filters.role) query = query.eq('role', filters.role)
 
-  const { data, error } = await query
+  const { data, error } = await completeQuery(query)
   if (error) console.error('Applications fetch failed:', error.message)
   const applications = (data as CohortApplication[]) ?? []
 

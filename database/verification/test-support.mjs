@@ -34,7 +34,8 @@ export function database(seed = {}, options = {}) {
   let serial = 0
   return { tables, calls, from(table) {
     const filters = []
-    let action = 'read', payload, single = false, sort
+    let action = 'read', payload, single = false, requestedRange
+    const sorts = []
     tables[table] ??= []
     const query = {
       select() { return query },
@@ -46,7 +47,8 @@ export function database(seed = {}, options = {}) {
       gte() { return query },
       lt(key, value) { filters.push(r => r[key] < value); return query },
       lte(key, value) { filters.push(r => r[key] <= value); return query },
-      order(key, { ascending = true } = {}) { sort = { key, ascending }; return query },
+      order(key, { ascending = true } = {}) { sorts.push({ key, ascending }); return query },
+      range(from, to) { requestedRange = { from, to }; return query },
       maybeSingle() { single = true; return query },
       single() { single = true; return query },
       update(value) { action = 'update'; payload = value; return query },
@@ -57,7 +59,13 @@ export function database(seed = {}, options = {}) {
           if (options.failRead && action === 'read') return { data: null, error: { message: 'offline' } }
           if (action === 'update') options.beforeUpdate?.(tables, table)
           let rows = tables[table].filter((r) => filters.every((f) => f(r)))
-          if (sort) rows.sort((a, b) => String(a[sort.key]).localeCompare(String(b[sort.key])) * (sort.ascending ? 1 : -1))
+          if (sorts.length) rows.sort((a, b) => {
+            for (const sort of sorts) {
+              const result = String(a[sort.key]).localeCompare(String(b[sort.key])) * (sort.ascending ? 1 : -1)
+              if (result) return result
+            }
+            return 0
+          })
           if (action === 'insert') {
             const input = Array.isArray(payload) ? payload : [payload]
             if (table === 'cohort_applications' && input.some((n) => tables[table].some((r) =>
@@ -70,7 +78,10 @@ export function database(seed = {}, options = {}) {
             for (const row of rows) Object.assign(row, payload)
           }
           if (single && rows.length > 1) return { data: null, error: { code: 'PGRST116', message: 'ambiguous' } }
-          return { data: structuredClone(single ? rows[0] ?? null : rows), count: rows.length, error: null }
+          const count = rows.length
+          if (requestedRange) rows = rows.slice(requestedRange.from, requestedRange.to + 1)
+          if (options.responseCap) rows = rows.slice(0, options.responseCap)
+          return { data: structuredClone(single ? rows[0] ?? null : rows), count, error: null }
         }
         return Promise.resolve().then(execute).then(onFulfilled, onRejected)
       },

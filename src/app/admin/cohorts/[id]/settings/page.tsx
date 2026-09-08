@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import Link from 'next/link'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
@@ -15,10 +16,10 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
   if (error || !cohort) notFound()
   const grants: { email: string; revoked: boolean }[] = []
   if (adminUser.role === 'super') {
-    const { data, error: grantError } = await admin.from('admin_cohort_grants').select('admin_id,revoked_at').eq('cohort_id', id)
+    const { data, error: grantError } = await completeQuery(admin.from('admin_cohort_grants').select('admin_id,revoked_at').eq('cohort_id', id), 100_000, 'admin_id')
     if (grantError) throw new Error('Could not load grants')
     if (data?.length) {
-      const { data: identities, error: identityError } = await admin.from('admin_users').select('id,email').in('id', data.map(g => g.admin_id))
+      const { data: identities, error: identityError } = await completeInQuery(data.map(g => g.admin_id), batch => admin.from('admin_users').select('id,email').in('id', batch))
       if (identityError) throw new Error('Could not load administrators')
       for (const grant of data) {
         const identity = identities?.find(a => a.id === grant.admin_id)

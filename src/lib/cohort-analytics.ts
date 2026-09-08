@@ -1,3 +1,4 @@
+import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
 
@@ -148,16 +149,16 @@ export async function getCohortAnalytics(
     // mentors keep approved=false as defense in depth; public surfaces require
     // approved=true AND cohort_id IS NULL, so filtering it here would erase the
     // whole cohort mentor pool).
-    admin.from('mentor').select('id, first_name, last_name').eq('cohort_id', cohort.id),
-    admin.from('mentees').select('id, full_name').eq('cohort_id', cohort.id),
-    admin
+    completeQuery(admin.from('mentor').select('id, first_name, last_name').eq('cohort_id', cohort.id)),
+    completeQuery(admin.from('mentees').select('id, full_name').eq('cohort_id', cohort.id)),
+    completeQuery(admin
       .from('cohort_matches')
       .select('id, mentor_id, mentee_id, track, status')
-      .eq('cohort_id', cohort.id),
-    admin
+      .eq('cohort_id', cohort.id)),
+    completeQuery(admin
       .from('member_milestones')
       .select('member_type, member_id, milestone, completed_at')
-      .eq('cohort_id', cohort.id),
+      .eq('cohort_id', cohort.id)),
   ])
   note('analytics mentor fetch', mentorsRes.error?.message)
   note('analytics mentee fetch', menteesRes.error?.message)
@@ -181,22 +182,21 @@ export async function getCohortAnalytics(
   const activeMentorIds = [...new Set(activeMatches.map((m) => m.mentor_id as string))]
 
   const [logsRes, goalsRes, sessionsRes, responsesRes] = await Promise.all([
-    admin.from('meeting_logs').select('match_id, met_at, logged_by_type, logged_by_id, created_at').eq('cohort_id', cohort.id),
-    admin.from('goals').select('match_id, status, updated_at').eq('cohort_id', cohort.id),
+    completeQuery(admin.from('meeting_logs').select('match_id, met_at, logged_by_type, logged_by_id, created_at').eq('cohort_id', cohort.id)),
+    completeQuery(admin.from('goals').select('match_id, status, updated_at').eq('cohort_id', cohort.id)),
     activeMentorIds.length > 0
-      ? admin
+      ? completeInQuery(activeMatches.map(m => m.id), batch => admin
           .from('sessions')
           .select('mentor_id, mentee_id, scheduled_at, status, match_id')
           .eq('cohort_id', cohort.id)
-          .in('match_id', activeMatches.map(m => m.id))
-          .in('mentor_id', activeMentorIds)
+          .in('match_id', batch)
           .neq('status', 'cancelled')
-          .gte('scheduled_at', windowStartIso)
+          .gte('scheduled_at', windowStartIso))
       : Promise.resolve({ data: [], error: null }),
-    admin
+    completeQuery(admin
       .from('survey_responses')
       .select('member_type, member_id, created_at')
-      .eq('cohort_id', cohort.id),
+      .eq('cohort_id', cohort.id)),
   ])
   note('analytics meeting-log fetch', logsRes.error?.message)
   note('analytics goal fetch', goalsRes.error?.message)

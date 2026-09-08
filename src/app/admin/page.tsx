@@ -1,3 +1,4 @@
+import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -74,7 +75,7 @@ export default async function AdminCohortsPage() {
   // the service-role client never crosses the boundary.
   const isSuper = adminUser.role === 'super'
   const ascensoVisibility = isSuper ? await readAscensoVisibility() : null
-  const organizations = isSuper ? await admin.from('organizations').select('id,name').order('name') : { data: [], error: null }
+  const organizations = isSuper ? await completeQuery(admin.from('organizations').select('id,name').order('name')) : { data: [], error: null }
   if (organizations.error) throw new Error('Could not load organization owners')
 
   // Cohort admins see only their cohort; a scoped admin with no cohort assigned
@@ -82,13 +83,14 @@ export default async function AdminCohortsPage() {
   const scopedCohortIds = adminUser.cohort_ids ?? []
   let cohorts: CohortRow[] = []
   if (adminUser.role === 'super' || scopedCohortIds.length) {
-    let query = admin
+    const query = () => admin
       .from('cohorts')
       .select('id, created_at, name, org, status')
       .order('created_at', { ascending: false })
-    if (adminUser.role !== 'super') query = query.in('id', scopedCohortIds)
-    const { data, error } = await query
-    if (error) console.error('Admin cohorts fetch failed:', error.message)
+    const { data, error } = adminUser.role === 'super'
+      ? await completeQuery(query())
+      : await completeInQuery(scopedCohortIds, batch => query().in('id', batch))
+    if (error) throw new Error('Could not load the complete cohort list')
     cohorts = (data as CohortRow[]) ?? []
   }
 
@@ -96,14 +98,14 @@ export default async function AdminCohortsPage() {
   // than N+1 count queries.
   const counts = new Map<string, ApplicationCounts>()
   if (cohorts.length > 0) {
-    const { data: apps, error } = await admin
+    const { data: apps, error } = await completeInQuery(cohorts.map(c => c.id), batch => admin
       .from('cohort_applications')
       .select('cohort_id, role, status')
       .in(
         'cohort_id',
-        cohorts.map((c) => c.id),
-      )
-    if (error) console.error('Admin application counts fetch failed:', error.message)
+        batch,
+      ))
+    if (error) throw new Error('Could not load complete application counts')
     for (const app of apps ?? []) {
       const c = counts.get(app.cohort_id) ?? {
         total: 0,

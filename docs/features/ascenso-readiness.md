@@ -17,7 +17,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 7 — Person / Role / Participation Model | Fixed | 28–31 |
 | 8 — Audit / Event History | Fixed | 32–33 |
 | 9 — Branding / Program Configuration | Fixed | 34–36 |
-| 10 — Scale / Query Completeness | Pending | 37–38 |
+| 10 — Scale / Query Completeness | Fixed | 37–38 |
 | 11 — Testing / Recovery | Pending | 39–41 |
 | 12 — Privacy / Data Governance | Pending | 42–44 |
 | 13 — Features To Defer, But Explicitly Track | Pending | 45–55 |
@@ -64,8 +64,8 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 34 | Limited Branding Configuration | Fixed | Existing program/organization settings now feed application identity labels; support settings and exact configured origin retained. New queued messages use sanitized program display identity via AP MED with the existing verified address. Additional logo placement intentionally awaits a supplied approved asset; public landing/shell review remains assisted onboarding. No arbitrary assets, themes or domain console. |
 | 35 | Program Definitions Embedded In Code | Fixed | Released ascenso-v1 centralizes tracks, milestone labels, survey waves and scoring policy. Cohorts have immutable supported definition versions; exports carry the version. Application and canonical-tag contracts remain explicitly versioned existing implementations, with no data relabeling. New definitions require compatible consumers/tests and a migration, not a builder. |
 | 36 | Configurable Matching | Fixed | Existing 40/35/25 weights are read from the released definition and tested unchanged. Same-track selection, board override and assignment constraints retained. Arbitrary/customer weights intentionally deferred until a paying program identifies a concrete policy difference. |
-| 37 | Pagination / Query Limit Safety | Pending | Complete paginated reads for reports/exports/digests/lists; explicit failure rather than silent truncation. |
-| 38 | Matching Computational Scale | Pending | Document supported cohort size and pair-computation limits; no distributed matching without realistic volume evidence. |
+| 37 | Pagination / Query Limit Safety | Fixed | Complete ordered reads cover export sources/labels, analytics, digest inputs, matching, administrator/member/survey lists, grants and campaign recipients. Large filters use 50-value batches; failures/100,000-row bounds reject partial output. Explicit recent-history and delivery-page limits retained. Multi-request reads are not snapshot exports; documented in ascenso-query-limits.md. |
+| 38 | Matching Computational Scale | Fixed | Conservative pilot envelope documented at 200 active participants and at most 10,000 unmatched combinations per track. Page rejects larger rankings explicitly; history lookup uses a set. No distributed matching; representative benchmarking and director workflow review are prerequisites for larger cohorts. |
 | 39 | Core Regression Coverage | Pending | Targeted lifecycle, ownership, isolation, concurrency, delivery and export tests. Phase 1 covers only its own security cases. |
 | 40 | Ci | Pending | Minimal CI for lint/typecheck/tests and reasonable build; no deployment pipeline expansion. |
 | 41 | Recovery Procedure | Pending | Document and exercise appropriate local recovery procedures; separate evidence from untested production guarantees. |
@@ -174,12 +174,22 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 9 checkpoint
 
+- Commit: `e74e218`.
 - Existing names/organization labels and scoped support editor are retained; custom origin remains operator-configured through `ASCENSO_SITE_URL`, not inferred from a request. Public intake copy still contains program-specific text and requires the limited branding work in item 34.
 - Working-tree implementation introduces released `ascenso-v1` vocabulary for tracks, survey waves and fixed scoring weights, reused by intake, shared cohort types, surveys and scoring. The additive definition-version migration pins existing/new cohorts to that supported version and prevents later reinterpretation. This is not a configurable rule builder; future versions require explicit implementation and compatibility work.
 - Items 34–36 explicitly addressed. Configuration and compatibility decisions are in `docs/architecture/ascenso-program-configuration.md`. Migration `20260908134231_ascenso_program_definition_version.sql` follows Phase 8, unapplied to hosted databases. No new environment variables, dependencies or provider configuration.
 - Application header and organization consent labels use the configured cohort name/organization; the development preview supplies its explicit organization. CSV rows include the cohort definition version. Queued digest/announcement/decision/introduction builders use a sanitized program display name via AP MED while retaining the verified sending address; previously frozen messages retain their original identity.
 - Validation: 71 Node tests passed, including sender-header safety and exact scoring/vocabulary; TypeScript, focused ESLint and local PostgreSQL migration checks passed. Database checks reject unsupported definitions and historical reassignment. Export-route regression verifies version attribution. No browser/provider end-to-end claim.
 - Manual rollout: apply migration before dependent code; confirm program/organization/support settings. A new public organization still needs landing/shell/asset review and the existing hostname/provider checklist. Limited configuration does not claim simultaneous public intakes or generalized white-label support. Phase 10 owns complete export/query reads; Phase 12 owns privacy-copy review.
+
+## Phase 10 checkpoint
+
+- Added a bounded complete-read helper with stable ID tie-breakers; smaller-than-requested server pages do not terminate the read, and a later error discards partial data. Applied to all export source/name-map reads, analytics, digest source reads, matching track maps and matching page lists. Existing cohort/party filters remain in place.
+- Current regressions pass, including an actual member export with 1,103 scoped records under a simulated 113-row response cap, uniqueness/cross-cohort assertions, and late-page failure/explicit-limit checks. TypeScript passes. Phase 10 remains uncommitted and incomplete: finish admin/report read inventory, large filter-list handling, intentional matching size guardrails and focused validation before dispositioning items 37–38.
+- Additional reads now covered: administrator overview, application lists, rosters, milestone grids, survey read models and announcement recipient/history counts. Explicit recent-history limits remain intentional. Administrator overview read failures no longer produce false zero totals. Matching now refuses more than 10,000 candidate combinations per track with an explicit message; historical pair membership uses a set rather than rescanning history inside every candidate calculation. Remaining review includes composite-key grant reads and large filter-list handling.
+- Grant resolution/settings now paginate using the unique key within their fixed admin/cohort scope. Actual announcement recipient selection also reads all pages. Added deduplicated 50-value filter batches for grant identity lookup, digest relationships/cooldowns and analytics sessions; removed redundant session mentor filters while preserving exact cohort/match scope. A 203-value filter regression under a 17-row response cap passes. Remaining Phase 10 review includes other large IN filters and final validation/documented limits.
+- Completion: items 37–38 addressed; remaining overview/survey/approver filters batched, participation and source-scoped delivery reads paginated. Limits and snapshot caveats documented in `docs/architecture/ascenso-query-limits.md`. No migration, dependencies, environment/provider changes or deployment.
+- Validation: 75 Node tests, TypeScript, focused ESLint and diff checks passed. Tests include 1,103-row scoped export completeness under a smaller server cap, duplicate prevention, batched filters, and later-page failure/size-bound rejection. Existing identity, grants, delivery and reporting regressions pass. No production load test or browser/provider end-to-end claim.
 
 ## Remaining audit boundaries
 

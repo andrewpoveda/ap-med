@@ -1,3 +1,4 @@
+import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
 import { isValidEmail } from '@/lib/validate'
@@ -103,18 +104,18 @@ async function computeCohortRecipients(
   const [mentorsRes, menteesRes, matchesRes, milestonesRes, surveysRes] = await Promise.all([
     // Cohort member rows are scoped by cohort_id ONLY — no `approved` filter
     // (cohort mentors keep approved=false as defense in depth).
-    admin.from('mentor').select('id, person_id, first_name, last_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
-    admin.from('mentees').select('id, person_id, full_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active'),
-    admin
+    completeQuery(admin.from('mentor').select('id, person_id, first_name, last_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active')),
+    completeQuery(admin.from('mentees').select('id, person_id, full_name, email').eq('cohort_id', cohort.id).eq('membership_status', 'active')),
+    completeQuery(admin
       .from('cohort_matches')
       .select('id, mentor_id, mentee_id')
       .eq('cohort_id', cohort.id)
-      .eq('status', 'active'),
-    admin
+      .eq('status', 'active')),
+    completeQuery(admin
       .from('member_milestones')
       .select('member_type, member_id, milestone')
-      .eq('cohort_id', cohort.id),
-    admin.from('surveys').select('id, title').eq('cohort_id', cohort.id).eq('status', 'open'),
+      .eq('cohort_id', cohort.id)),
+    completeQuery(admin.from('surveys').select('id, title').eq('cohort_id', cohort.id).eq('status', 'open')),
   ])
   if (mentorsRes.error) bail('digest mentor fetch', mentorsRes.error.message)
   if (menteesRes.error) bail('digest mentee fetch', menteesRes.error.message)
@@ -150,43 +151,40 @@ async function computeCohortRecipients(
 
   const [logsRes, goalsRes, responsesRes, sessionsRes] = await Promise.all([
     matchIds.length > 0
-      ? admin
+      ? completeInQuery(matchIds, batch => admin
           .from('meeting_logs')
           .select('match_id')
           .eq('cohort_id', cohort.id)
-          .in('match_id', matchIds)
-          .gte('met_at', monthStart)
+          .in('match_id', batch)
+          .gte('met_at', monthStart))
       : Promise.resolve({ data: [], error: null }),
     matchIds.length > 0
-      ? admin
+      ? completeInQuery(matchIds, batch => admin
           .from('goals')
           .select('match_id, title, target_date')
           .eq('cohort_id', cohort.id)
-          .in('match_id', matchIds)
+          .in('match_id', batch)
           .eq('status', 'active')
           .not('target_date', 'is', null)
-          .lt('target_date', todayStr)
+          .lt('target_date', todayStr))
       : Promise.resolve({ data: [], error: null }),
     surveyIds.length > 0
-      ? admin
+      ? completeInQuery(surveyIds, batch => admin
           .from('survey_responses')
           .select('survey_id, member_id')
           .eq('cohort_id', cohort.id)
-          .in('survey_id', surveyIds)
+          .in('survey_id', batch))
       : Promise.resolve({ data: [], error: null }),
-    // Sessions carry no cohort/match id — they're joined to matches below by
-    // the pair's own (mentor_id, mentee_id), so only this cohort's active pairs
-    // can pick one up.
+    // Explicit cohort and active-match scope; batch IDs to bound request URLs.
     mentorIds.length > 0
-      ? admin
+      ? completeInQuery(matchIds, batch => admin
           .from('sessions')
           .select('mentor_id, mentee_id, scheduled_at')
           .eq('cohort_id', cohort.id)
-          .in('match_id', matchIds)
-          .in('mentor_id', mentorIds)
+          .in('match_id', batch)
           .eq('status', 'scheduled')
           .gte('scheduled_at', now.toISOString())
-          .lt('scheduled_at', in24h.toISOString())
+          .lt('scheduled_at', in24h.toISOString()))
       : Promise.resolve({ data: [], error: null }),
   ])
   if (logsRes.error) bail('digest meeting-log fetch', logsRes.error.message)
@@ -329,10 +327,10 @@ export async function computeDigestRecipients(
   admin: SupabaseClient,
   now: Date,
 ): Promise<DigestRecipient[]> {
-  const { data: cohorts, error } = await admin
+  const { data: cohorts, error } = await completeQuery(admin
     .from('cohorts')
     .select('id, name, config')
-    .eq('status', 'active')
+    .eq('status', 'active'))
   if (error) bail('digest cohort fetch', error.message)
 
   const byEmail = new Map<string, DigestRecipient>()
@@ -388,12 +386,12 @@ export async function applyDigestCooldown(
   todayUtcStart.setUTCHours(0, 0, 0, 0)
   const cooldownStart = new Date(now.getTime() - cooldownDays * 24 * 60 * 60 * 1000)
 
-  const { data: recent, error } = await admin
+  const { data: recent, error } = await completeInQuery(recipients.map(r => r.email), batch => admin
     .from('email_log')
     .select('cohort_id, recipient_email, sent_at')
     .eq('kind', DIGEST_KIND)
     .gte('sent_at', cooldownStart.toISOString())
-    .in('recipient_email', recipients.map((r) => r.email))
+    .in('recipient_email', batch))
   if (error) bail('digest cooldown fetch', error.message)
 
   const lastSent = new Map<string, string>()

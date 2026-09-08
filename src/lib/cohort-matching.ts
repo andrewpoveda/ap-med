@@ -1,3 +1,4 @@
+import { completeQuery } from '@/lib/complete-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type MemberTrackMaps = {
@@ -18,13 +19,13 @@ export async function getMemberTrackMaps(
   admin: SupabaseClient,
   cohortId: string,
 ): Promise<MemberTrackMaps | null> {
-  const { data, error } = await admin
+  const { data, error } = await completeQuery(admin
     .from('cohort_applications')
     .select('member_id, role, track')
     .eq('cohort_id', cohortId)
     .eq('status', 'approved')
     .not('member_id', 'is', null)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }))
 
   if (error) {
     console.error('Member track lookup failed:', error.message)

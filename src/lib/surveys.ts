@@ -1,3 +1,4 @@
+import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ASCENSO_V1 } from '@/lib/program-definition'
 import { cap, LIMITS } from '@/lib/validate'
@@ -210,12 +211,12 @@ export async function getMemberSurveys(
   admin: SupabaseClient,
   ref: CohortMemberRef,
 ): Promise<MemberSurveyView[]> {
-  const { data: surveys, error } = await admin
+  const { data: surveys, error } = await completeQuery(admin
     .from('surveys')
     .select('id, wave, title, questions')
     .eq('cohort_id', ref.cohortId)
     .eq('status', 'open')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }))
   if (error) {
     console.error('getMemberSurveys failed:', error.message)
     return []
@@ -223,13 +224,13 @@ export async function getMemberSurveys(
   if (!surveys || surveys.length === 0) return []
 
   const surveyIds = surveys.map((s) => s.id as string)
-  const { data: responses, error: respError } = await admin
+  const { data: responses, error: respError } = await completeInQuery(surveyIds, batch => admin
     .from('survey_responses')
     .select('survey_id')
     .eq('cohort_id', ref.cohortId)
     .eq('member_type', ref.type)
     .eq('member_id', ref.memberId)
-    .in('survey_id', surveyIds)
+    .in('survey_id', batch))
   if (respError) {
     console.error('getMemberSurveys response lookup failed:', respError.message)
   }
@@ -262,24 +263,23 @@ export async function getCohortSurveys(
   admin: SupabaseClient,
   cohortId: string,
 ): Promise<AdminSurveyRow[]> {
-  const { data: surveys, error } = await admin
+  const { data: surveys, error } = await completeQuery(admin
     .from('surveys')
     .select('id, wave, title, questions, status, created_at, opens_at, closes_at')
     .eq('cohort_id', cohortId)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }))
   if (error) {
-    console.error('getCohortSurveys failed:', error.message)
-    return []
+    throw new Error('Could not load the complete survey list')
   }
   if (!surveys || surveys.length === 0) return []
 
   const surveyIds = surveys.map((s) => s.id as string)
-  const { data: responses, error: respError } = await admin
+  const { data: responses, error: respError } = await completeInQuery(surveyIds, batch => admin
     .from('survey_responses')
     .select('survey_id')
     .eq('cohort_id', cohortId)
-    .in('survey_id', surveyIds)
-  if (respError) console.error('getCohortSurveys response count failed:', respError.message)
+    .in('survey_id', batch))
+  if (respError) throw new Error('Could not load complete survey response counts')
   const counts = new Map<string, number>()
   for (const r of responses ?? []) {
     const id = r.survey_id as string
@@ -348,13 +348,13 @@ export async function getSurveyResponses(
   const [mentorsRes, menteesRes, responsesRes] = await Promise.all([
     // Cohort members are scoped by cohort_id ONLY — no `approved` filter (cohort
     // mentors keep approved=false as defense in depth).
-    admin.from('mentor').select('id, first_name, last_name').eq('cohort_id', cohortId),
-    admin.from('mentees').select('id, full_name').eq('cohort_id', cohortId),
-    admin
+    completeQuery(admin.from('mentor').select('id, first_name, last_name').eq('cohort_id', cohortId)),
+    completeQuery(admin.from('mentees').select('id, full_name').eq('cohort_id', cohortId)),
+    completeQuery(admin
       .from('survey_responses')
       .select('member_type, member_id, answers, created_at')
       .eq('cohort_id', cohortId)
-      .eq('survey_id', surveyId),
+      .eq('survey_id', surveyId)),
   ])
   if (mentorsRes.error) console.error('Survey mentor roster fetch failed:', mentorsRes.error.message)
   if (menteesRes.error) console.error('Survey mentee roster fetch failed:', menteesRes.error.message)
