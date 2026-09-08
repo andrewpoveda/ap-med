@@ -124,7 +124,7 @@ test('legacy link: exact normalized lookup mails stored recipient; ambiguity sen
 })
 
 test('administrator identity keeps exact lowercased email semantics', async () => {
-  const db = database({ admin_users: [{ email: 'alex.smith@example.org', role: 'cohort_admin', cohort_id: 'a' }] })
+  const db = database({ admin_users: [{ id: 'admin', email: 'alex.smith@example.org', role: 'cohort_admin', cohort_id: 'a' }], admin_cohort_grants: [{ admin_id: 'admin', cohort_id: 'a', revoked_at: null }] })
   const { getAdminUserByEmail, canAccessCohort } = loadTs('src/lib/admin.ts', {
     react: { cache: (fn) => fn }, 'next/navigation': {},
     '@/lib/supabase-server': {}, '@/lib/supabase-admin': { getSupabaseAdmin: () => db },

@@ -1,8 +1,13 @@
 -- Synthetic only. These tests run after the full active migration chain.
-insert into public.cohorts(id,name,org) values('11111111-1111-4111-8111-111111111111','Pilot','Test'),('22222222-2222-4222-8222-222222222222','Other','Test');
+insert into public.cohorts(id,name,org,status) values('11111111-1111-4111-8111-111111111111','Pilot','Test','applications_open'),('22222222-2222-4222-8222-222222222222','Other','Test','applications_open');
 insert into public.admin_users(id,email,role,cohort_id) values
  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','admin@example.org','cohort_admin','11111111-1111-4111-8111-111111111111'),
  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','other@example.org','cohort_admin','22222222-2222-4222-8222-222222222222');
+do $$ begin
+  if to_regclass('public.admin_cohort_grants') is not null then
+    execute 'insert into public.admin_cohort_grants(admin_id,cohort_id) select id,cohort_id from public.admin_users where cohort_id is not null';
+  end if;
+end $$;
 insert into public.mentor(id,first_name,last_name,"current_role",institution,bio,current_stage,email,cohort_id) values
  ('33333333-3333-4333-8333-333333333333','Mentor','One','Student','Test','','','mentor@example.org','11111111-1111-4111-8111-111111111111'),
  ('44444444-4444-4444-8444-444444444444','Mentor','Two','Student','Test','','','mentor2@example.org','11111111-1111-4111-8111-111111111111');

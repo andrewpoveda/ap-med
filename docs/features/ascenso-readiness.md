@@ -13,7 +13,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 3 — Member Experience Consistency | Fixed | 10–14 |
 | 4 — Email / Delivery Reliability | Fixed | 15–17 |
 | 5 — Reporting / Data Trustworthiness | Fixed | 18–22 |
-| 6 — Cohort / Program Lifecycle | Pending | 23–27 |
+| 6 — Cohort / Program Lifecycle | Fixed | 23–27 |
 | 7 — Person / Role / Participation Model | Pending | 28–31 |
 | 8 — Audit / Event History | Pending | 32–33 |
 | 9 — Branding / Program Configuration | Pending | 34–36 |
@@ -50,10 +50,10 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 20 | Session-Linked Meeting Deduplication | Fixed | Phase 3 supplied unique session linkage and transactional past/eligible/same-pair enforcement; manual logs remain supported. Its SQL regression is retained; reports distinguish source and warn against counting sessions plus logs as two meetings. |
 | 21 | Reporting Completeness | Fixed | Stable IDs across exports; named survey responses with question definitions; application answers and member linkage; match lifecycle dates/reasons; operational event export. Explicit sensitive-data notice; no auth IDs, credentials or previous-submission duplication exported. Full query pagination remains Phase 10. |
 | 22 | Pilot Success Measures | Fixed | `ascenso-pilot-measures.md` defines supported numerators, denominators, joins, timing limits and missing-data treatment. Staff-time and renewal willingness require explicit collection; no causal outcome or fabricated first-login timing. Phase 15 implements the funnel/support capture workflow. |
-| 23 | Cohort Creation / Configuration | Pending | Small supported cohort setup for name/program label/status/used dates and configuration; no arbitrary JSON UI. |
-| 24 | Cohort Status / Closeout | Pending | Safe cohort transitions govern intake/matching/reminders and retain closeout reports/history. |
-| 25 | Admin Invitation / Removal / Offboarding | Pending | Supported grant/add/view/revoke with attribution and subsequent-check revocation; no SCIM. |
-| 26 | Multi-Cohort Admin Grants | Pending | Separate admin identity from selected cohort grants if clean; never make a multi-cohort director global super. |
+| 23 | Cohort Creation / Configuration | Fixed | Super administrators create setup cohorts from `/admin`; scoped settings edit name, organization/program label, orientation date and supported status. Existing support inbox editor remains linked. Only fields used by current code are exposed; no JSON editor. Public intake destination remains an explicit operator configuration step. |
+| 24 | Cohort Status / Closeout | Fixed | Setup → applications open → matching → active → closed, with matching-to-intake reopening only. Database guards serialize intake/matching against lifecycle changes. Closeout requires clearing live matches/selections, future sessions, pending Calendar cleanup and uncertain mail; pending mail is superseded and reports/history retained. Closed cohorts cannot reopen through the controller. |
+| 25 | Admin Invitation / Removal / Offboarding | Fixed | Super-only add/view/revoke/restore workflow on cohort settings; exact Google email grants, no automatic invitation email. Actor/reason events preserve attribution. Revocation applies on subsequent checks, and zero-grant identities have no admin session. Other-cohort grants are preserved. Global admin management remains deliberately operator-owned. |
+| 26 | Multi-Cohort Admin Grants | Fixed | `admin_cohort_grants` separates identity from zero or more cohort grants. Existing single-cohort access is backfilled with unknown original grantor left null; legacy `cohort_id` is no longer authoritative. Scoped multi-cohort directors are not supers. Disabled identities fail closed. |
 | 27 | Reviewer / Read-Only Roles | Intentionally deferred | Institutional. Defer fine roles until distinct reviewer/reader responsibilities exist; first establish correct scoped grants (25–26). |
 | 28 | Person, Role, And Cohort Coupling | Pending | Plan a backward-compatible person/participation migration before implementation; preserve role changes, returners and historical references. |
 | 29 | Session / Match / Participation Attribution | Pending | Attribute sessions and logs to the correct relationship/cycle alongside participation migration. |
@@ -140,10 +140,20 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 ## Phase 5 checkpoint
 
 - Items 18–22 explicitly addressed. Files: cohort dashboard/analytics/export helpers, analytics report/toolbar, pilot metric definitions, activation migration and focused tests.
+- Commit: `6cac8d9` (includes the shared match type's optional activation timestamp).
 - Migration: `20260907235236_ascenso_truthful_reporting.sql`, after Phase 4, unapplied to hosted databases. Activation events are the only backfill evidence; approval timestamps are never reused. A trigger stamps future transitions and preserves the timestamp on other edits.
 - Validation: three focused reporting tests; TypeScript and focused lint; disposable PostgreSQL checks of known-event backfill, unknown historical activation, approval preservation and timestamp immutability, with Phase 2 SQL regression. Phase 3 session-log deduplication is retained as item 20's implementation.
 - Exports contain named sensitive program records and are available only through existing scoped admin authorization. Survey definitions accompany answers. No credentials/auth IDs are exported. Existing CSV formula escaping remains in the download path.
 - Manual steps: director chooses meeting cadence/response targets and a staff-time recording owner; use the documented missing-data denominators when discussing pilot outcomes. No environment/provider changes or deployment. Phase 10 still owns query completeness; Phase 15 adds operational collection and funnel presentation.
+
+## Phase 6 checkpoint
+
+- Items 23–26 implemented; 27 intentionally deferred until a customer has distinct reviewer/read-only responsibilities. Creation and grant management are super-only; authorized cohort administrators manage that cohort's basic settings. This is assisted onboarding, not automated tenant provisioning.
+- Migration: `20260907235949_ascenso_cohort_lifecycle.sql`, after Phase 5 and before dependent code. It backfills existing grants, preserves legacy identity rows/event references, introduces lifecycle transactions/guards and serializes delivery claims with closeout. No hosted migration/deployment or provider changes.
+- Validation: 59 focused Phase 6/Phase 1/Phase 2 Node tests; local PostgreSQL lifecycle/grant/closeout checks plus prior Phase 2 SQL invariants; focused lint and TypeScript. Tests cover multiple grants, missing/revoked/disabled access, super-only management, stale state, invalid dates, closed-history preservation, live-match and calendar closeout refusal. Original synthetic fixtures now explicitly create open cohorts and grants where that table exists.
+- Manual onboarding: create cohort, configure support inbox/owner, grant each director's exact Google email, and directly share login/admin instructions. No emails are sent by grant management. The existing configured public intake cohort/origin still needs an operator-selected deployment configuration; creating a cohort alone does not make it public. Review this before launching simultaneous intakes.
+- Manual offboarding: revoke each intended cohort grant; removal preserves other grants and history. Global super identities and emergency `disabled_at` controls remain operator-managed. Cohort closure requires ending matches, clearing selections, cancelling future appointments and confirming provider/calendar outcomes first. Archived reporting remains accessible to remaining authorized staff.
+- Later work: Phase 7 owns person/participation attribution and the stable organization ownership boundary; the editable organization label is not a tenant model. Phase 9 owns versioned branding/program definitions. No reviewer/reader roles, SCIM, automatic invitations or domain console were added.
 
 ## Remaining audit boundaries
 

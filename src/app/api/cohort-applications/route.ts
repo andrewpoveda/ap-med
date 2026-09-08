@@ -307,6 +307,7 @@ export async function POST(request: Request) {
   ])
 
   if (error) {
+    if (error.code === '23514') return NextResponse.json({ error: 'Applications are closed for this cohort', code: 'applications_closed' }, { status: 403 })
     // Knowing an email is not proof of ownership. Never read or replace the
     // existing application, regardless of its review status.
     if (error.code === '23505') {

@@ -10,6 +10,9 @@ export type AdminUser = {
   display_name: string | null
   role: string // 'super' | 'cohort_admin'
   cohort_id: string | null
+  // The legacy single-cohort field is retained for historical compatibility,
+  // but never used for authorization after the grants migration.
+  cohort_ids?: string[]
 }
 
 export type AdminSessionState =
@@ -31,7 +34,7 @@ export const getAdminUserByEmail = cache(
     const admin = getSupabaseAdmin()
     const { data, error } = await admin
       .from('admin_users')
-      .select('id, email, display_name, role, cohort_id')
+      .select('id, email, display_name, role, cohort_id, disabled_at')
       .eq('email', normalized)
       .maybeSingle()
 
@@ -39,7 +42,12 @@ export const getAdminUserByEmail = cache(
       console.error('admin_users lookup failed:', error.message)
       return null
     }
-    return (data as AdminUser) ?? null
+    if (!data || data.disabled_at || !['super', 'cohort_admin'].includes(data.role)) return null
+    if (data.role === 'super') return { ...data, cohort_ids: [] } as AdminUser
+    const { data: grants, error: grantError } = await admin.from('admin_cohort_grants')
+      .select('cohort_id').eq('admin_id', data.id).is('revoked_at', null)
+    if (grantError || !grants?.length) return null
+    return { ...data, cohort_ids: grants.map(g => g.cohort_id) } as AdminUser
   },
 )
 
@@ -65,12 +73,11 @@ export const resolveAdminSession = cache(
 )
 
 /**
- * Cohort-level authorization on top of the admin gate: supers see every
- * cohort; a cohort_admin sees only their own (a scoped admin with no cohort
- * assigned sees nothing — fail closed on a misconfigured row).
+ * Supers see every cohort; scoped administrators require a currently loaded
+ * explicit grant. Missing grant data fails closed, including legacy rows.
  */
 export function canAccessCohort(adminUser: AdminUser, cohortId: string): boolean {
-  return adminUser.role === 'super' || adminUser.cohort_id === cohortId
+  return adminUser.role === 'super' || (adminUser.role === 'cohort_admin' && (adminUser.cohort_ids ?? []).includes(cohortId))
 }
 
 /**

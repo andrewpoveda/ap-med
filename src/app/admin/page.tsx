@@ -5,6 +5,7 @@ import { requireAdminSession } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { readAscensoVisibility } from '@/lib/app-settings'
 import AscensoVisibilityToggle from './AscensoVisibilityToggle'
+import CohortConfiguration from './CohortConfiguration'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,14 +77,14 @@ export default async function AdminCohortsPage() {
 
   // Cohort admins see only their cohort; a scoped admin with no cohort assigned
   // sees nothing (fail closed on a misconfigured row). Supers see everything.
-  const scopedCohortId = adminUser.role === 'super' ? null : adminUser.cohort_id
+  const scopedCohortIds = adminUser.cohort_ids ?? []
   let cohorts: CohortRow[] = []
-  if (adminUser.role === 'super' || scopedCohortId) {
+  if (adminUser.role === 'super' || scopedCohortIds.length) {
     let query = admin
       .from('cohorts')
       .select('id, created_at, name, org, status')
       .order('created_at', { ascending: false })
-    if (scopedCohortId) query = query.eq('id', scopedCohortId)
+    if (adminUser.role !== 'super') query = query.in('id', scopedCohortIds)
     const { data, error } = await query
     if (error) console.error('Admin cohorts fetch failed:', error.message)
     cohorts = (data as CohortRow[]) ?? []
@@ -134,6 +135,7 @@ export default async function AdminCohortsPage() {
           />
         </div>
       )}
+      {isSuper && <div className="mt-8" style={cardStyle}><CohortConfiguration /></div>}
 
       {cohorts.length === 0 ? (
         <p className="mt-6 text-[#6b6b6b]" style={{ fontSize: '0.95rem' }}>
@@ -186,6 +188,7 @@ export default async function AdminCohortsPage() {
                   )}
                 </p>
                 <p className="flex flex-wrap gap-4" style={{ margin: '0.75rem 0 0' }}>
+                  <Link href={`/admin/cohorts/${cohort.id}/settings`}>Settings and access →</Link>
                   <Link
                     href={`/admin/cohorts/${cohort.id}/applications`}
                     style={{ color: '#8a6a2f', fontSize: '0.9rem' }}
