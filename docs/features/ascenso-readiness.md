@@ -15,7 +15,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 5 — Reporting / Data Trustworthiness | Fixed | 18–22 |
 | 6 — Cohort / Program Lifecycle | Fixed | 23–27 |
 | 7 — Person / Role / Participation Model | Fixed | 28–31 |
-| 8 — Audit / Event History | Pending | 32–33 |
+| 8 — Audit / Event History | Fixed | 32–33 |
 | 9 — Branding / Program Configuration | Pending | 34–36 |
 | 10 — Scale / Query Completeness | Pending | 37–38 |
 | 11 — Testing / Recovery | Pending | 39–41 |
@@ -59,8 +59,8 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 29 | Session / Match / Participation Attribution | Fixed | New cohort sessions carry explicit match/cohort IDs and exact pair validation; logs and reports use that context. Historical backfill uses linked logs or known activation windows; unknown remains unknown. Cross-role/program personal booking conflicts are rejected. |
 | 30 | Same-Cohort Database Invariants | Fixed | Composite FKs protect match/member, goal/log/match and survey/response context. Triggers validate polymorphic member references and session pairs, reject self-matches and freeze participation/organization ownership. Legacy contradictions abort migration. |
 | 31 | Authorization Centralization | Fixed | Shared person/participation resolver revalidates owned active selection; stale/forged selection fails closed. Member writes retain pair/cohort guards; Phase 6 central scoped grants remain authoritative. Negative participant, removed-grant, multi-grant and super tests pass. Digest content, cooldown and admin retries are cohort-scoped. |
-| 32 | Operational Event History | Pending | Small durable actor/action/target/time/reason history for meaningful program transitions; no SIEM. |
-| 33 | Access / Export Audit | Intentionally deferred | Institutional. Defer deeper access auditing until procurement requires it; minimal export events may use item 32 plumbing first. |
+| 32 | Operational Event History | Fixed | Existing decision, activation/end, member status, grant and lifecycle events retained. Selection/approval/removal now use scoped transactions that atomically record actor, target, time and minimal relationship metadata. New selections link prior ended relationships as reassignment events; removed selection history survives row removal. Available through operational-event export. |
+| 33 | Access / Export Audit | Fixed | Minimal scoped export-request event records administrator, cohort, table and time before reading export rows; audit failure blocks the export. It records a request, not successful download or readership. Deeper access auditing remains intentionally deferred until institutional procurement/security requires it. |
 | 34 | Limited Branding Configuration | Pending | Limited program/org/asset/support/email identity/origin configuration preserving AP MED and Ascenso; no theme/domain console. |
 | 35 | Program Definitions Embedded In Code | Pending | Version realistic program-specific definitions without reinterpreting existing cohorts or canonical tags. |
 | 36 | Configurable Matching | Pending | Keep Ascenso policy fixed unless a small versioned abstraction is justified. Arbitrary matching controls wait for a paying program’s concrete policy difference; solve cardinality first. |
@@ -158,9 +158,18 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 7 checkpoint
 
+- Commit: `ae166e6`. Focused ESLint and `git diff --check` also passed. Unrelated interface changes and artifact directories were excluded from the commit.
 - Items 28–31 implemented and reviewed. Required pre-implementation plan and rollout decisions: `docs/architecture/ascenso-participation-migration.md`. Migration `20260908001057_ascenso_person_participations.sql` follows Phase 6 and must precede dependent code; no hosted migration or deployment performed. Preflight ambiguity review and backup are operator prerequisites. No dependencies or environment/provider changes.
 - Resumption verification on 2026-09-08: seven focused participation Node tests passed. Disposable PostgreSQL Phase 7 verification passed, including rollback on ambiguous legacy identity, literal email ownership, historical session attribution (unknown stays unknown), cross-role booking conflicts and client denial. Phase 5 backfill verification also passed after fixing its migration boundary; backfill runners now stop before the target migration instead of applying successors before it. These are local synthetic checks, not hosted/provider validation.
 - Further regression review: all 67 Node tests and TypeScript passed. Current-migration Phase 3 meeting and Phase 6 closeout SQL checks passed after their booking fixtures supplied explicit relationship context and created bookings before ending the match. Phase 7 SQL also verifies explicit organization reuse, immutable ownership and self-match rejection. New booking validation holds cohort/match locks against concurrent lifecycle changes. These local tests do not claim production/provider end-to-end verification.
+
+## Phase 8 checkpoint
+
+- Items 32–33 inspected against current handlers. Existing transactions record application decisions, activation/end, member corrections/status, grants and cohort lifecycle. Match selection, approval and removal still write directly without atomic actor-attributed events; rematching needs links to retained ended matches. Existing operational-event export can expose this history without a separate audit product.
+- Implementation scope: transactional selection/approval/removal with scoped actor checks and minimal relationship metadata; preserve current deterministic scoring and activation/email behavior. Record export requests through a narrow scoped event function without duplicating exported content. Deeper access logging remains intentionally deferred to an institutional procurement/security requirement. Match override/rejection reason collection remains Phase 15 rather than expanding Phase 8 UI scope.
+- Items 32–33 explicitly addressed. Migration `20260908133738_ascenso_operational_history.sql` follows Phase 7 and precedes dependent code. No hosted migration, deployment, environment/provider changes or dependencies. Existing events are not fabricated for old selections. Export events record requests even if the later export fails; they do not prove receipt.
+- Validation: 67 existing Node regressions plus two new route tests passed; TypeScript and focused ESLint passed. Disposable PostgreSQL verifies actor-attributed selection/approval/removal, retained removal history, reassignment links, scoped export metadata, wrong-cohort denial and client execute denial. No provider/browser verification claim. Score/track computation remains server-side and assignment constraints remain authoritative.
+- Manual steps: apply migration in order before deployment and use the existing Operational events export when reviewing changes. Access/export retention remains Phase 12; query completeness remains Phase 10. No enterprise access-log product or historical backfill was added.
 
 ## Remaining audit boundaries
 

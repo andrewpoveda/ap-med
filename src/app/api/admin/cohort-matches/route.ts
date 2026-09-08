@@ -101,22 +101,10 @@ export async function POST(request: Request) {
       help_with: Array.isArray(mentee.help_with) ? mentee.help_with : [],
     })
 
-    const { data: created, error: insertError } = await admin
-      .from('cohort_matches')
-      .insert([
-        {
-          cohort_id: cohortId,
-          mentor_id: mentor.id,
-          mentee_id: mentee.id,
-          track: mentorTrack,
-          score,
-          status: 'board_approved',
-          approved_by: adminUser.id,
-          approved_at: new Date().toISOString(),
-        },
-      ])
-      .select('id')
-      .single()
+    const { data: created, error: insertError } = await admin.rpc('ascenso_select_match', {
+      p_cohort: cohortId, p_actor: adminUser.id, p_mentor: mentor.id,
+      p_mentee: mentee.id, p_track: mentorTrack, p_score: score,
+    })
 
     if (insertError || !created) {
       // unique (cohort_id, mentor_id, mentee_id) → the pair is already selected.
@@ -130,7 +118,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not save the match' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, matchId: created.id, score })
+    return NextResponse.json({ success: true, matchId: created, score })
   } catch (err) {
     console.error('Match selection crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

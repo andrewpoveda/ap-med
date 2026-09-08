@@ -50,6 +50,12 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
+    const { error: auditError } = await admin.rpc('ascenso_record_export', {
+      p_cohort: cohortId, p_actor: adminUser.id, p_table: table,
+    })
+    if (auditError) {
+      return NextResponse.json({ error: 'Could not record export request; try again' }, { status: 500 })
+    }
     const { headers, rows, error } = await buildCohortExport(admin, cohortId, table)
     if (error) {
       console.error(`Cohort export (${table}) failed:`, error)

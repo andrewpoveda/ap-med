@@ -56,22 +56,19 @@ export async function DELETE(
   try {
     const gate = await requireMatch(ctx)
     if ('response' in gate) return gate.response
-    const { admin, match } = gate
+    const { admin, adminUser, match } = gate
 
     // Conditional delete: an active/ended match is history (and meeting logs
     // may reference it) — only unactivated selections can be removed.
-    const { data: deleted, error } = await admin
-      .from('cohort_matches')
-      .delete()
-      .eq('id', match.id)
-      .in('status', ['proposed', 'board_approved'])
-      .select('id')
+    const { data: deleted, error } = await admin.rpc('ascenso_selection_action', {
+      p_id: match.id, p_actor: adminUser.id, p_action: 'remove',
+    })
 
     if (error) {
       console.error('Match delete failed:', error.message)
-      return NextResponse.json({ error: 'Could not remove the match' }, { status: 500 })
+      return NextResponse.json({ error: 'Could not remove the selection; refresh and try again' }, { status: 409 })
     }
-    if (!deleted || deleted.length === 0) {
+    if (!deleted) {
       return NextResponse.json(
         { error: 'Only a not-yet-active selection can be removed' },
         { status: 409 },
@@ -121,23 +118,16 @@ async function approveMatch(
   adminUser: AdminUser,
   match: CohortMatch,
 ) {
-  // Conditional update = race guard: only a proposed row can be approved.
-  const { data: updated, error } = await admin
-    .from('cohort_matches')
-    .update({
-      status: 'board_approved',
-      approved_by: adminUser.id,
-      approved_at: new Date().toISOString(),
-    })
-    .eq('id', match.id)
-    .eq('status', 'proposed')
-    .select('id')
+  // The locked transaction commits the decision and actor history together.
+  const { data: updated, error } = await admin.rpc('ascenso_selection_action', {
+    p_id: match.id, p_actor: adminUser.id, p_action: 'approve',
+  })
 
   if (error) {
     console.error('Match approve failed:', error.message)
-    return NextResponse.json({ error: 'Could not approve the match' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not approve the selection; refresh and try again' }, { status: 409 })
   }
-  if (!updated || updated.length === 0) {
+  if (!updated) {
     return NextResponse.json(
       { error: 'Only a proposed match can be board-approved' },
       { status: 409 },
