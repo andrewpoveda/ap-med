@@ -19,7 +19,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 9 — Branding / Program Configuration | Fixed | 34–36 |
 | 10 — Scale / Query Completeness | Fixed | 37–38 |
 | 11 — Testing / Recovery | Fixed | 39–41 |
-| 12 — Privacy / Data Governance | Pending | 42–44 |
+| 12 — Privacy / Data Governance | Fixed | 42–44 |
 | 13 — Features To Defer, But Explicitly Track | Pending | 45–55 |
 | 14 — Institutional Items To Document, Not Overbuild | Pending | 56–60 |
 | 15 — Pilot Learning / Product Evidence | Pending | 61–64 |
@@ -69,9 +69,9 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 39 | Core Regression Coverage | Fixed | 75 Node regressions cover intake/overwrite, exact claims, scoped grants/members, delivery, meetings, reporting and complete exports. Local SQL suites exercise actual migration, decision/selection/activation/end, concurrency, same-cohort, lifecycle, retry and history constraints. All ran successfully against synthetic databases. |
 | 40 | Ci | Fixed | Minimal workflow runs lint, TypeScript, Node tests, webpack build and PostgreSQL 17 synthetic migration/recovery checks. Read-only repository permissions, no production secrets or deployment. Local equivalents pass; hosted Actions run still pending push. |
 | 41 | Recovery Procedure | Fixed | Documented migration forward/rollback decisions, email/provider confirmation, Calendar cleanup, revoked grants, closeout and restore expectations. Local dump/restore exercise verifies synthetic counts, constraints and access controls. Hosted restore/RPO/RTO remain unproven operational prerequisites; external Calendar rollback limitation is explicit. |
-| 42 | Privacy Copy Vs Actual Admin Visibility | Pending | Disclose actual admin/operator visibility, named surveys and notes; do not invent legal claims. |
-| 43 | Sentry Replay | Pending | Review Sentry replay/credential URLs and sensitive program content; conservative masking/disablement with verification. |
-| 44 | Data Retention / Export / Deletion / Support | Pending | Customer decisions on retention/deletion/export/support/operator access/recovery; distinguish capability from contract. |
+| 42 | Privacy Copy Vs Actual Admin Visibility | Fixed | Application copy identifies program administrator and AP MED operator access; survey form discloses named responses; meeting form identifies partner/admin note visibility. No confidentiality or anonymity guarantee is invented. |
+| 43 | Sentry Replay | Fixed | Removed replay integration, set replay/tracing rates to zero and discard transactions. Client/server/edge error hooks retain only minimal sanitized diagnostics; tests reject personal context and token-bearing URL data. Existing PostHog replay/autocapture controls retained. Prior telemetry/provider retention remains an operator decision. |
+| 44 | Data Retention / Export / Deletion / Support | Fixed | ascenso-data-governance.md separates actual technical capabilities from customer decisions on retention, scoped deletion, exports, support/escalation, operator/admin access, providers and recovery. No automatic deletion or contractual SLA/policy is fabricated. |
 | 45 | Saml / Sso / Scim | Intentionally deferred | Requested. No SAML/SSO/SCIM now. Trigger: qualified buyer identity requirement or blocked intended users. First fix ownership/grants. Microsoft login and calendar are independent requirements. |
 | 46 | Microsoft / Outlook / Teams Compatibility | Intentionally deferred | Requested. Google login, Calendar OAuth/freebusy and Meet are current dependencies. Trigger: actual Microsoft population blocked. Evaluate Entra login separately from Graph calendar/Teams; first make existing auth and scheduling reliable. |
 | 47 | Soc 2 | Intentionally deferred | Requested. Defer SOC 2 until procurement/contracts justify cost; first resolve technical controls, recovery and data-handling evidence. |
@@ -194,11 +194,18 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 11 checkpoint
 
+- Commit: `ca0ac2c`.
 - Added a minimal GitHub Actions workflow for lint, TypeScript, existing Node regressions, webpack build and synthetic PostgreSQL 17 migration/lifecycle tests. It contains no production secrets or deployment steps. Hosted CI has not run yet; local workflow-equivalent validation is in progress.
 - Recovery procedures are in `docs/operations/ascenso-recovery.md`, covering forward migration recovery, ambiguous identity rollback, uncertain email, Calendar cleanup, grants/closeout and restore expectations. The new local Phase 11 dump/restore check passed with synthetic records, count comparisons, constraints and identity access checks. It does not establish hosted recovery guarantees.
 - Repository lint passed with two existing warnings in unrelated interface files. Isolated build uses a tracked-code copy without local environment files and placeholder loopback credentials. Turbopack rejected the external dependency symlink; webpack compilation passed and the remaining build stages are being checked. Phase 11 remains uncommitted/incomplete pending full validation and item 39–41 dispositions.
 - Completion: items 39–41 dispositioned. Full isolated webpack production build passed (including TypeScript/prerendering); all local SQL runners 1–9 and 11 passed. Repository lint passed with the two documented warnings. No migrations, dependencies, environment/provider changes or deployment added by this phase. Hosted Actions execution remains a post-push check, not claimed evidence.
 - Manual prerequisite: establish real backup/restore ownership and retention, exercise an isolated hosted restore with approved data, and reconcile provider state before recovery workers resume. No production recovery-time or data-loss guarantee is asserted. CI uses PostgreSQL 17 in a disposable container; local runners use an explicitly supplied local binary directory.
+
+## Phase 12 checkpoint
+
+- Items 42–44 implemented and dispositioned. Participant disclosures now match named survey/meeting/application visibility. Sentry diagnostics intentionally omit arbitrary private content; reduced debugging detail is an explicit tradeoff. Data-governance decisions are documented in `docs/operations/ascenso-data-governance.md`.
+- Validation: 77 Node tests passed, including client/server/edge configuration checks and synthetic credential/PII payload rejection; TypeScript and focused ESLint passed. No provider telemetry transmission, historical deletion or hosted configuration changes performed. No migration/dependency/environment changes.
+- Manual steps: agree retention/deletion/export/support/access/recovery expectations with each paid customer; review actual provider retention/access and any previously collected telemetry separately. Repository sanitization does not prove hosting logs contain no personal information or establish legal compliance.
 
 ## Remaining audit boundaries
 

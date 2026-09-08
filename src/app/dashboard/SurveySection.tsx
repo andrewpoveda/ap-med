@@ -110,6 +110,7 @@ function SurveyForm({ survey }: { survey: MemberSurveyView }) {
   return (
     <div style={cardStyle}>
       <p style={eyebrowStyle}>{waveLabel(survey.wave)} survey</p>
+      <p>Your responses are named and visible to authorized program administrators. AP MED operates the platform.</p>
       <h3 className="text-[#1a1a2e]" style={{ fontSize: '1.15rem', fontWeight: 500, margin: '0 0 1rem' }}>
         {survey.title}
       </h3>

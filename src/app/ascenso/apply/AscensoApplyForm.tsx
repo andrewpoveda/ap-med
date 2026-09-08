@@ -908,12 +908,13 @@ export default function AscensoApplyForm({
               </div>
 
               <div className="ascenso-privacy-note">
-                <strong>Your information stays private.</strong>
+                <strong>How your program information is used</strong>
                 <p>
-                  Application information will be reviewed only by authorized Ascenso reviewers
-                  and designated members of {organizationName} leadership for application review,
-                  matching, communication, and evaluation. Information will not be made public
-                  without the applicant&apos;s permission.
+                  Authorized {organizationName} program administrators can review your application
+                  for selection, matching, communication, and evaluation. AP MED operates the platform
+                  and authorized operators may access records to provide support and maintain the service.
+                  Program surveys are named, and program administrators can review meeting records,
+                  notes, and goals. Do not include patient information or other sensitive third-party information.
                 </p>
               </div>
 

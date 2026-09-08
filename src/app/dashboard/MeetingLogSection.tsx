@@ -194,6 +194,8 @@ export default function MeetingLogSection({
         async check-in, or a session you booked here.
         Either participant can log it. Agree who will record each meeting and
         check the shared list first so an off-platform meeting is entered once.
+        {' '}Your partner and authorized program administrators can read these records and notes.
+        Do not include patient information or sensitive third-party details.
       </p>
 
       <form onSubmit={onSubmit} className="space-y-4">
