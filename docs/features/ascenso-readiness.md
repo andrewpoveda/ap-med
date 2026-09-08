@@ -18,7 +18,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 8 — Audit / Event History | Fixed | 32–33 |
 | 9 — Branding / Program Configuration | Fixed | 34–36 |
 | 10 — Scale / Query Completeness | Fixed | 37–38 |
-| 11 — Testing / Recovery | Pending | 39–41 |
+| 11 — Testing / Recovery | Fixed | 39–41 |
 | 12 — Privacy / Data Governance | Pending | 42–44 |
 | 13 — Features To Defer, But Explicitly Track | Pending | 45–55 |
 | 14 — Institutional Items To Document, Not Overbuild | Pending | 56–60 |
@@ -66,9 +66,9 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 36 | Configurable Matching | Fixed | Existing 40/35/25 weights are read from the released definition and tested unchanged. Same-track selection, board override and assignment constraints retained. Arbitrary/customer weights intentionally deferred until a paying program identifies a concrete policy difference. |
 | 37 | Pagination / Query Limit Safety | Fixed | Complete ordered reads cover export sources/labels, analytics, digest inputs, matching, administrator/member/survey lists, grants and campaign recipients. Large filters use 50-value batches; failures/100,000-row bounds reject partial output. Explicit recent-history and delivery-page limits retained. Multi-request reads are not snapshot exports; documented in ascenso-query-limits.md. |
 | 38 | Matching Computational Scale | Fixed | Conservative pilot envelope documented at 200 active participants and at most 10,000 unmatched combinations per track. Page rejects larger rankings explicitly; history lookup uses a set. No distributed matching; representative benchmarking and director workflow review are prerequisites for larger cohorts. |
-| 39 | Core Regression Coverage | Pending | Targeted lifecycle, ownership, isolation, concurrency, delivery and export tests. Phase 1 covers only its own security cases. |
-| 40 | Ci | Pending | Minimal CI for lint/typecheck/tests and reasonable build; no deployment pipeline expansion. |
-| 41 | Recovery Procedure | Pending | Document and exercise appropriate local recovery procedures; separate evidence from untested production guarantees. |
+| 39 | Core Regression Coverage | Fixed | 75 Node regressions cover intake/overwrite, exact claims, scoped grants/members, delivery, meetings, reporting and complete exports. Local SQL suites exercise actual migration, decision/selection/activation/end, concurrency, same-cohort, lifecycle, retry and history constraints. All ran successfully against synthetic databases. |
+| 40 | Ci | Fixed | Minimal workflow runs lint, TypeScript, Node tests, webpack build and PostgreSQL 17 synthetic migration/recovery checks. Read-only repository permissions, no production secrets or deployment. Local equivalents pass; hosted Actions run still pending push. |
+| 41 | Recovery Procedure | Fixed | Documented migration forward/rollback decisions, email/provider confirmation, Calendar cleanup, revoked grants, closeout and restore expectations. Local dump/restore exercise verifies synthetic counts, constraints and access controls. Hosted restore/RPO/RTO remain unproven operational prerequisites; external Calendar rollback limitation is explicit. |
 | 42 | Privacy Copy Vs Actual Admin Visibility | Pending | Disclose actual admin/operator visibility, named surveys and notes; do not invent legal claims. |
 | 43 | Sentry Replay | Pending | Review Sentry replay/credential URLs and sensitive program content; conservative masking/disablement with verification. |
 | 44 | Data Retention / Export / Deletion / Support | Pending | Customer decisions on retention/deletion/export/support/operator access/recovery; distinguish capability from contract. |
@@ -184,12 +184,21 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 10 checkpoint
 
+- Commit: `3b2b845`.
 - Added a bounded complete-read helper with stable ID tie-breakers; smaller-than-requested server pages do not terminate the read, and a later error discards partial data. Applied to all export source/name-map reads, analytics, digest source reads, matching track maps and matching page lists. Existing cohort/party filters remain in place.
 - Current regressions pass, including an actual member export with 1,103 scoped records under a simulated 113-row response cap, uniqueness/cross-cohort assertions, and late-page failure/explicit-limit checks. TypeScript passes. Phase 10 remains uncommitted and incomplete: finish admin/report read inventory, large filter-list handling, intentional matching size guardrails and focused validation before dispositioning items 37–38.
 - Additional reads now covered: administrator overview, application lists, rosters, milestone grids, survey read models and announcement recipient/history counts. Explicit recent-history limits remain intentional. Administrator overview read failures no longer produce false zero totals. Matching now refuses more than 10,000 candidate combinations per track with an explicit message; historical pair membership uses a set rather than rescanning history inside every candidate calculation. Remaining review includes composite-key grant reads and large filter-list handling.
 - Grant resolution/settings now paginate using the unique key within their fixed admin/cohort scope. Actual announcement recipient selection also reads all pages. Added deduplicated 50-value filter batches for grant identity lookup, digest relationships/cooldowns and analytics sessions; removed redundant session mentor filters while preserving exact cohort/match scope. A 203-value filter regression under a 17-row response cap passes. Remaining Phase 10 review includes other large IN filters and final validation/documented limits.
 - Completion: items 37–38 addressed; remaining overview/survey/approver filters batched, participation and source-scoped delivery reads paginated. Limits and snapshot caveats documented in `docs/architecture/ascenso-query-limits.md`. No migration, dependencies, environment/provider changes or deployment.
 - Validation: 75 Node tests, TypeScript, focused ESLint and diff checks passed. Tests include 1,103-row scoped export completeness under a smaller server cap, duplicate prevention, batched filters, and later-page failure/size-bound rejection. Existing identity, grants, delivery and reporting regressions pass. No production load test or browser/provider end-to-end claim.
+
+## Phase 11 checkpoint
+
+- Added a minimal GitHub Actions workflow for lint, TypeScript, existing Node regressions, webpack build and synthetic PostgreSQL 17 migration/lifecycle tests. It contains no production secrets or deployment steps. Hosted CI has not run yet; local workflow-equivalent validation is in progress.
+- Recovery procedures are in `docs/operations/ascenso-recovery.md`, covering forward migration recovery, ambiguous identity rollback, uncertain email, Calendar cleanup, grants/closeout and restore expectations. The new local Phase 11 dump/restore check passed with synthetic records, count comparisons, constraints and identity access checks. It does not establish hosted recovery guarantees.
+- Repository lint passed with two existing warnings in unrelated interface files. Isolated build uses a tracked-code copy without local environment files and placeholder loopback credentials. Turbopack rejected the external dependency symlink; webpack compilation passed and the remaining build stages are being checked. Phase 11 remains uncommitted/incomplete pending full validation and item 39–41 dispositions.
+- Completion: items 39–41 dispositioned. Full isolated webpack production build passed (including TypeScript/prerendering); all local SQL runners 1–9 and 11 passed. Repository lint passed with the two documented warnings. No migrations, dependencies, environment/provider changes or deployment added by this phase. Hosted Actions execution remains a post-push check, not claimed evidence.
+- Manual prerequisite: establish real backup/restore ownership and retention, exercise an isolated hosted restore with approved data, and reconcile provider state before recovery workers resume. No production recovery-time or data-loss guarantee is asserted. CI uses PostgreSQL 17 in a disposable container; local runners use an explicitly supplied local binary directory.
 
 ## Remaining audit boundaries
 

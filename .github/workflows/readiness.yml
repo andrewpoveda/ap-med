@@ -1,0 +1,39 @@
+name: Repository checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-validation-only
+      SUPABASE_SERVICE_ROLE_KEY: local-validation-only
+      RESEND_API_KEY: re_local_validation_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit --incremental false
+      - run: node --test database/verification/*.test.mjs
+      - run: npm run build -- --webpack
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: postgres:17
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic migration and lifecycle checks
+        run: |
+          for phase in 1 2 3 4 5 6 7 8 9 11; do
+            runuser -u postgres -- env PG17_BIN=/usr/lib/postgresql/17/bin sh "database/verification/verify_phase${phase}.sh"
+          done
