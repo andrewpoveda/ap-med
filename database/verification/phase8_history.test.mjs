@@ -8,7 +8,7 @@ class NextResponse extends Response {
 
 test('export records the scoped request before reading sensitive rows and fails closed on audit failure', async () => {
   for (const fails of [false, true]) {
-    const db = database({ cohorts: [{ id: 'c', name: 'Program' }] })
+    const db = database({ cohorts: [{ id: 'c', name: 'Program', definition_version: 'ascenso-v1' }] })
     const sequence = []
     db.rpc = async (name, args) => {
       assert.equal(name, 'ascenso_record_export')
@@ -27,6 +27,11 @@ test('export records the scoped request before reading sensitive rows and fails 
     const result = await GET(new Request('https://example.org?table=members'), { params: Promise.resolve({ id: 'c' }) })
     assert.equal(result.status, fails ? 500 : 200)
     assert.deepEqual(sequence, fails ? ['audit'] : ['audit', 'export'])
+    if (!fails) {
+      const csv = await result.text()
+      assert.ok(csv.includes('Program definition'))
+      assert.ok(csv.includes('ascenso-v1'))
+    }
   }
 })
 

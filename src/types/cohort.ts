@@ -13,12 +13,8 @@ export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
 export const APPLICATION_ROLES = ['mentor', 'mentee'] as const
 export type ApplicationRole = (typeof APPLICATION_ROLES)[number]
 
-export const COHORT_TRACKS = [
-  'ms_premed',
-  'resident_ms',
-  'attending_ms',
-  'attending_resident',
-] as const
+import { ASCENSO_V1 } from '@/lib/program-definition'
+export const COHORT_TRACKS = ASCENSO_V1.tracks
 export type CohortTrack = (typeof COHORT_TRACKS)[number]
 
 // Admin-facing track labels, mentor → mentee direction. The applicant-facing

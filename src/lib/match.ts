@@ -1,10 +1,7 @@
 import type { Mentor } from '@/types/mentor'
+import { ASCENSO_V1 } from '@/lib/program-definition'
 
-export const WEIGHTS = {
-  identity: 0.40,
-  specialty: 0.35,
-  canHelpWith: 0.25,
-}
+export const WEIGHTS = ASCENSO_V1.matching
 
 /**
  * Score overlap between mentee preferences and mentor tags.

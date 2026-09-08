@@ -16,7 +16,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 6 — Cohort / Program Lifecycle | Fixed | 23–27 |
 | 7 — Person / Role / Participation Model | Fixed | 28–31 |
 | 8 — Audit / Event History | Fixed | 32–33 |
-| 9 — Branding / Program Configuration | Pending | 34–36 |
+| 9 — Branding / Program Configuration | Fixed | 34–36 |
 | 10 — Scale / Query Completeness | Pending | 37–38 |
 | 11 — Testing / Recovery | Pending | 39–41 |
 | 12 — Privacy / Data Governance | Pending | 42–44 |
@@ -61,9 +61,9 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 31 | Authorization Centralization | Fixed | Shared person/participation resolver revalidates owned active selection; stale/forged selection fails closed. Member writes retain pair/cohort guards; Phase 6 central scoped grants remain authoritative. Negative participant, removed-grant, multi-grant and super tests pass. Digest content, cooldown and admin retries are cohort-scoped. |
 | 32 | Operational Event History | Fixed | Existing decision, activation/end, member status, grant and lifecycle events retained. Selection/approval/removal now use scoped transactions that atomically record actor, target, time and minimal relationship metadata. New selections link prior ended relationships as reassignment events; removed selection history survives row removal. Available through operational-event export. |
 | 33 | Access / Export Audit | Fixed | Minimal scoped export-request event records administrator, cohort, table and time before reading export rows; audit failure blocks the export. It records a request, not successful download or readership. Deeper access auditing remains intentionally deferred until institutional procurement/security requires it. |
-| 34 | Limited Branding Configuration | Pending | Limited program/org/asset/support/email identity/origin configuration preserving AP MED and Ascenso; no theme/domain console. |
-| 35 | Program Definitions Embedded In Code | Pending | Version realistic program-specific definitions without reinterpreting existing cohorts or canonical tags. |
-| 36 | Configurable Matching | Pending | Keep Ascenso policy fixed unless a small versioned abstraction is justified. Arbitrary matching controls wait for a paying program’s concrete policy difference; solve cardinality first. |
+| 34 | Limited Branding Configuration | Fixed | Existing program/organization settings now feed application identity labels; support settings and exact configured origin retained. New queued messages use sanitized program display identity via AP MED with the existing verified address. Additional logo placement intentionally awaits a supplied approved asset; public landing/shell review remains assisted onboarding. No arbitrary assets, themes or domain console. |
+| 35 | Program Definitions Embedded In Code | Fixed | Released ascenso-v1 centralizes tracks, milestone labels, survey waves and scoring policy. Cohorts have immutable supported definition versions; exports carry the version. Application and canonical-tag contracts remain explicitly versioned existing implementations, with no data relabeling. New definitions require compatible consumers/tests and a migration, not a builder. |
+| 36 | Configurable Matching | Fixed | Existing 40/35/25 weights are read from the released definition and tested unchanged. Same-track selection, board override and assignment constraints retained. Arbitrary/customer weights intentionally deferred until a paying program identifies a concrete policy difference. |
 | 37 | Pagination / Query Limit Safety | Pending | Complete paginated reads for reports/exports/digests/lists; explicit failure rather than silent truncation. |
 | 38 | Matching Computational Scale | Pending | Document supported cohort size and pair-computation limits; no distributed matching without realistic volume evidence. |
 | 39 | Core Regression Coverage | Pending | Targeted lifecycle, ownership, isolation, concurrency, delivery and export tests. Phase 1 covers only its own security cases. |
@@ -165,11 +165,21 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 8 checkpoint
 
+- Commit: `42f5230`.
 - Items 32–33 inspected against current handlers. Existing transactions record application decisions, activation/end, member corrections/status, grants and cohort lifecycle. Match selection, approval and removal still write directly without atomic actor-attributed events; rematching needs links to retained ended matches. Existing operational-event export can expose this history without a separate audit product.
 - Implementation scope: transactional selection/approval/removal with scoped actor checks and minimal relationship metadata; preserve current deterministic scoring and activation/email behavior. Record export requests through a narrow scoped event function without duplicating exported content. Deeper access logging remains intentionally deferred to an institutional procurement/security requirement. Match override/rejection reason collection remains Phase 15 rather than expanding Phase 8 UI scope.
 - Items 32–33 explicitly addressed. Migration `20260908133738_ascenso_operational_history.sql` follows Phase 7 and precedes dependent code. No hosted migration, deployment, environment/provider changes or dependencies. Existing events are not fabricated for old selections. Export events record requests even if the later export fails; they do not prove receipt.
 - Validation: 67 existing Node regressions plus two new route tests passed; TypeScript and focused ESLint passed. Disposable PostgreSQL verifies actor-attributed selection/approval/removal, retained removal history, reassignment links, scoped export metadata, wrong-cohort denial and client execute denial. No provider/browser verification claim. Score/track computation remains server-side and assignment constraints remain authoritative.
 - Manual steps: apply migration in order before deployment and use the existing Operational events export when reviewing changes. Access/export retention remains Phase 12; query completeness remains Phase 10. No enterprise access-log product or historical backfill was added.
+
+## Phase 9 checkpoint
+
+- Existing names/organization labels and scoped support editor are retained; custom origin remains operator-configured through `ASCENSO_SITE_URL`, not inferred from a request. Public intake copy still contains program-specific text and requires the limited branding work in item 34.
+- Working-tree implementation introduces released `ascenso-v1` vocabulary for tracks, survey waves and fixed scoring weights, reused by intake, shared cohort types, surveys and scoring. The additive definition-version migration pins existing/new cohorts to that supported version and prevents later reinterpretation. This is not a configurable rule builder; future versions require explicit implementation and compatibility work.
+- Items 34–36 explicitly addressed. Configuration and compatibility decisions are in `docs/architecture/ascenso-program-configuration.md`. Migration `20260908134231_ascenso_program_definition_version.sql` follows Phase 8, unapplied to hosted databases. No new environment variables, dependencies or provider configuration.
+- Application header and organization consent labels use the configured cohort name/organization; the development preview supplies its explicit organization. CSV rows include the cohort definition version. Queued digest/announcement/decision/introduction builders use a sanitized program display name via AP MED while retaining the verified sending address; previously frozen messages retain their original identity.
+- Validation: 71 Node tests passed, including sender-header safety and exact scoring/vocabulary; TypeScript, focused ESLint and local PostgreSQL migration checks passed. Database checks reject unsupported definitions and historical reassignment. Export-route regression verifies version attribution. No browser/provider end-to-end claim.
+- Manual rollout: apply migration before dependent code; confirm program/organization/support settings. A new public organization still needs landing/shell/asset review and the existing hostname/provider checklist. Limited configuration does not claim simultaneous public intakes or generalized white-label support. Phase 10 owns complete export/query reads; Phase 12 owns privacy-copy review.
 
 ## Remaining audit boundaries
 

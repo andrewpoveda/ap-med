@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ASCENSO_V1 } from '@/lib/program-definition'
 
 /**
  * Read models for the cohort member dashboard (ascenso-prm.md §6.3, §7.6).
@@ -37,16 +38,7 @@ export type MilestoneView = {
 // with the item-7 admin milestone grid (page + write route) so the admin write
 // side and the member read side can never drift. Survey completion is derived
 // from survey_responses (§5.12) and deliberately NOT in this catalog.
-export const MILESTONE_CATALOG: Record<CohortMemberType, { key: string; label: string }[]> = {
-  mentor: [
-    { key: 'orientation', label: 'Orientation' },
-    { key: 'mentor_training', label: 'Mentor training' },
-  ],
-  mentee: [
-    { key: 'orientation', label: 'Orientation' },
-    { key: 'mentee_training', label: 'Mentee training' },
-  ],
-}
+export const MILESTONE_CATALOG: Record<CohortMemberType, readonly { key: string; label: string }[]> = ASCENSO_V1.milestones
 
 /** Display name of a cohort, or a neutral fallback. */
 export async function getCohortName(

@@ -7,6 +7,7 @@ import { cap, isValidEmail, LIMITS } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
 import { getAscensoCohortId } from '@/lib/site'
 import { normalizeEmail } from '@/lib/email-identity'
+import { ASCENSO_V1 } from '@/lib/program-definition'
 import { SPECIALTIES } from '@/data/specialties'
 import {
   IDENTITY_OPTIONS,
@@ -23,7 +24,7 @@ import {
 // way in.
 
 const ROLES = ['mentor', 'mentee'] as const
-const TRACKS = ['ms_premed', 'resident_ms', 'attending_ms', 'attending_resident'] as const
+const TRACKS = ASCENSO_V1.tracks
 
 type Role = (typeof ROLES)[number]
 type Track = (typeof TRACKS)[number]

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ASCENSO_V1 } from '@/lib/program-definition'
 import { cap, LIMITS } from '@/lib/validate'
 import type { CohortMemberRef, CohortMemberType } from '@/lib/cohort-dashboard'
 
@@ -21,7 +22,7 @@ import type { CohortMemberRef, CohortMemberType } from '@/lib/cohort-dashboard'
  * member must never read or write another member's response.
  */
 
-export const SURVEY_WAVES = ['mid_year', 'end_year'] as const
+export const SURVEY_WAVES = ASCENSO_V1.surveyWaves
 export type SurveyWave = (typeof SURVEY_WAVES)[number]
 export function isSurveyWave(value: unknown): value is SurveyWave {
   return typeof value === 'string' && (SURVEY_WAVES as readonly string[]).includes(value)

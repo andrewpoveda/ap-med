@@ -43,7 +43,7 @@ export async function GET(
     // Malformed uuid → lookup error → same 404 as a miss.
     const { data: cohort, error: cohortError } = await admin
       .from('cohorts')
-      .select('id, name')
+      .select('id, name, definition_version')
       .eq('id', cohortId)
       .maybeSingle()
     if (cohortError || !cohort) {
@@ -62,7 +62,10 @@ export async function GET(
       return NextResponse.json({ error: 'Could not build the export' }, { status: 500 })
     }
 
-    const csv = toCsv(headers, rows)
+    const csv = toCsv(
+      ['Program definition', ...headers],
+      rows.map(row => [cohort.definition_version as string, ...row]),
+    )
     const date = new Date().toISOString().slice(0, 10)
     const filename = `ascenso-${slugify(cohort.name as string)}-${table}-${date}.csv`
 

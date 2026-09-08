@@ -39,7 +39,7 @@ export default async function Page() {
     redirect(customerHost ? '/ascenso' : '/')
   }
 
-  let cohort: { id: string; name: string } | null = null
+  let cohort: { id: string; name: string; org: string } | null = null
   const cohortId = getAscensoCohortId()
 
   if (!cohortId) {
@@ -48,7 +48,7 @@ export default async function Page() {
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('cohorts')
-      .select('id, name')
+      .select('id, name, org')
       .eq('id', cohortId)
       .eq('status', 'applications_open')
       .maybeSingle()
@@ -107,5 +107,5 @@ export default async function Page() {
     )
   }
 
-  return <AscensoApplyForm cohortId={cohort.id} cohortName={cohort.name} />
+  return <AscensoApplyForm cohortId={cohort.id} cohortName={cohort.name} organizationName={cohort.org} />
 }

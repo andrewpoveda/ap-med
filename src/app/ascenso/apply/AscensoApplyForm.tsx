@@ -104,9 +104,11 @@ const TRACKS: { value: string; mentor: string; mentee: string }[] = [
 export default function AscensoApplyForm({
   cohortId,
   cohortName,
+  organizationName,
 }: {
   cohortId: string
   cohortName: string
+  organizationName: string
 }) {
   const posthog = usePostHog()
   const [form, setForm] = useState<ApplicationFormData>({
@@ -429,10 +431,10 @@ export default function AscensoApplyForm({
     <div className="ascenso-apply-page">
       <div className="ascenso-apply-shell" ref={formTopRef}>
         <header className="ascenso-apply-header">
-          <p className="ascenso-apply-kicker">Ascenso · LMSA-NE</p>
+          <p className="ascenso-apply-kicker">Ascenso · {organizationName}</p>
           <h1>Apply to {cohortName}</h1>
           <p>
-            Ascenso is a structured, board-reviewed mentorship cohort run by LMSA-NE on AP MED.
+            {cohortName} is a structured, board-reviewed mentorship cohort run by {organizationName} on AP MED.
             Pairs are matched across four tracks — premed through resident — and meet regularly
             throughout the program year. Applications take about 5 minutes.
           </p>
@@ -877,8 +879,8 @@ export default function AscensoApplyForm({
                     onChange={e => setForm(prev => ({ ...prev, agrees_surveys: e.target.checked }))}
                     style={{ accentColor: '#c8a96e' }}
                   />
-                  I agree to complete brief midpoint and end-of-year feedback surveys to help LMSA
-                  Northeast evaluate and improve Ascenso. *
+                  I agree to complete brief midpoint and end-of-year feedback surveys to help {organizationName}
+                  {' '}evaluate and improve {cohortName}. *
                 </label>
                 <label style={checkCardStyle(form.agrees_conduct)}>
                   <input
@@ -909,7 +911,7 @@ export default function AscensoApplyForm({
                 <strong>Your information stays private.</strong>
                 <p>
                   Application information will be reviewed only by authorized Ascenso reviewers
-                  and designated members of LMSA Northeast leadership for application review,
+                  and designated members of {organizationName} leadership for application review,
                   matching, communication, and evaluation. Information will not be made public
                   without the applicant&apos;s permission.
                 </p>

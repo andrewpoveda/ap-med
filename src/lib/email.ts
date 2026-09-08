@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import type { ScoredMentor } from '@/types/mentor'
 import { safeUrl } from '@/lib/url'
 import { ascensoAbsoluteUrl } from '@/lib/site'
+import { programEmailFrom } from '@/lib/program-brand'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -342,12 +343,12 @@ export async function sendAscensoSignInLink(params: {
 
 
 export function buildDigestMessage(recipient: { email: string; firstName: string; memberType: 'mentor' | 'mentee'; cohortName: string; items: { text: string }[] }) {
-  return { from: 'AP MED Mentors <mentors@ap-med.org>', to: recipient.email, replyTo: 'mentors@ap-med.org',
+  return { from: programEmailFrom(recipient.cohortName), to: recipient.email, replyTo: 'mentors@ap-med.org',
     subject: `Your ${recipient.cohortName} check-in — ${recipient.items.length} items waiting`, html: buildDigestHtml(recipient) }
 }
 
 export function buildAnnouncementMessage(recipient: string, cohortName: string, subject: string, body: string) {
-  return { from: 'AP MED Mentors <mentors@ap-med.org>', to: recipient, replyTo: 'mentors@ap-med.org', subject,
+  return { from: programEmailFrom(cohortName), to: recipient, replyTo: 'mentors@ap-med.org', subject,
     html: buildAnnouncementHtml({ cohortName, subject, body }) }
 }
 
@@ -528,7 +529,7 @@ export function buildCohortOperationalEmail(delivery: {
     ? `<p>Hi ${name},</p><p>${decisionCopy[delivery.variant] ?? ''}</p>${delivery.variant === 'approved' ? primaryButton(login, 'Sign in with Google') : ''}`
     : `<p>Hi ${name}, the ${cohort} team has matched you with ${escapeHtml(p.partnerName ?? '')}.</p><p>Contact your ${delivery.variant === 'mentor' ? 'mentee' : 'mentor'} at <a href="mailto:${escapeHtml(p.partnerEmail ?? '')}">${escapeHtml(p.partnerEmail ?? '')}</a> to arrange your first conversation.</p>${primaryButton(login, 'Open your dashboard')}<p>Sign in with the Google account for this email address.</p>`
   return {
-    from: 'AP MED Mentors <mentors@ap-med.org>',
+    from: programEmailFrom(p.cohortName ?? ''),
     to: delivery.recipient_email,
     replyTo: decision ? 'mentors@ap-med.org' : p.partnerEmail,
     subject: decision ? `Application ${delivery.variant} — ${p.cohortName}` : `You've been matched with ${p.partnerName} — ${p.cohortName}`,
