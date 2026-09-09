@@ -21,7 +21,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 11 — Testing / Recovery | Fixed | 39–41 |
 | 12 — Privacy / Data Governance | Fixed | 42–44 |
 | 13 — Features To Defer, But Explicitly Track | Intentionally deferred | 45–55 |
-| 14 — Institutional Items To Document, Not Overbuild | Pending | 56–60 |
+| 14 — Institutional Items To Document, Not Overbuild | Fixed | 56–60 |
 | 15 — Pilot Learning / Product Evidence | Pending | 61–64 |
 
 ## Numbered item dispositions
@@ -83,8 +83,8 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 53 | Native Mobile / In-App Chat / Video / Training Lms | Intentionally deferred | Requested. Defer native apps/chat/video/LMS until evidence browser/email/calendar is insufficient; first fix current member friction. |
 | 54 | Subscription Billing / Automated Provisioning | Intentionally deferred | Requested. Defer subscription billing/provisioning while contracts are assisted/invoiced; revisit at repeatable sales volume, after supported setup/lifecycle. |
 | 55 | Universal Form / Survey / Workflow Builders | Intentionally deferred | Requested. Defer universal builders until repeated customer requirements defeat specific versioned definitions; first preserve historical program meaning. |
-| 56 | Accessibility | Pending | Institutional validation remains deferred until buyer target is known: keyboard, screen reader, focus, labels, contrast and errors. Source inspection is not compliance; fix trivial touched-component defects if found. |
-| 57 | Procurement / Security Evidence | Pending | Document actual architecture/auth/RLS/telemetry/recovery/data/providers/deployment evidence in this phase; no certification claims. |
+| 56 | Accessibility | Intentionally deferred | Formal institutional validation requires the buyer's target. ascenso-institutional-evidence.md specifies keyboard, screen-reader, focus, labels, contrast, reflow and error testing plus evidence recording. Source inspection is not compliance; no completed accessibility certification claimed. |
+| 57 | Procurement / Security Evidence | Fixed | Institutional evidence index maps architecture, auth/grants, DB controls, telemetry, recovery, data handling, providers and deployment to implementation/tests and separates each from hosted/customer verification. No certification or unverified account-state claims. |
 | 58 | Reader / Reviewer Role Separation | Intentionally deferred | Institutional. Defer fine reader/reviewer separation until staffing requires it; dependency: correct grant model (25–27). |
 | 59 | Access / Export Auditing | Intentionally deferred | Institutional. Defer deeper access/export audit until procurement requires it; dependency: operational events (32–33). |
 | 60 | Procurement-Driven Auth/Calendar Compatibility | Intentionally deferred | Requested. Procurement-driven auth/calendar compatibility follows separate triggers in 45–46; dependency: current identity and scheduling correctness. |
@@ -210,8 +210,14 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 13 checkpoint
 
+- Commit: `aa94930`.
 - Items 45–55 remain explicitly **Intentionally deferred**. `docs/features/ascenso-deferred-features.md` records each current capability, reason to defer and exact customer/evidence trigger. No feature implementation was added.
 - Validation: reviewed all eleven numbered dispositions against the roadmap and existing capability boundaries; documentation diff check passed. No migration, dependency, configuration, provider, production or deployment steps. Revisit only upon the recorded trigger, not generic enterprise expectations.
+
+## Phase 14 checkpoint
+
+- Items 56–60 explicitly dispositioned: procurement evidence documented; formal accessibility validation, finer roles, deeper access auditing and procurement-specific identity/calendar work remain intentionally deferred to their stated requirements. See `docs/features/ascenso-institutional-evidence.md`.
+- Validation: documentation reviewed against implementation paths and prior local evidence; diff check passed. No code, migration, provider/configuration, dependency or production changes. This checkpoint does not claim accessibility/security certification or a completed institutional procurement review.
 
 ## Remaining audit boundaries
 
