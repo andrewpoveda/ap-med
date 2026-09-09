@@ -33,3 +33,19 @@ This file is the canonical automatic context for the repository. Keep it short a
 - Database schema, migrations, or data-access work: `database/README.md` and the scoped `.cursor/rules/database-data-access-portability.mdc`
 
 Do not preload `docs/history/`, `database/history/`, the external AP MED Vault, build logs, audits, or planning documents. Consult them only for an explicitly historical question.
+
+## Git and commit behavior
+
+- Prefer multiple small, coherent commits over one large commit whenever the work naturally contains separate logical changes.
+- Treat each independently complete feature, fix, refactor, test addition, documentation change, or roadmap phase as a separate commit when practical.
+- Each commit should represent one meaningful unit of work that can be understood, reviewed, reverted, or cherry-picked independently.
+- For multi-step plans, audits, or roadmaps, preserve logical commit boundaries between independently complete phases or items when practical; do not wait until the end and collapse the entire task into one commit.
+- Use clear Conventional Commit-style messages such as `feat(...)`, `fix(...)`, `docs(...)`, `test(...)`, `refactor(...)`, or `chore(...)`.
+- Run appropriate focused validation before committing each logical unit of work.
+- Before committing, inspect the working tree and staged diff to ensure unrelated pre-existing changes are not included.
+- Do not combine unrelated changes into the same commit.
+- Do not create artificial, empty, no-op, typo-only, or otherwise unnecessary commits solely to increase commit count.
+- Do not artificially split a single indivisible change into multiple commits.
+- Preserve unrelated uncommitted work and never include it in a commit unless explicitly requested.
+- Do not squash completed logical commits at the end of a task unless explicitly requested.
+- At the end of the task, report all commits created during the task in chronological order, including each commit hash and message.
