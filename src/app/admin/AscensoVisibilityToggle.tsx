@@ -1,5 +1,6 @@
 'use client'
 
+import { cardStyle } from '@/components/styles'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CSSProperties } from 'react'
@@ -15,14 +16,6 @@ import type { CSSProperties } from 'react'
 // misclick here publishes a partner program, which is not a mistake that should
 // be one click away. Turning it OFF is immediate: hiding is always the safe
 // direction and should never be slowed down.
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
 
 const buttonBase: CSSProperties = {
   padding: '0.6rem 1.25rem',

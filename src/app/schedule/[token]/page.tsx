@@ -1,5 +1,6 @@
+import { cardStyle } from '@/components/styles'
 import type { Metadata } from 'next'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { hashScheduleToken } from '@/lib/crypto'
@@ -23,14 +24,6 @@ export const metadata: Metadata = {
   // Tokenized capability URLs must never be indexed (robots.ts also disallows
   // /schedule/ site-wide).
   robots: { index: false, follow: false },
-}
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
 }
 
 function Shell({ children }: { children: ReactNode }) {

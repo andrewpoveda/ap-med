@@ -1,6 +1,6 @@
+import { cardStyle } from '@/components/styles'
 import { completeQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -20,14 +20,6 @@ export const metadata: Metadata = {
 // send route (POST /api/admin/announcements) resolves recipients from cohort
 // membership and enforces both email budget rules. This page shows the composer
 // with live recipient counts, today's budget headroom, and the send history.
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
 
 type AnnouncementRow = {
   id: string

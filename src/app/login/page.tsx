@@ -1,3 +1,4 @@
+import { eyebrowStyle } from '@/components/styles'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -42,14 +43,6 @@ const cardStyle: CSSProperties = {
   textAlign: 'left',
   maxWidth: '34rem',
   margin: '0 auto',
-}
-
-const eyebrowStyle: CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#9a948a',
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  margin: '0 0 0.5rem',
 }
 
 const bodyStyle: CSSProperties = {
