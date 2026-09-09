@@ -1,35 +1,17 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 import { scoreMentor } from '@/lib/match'
 import { toPublicMentor } from '@/types/mentor'
 import type { Mentor, ScoredMentor, ScoredPublicMentor } from '@/types/mentor'
-import { cap, isValidEmail, LIMITS } from '@/lib/validate'
+import { cap, isValidEmail, LIMITS, pickTags } from '@/lib/validate'
 import { SPECIALTIES } from '@/data/specialties'
 import { HELP_WITH_OPTIONS, IDENTITY_OPTIONS } from '@/data/tags'
 import { MENTEE_STAGE_OPTIONS } from '@/data/mentee-onboarding'
 import { isHttpUrl } from '@/lib/url'
 
-function pickTags(value: unknown, allowedOptions: string[]): string[] {
-  if (!Array.isArray(value)) return []
-  const allowed = new Set(allowedOptions)
-  return Array.from(
-    new Set(value.filter((item): item is string => typeof item === 'string' && allowed.has(item))),
-  )
-}
-
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase server environment variables')
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey)
-}
 
 
 export async function POST(request: Request) {
