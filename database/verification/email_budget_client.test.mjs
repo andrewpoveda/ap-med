@@ -6,8 +6,8 @@ import {
   releaseEmailBudgetSlots,
   reserveNotifyEmailBudget,
 } from '../../src/lib/email-budget.ts'
-import { isNotifyDryRunAllowed } from '../../src/lib/notify-request.ts'
-import { isUuid } from '../../src/lib/uuid.ts'
+import { isNotifyDryRunAllowed } from '../../src/lib/test-mode.ts'
+import { isUuid } from '../../src/lib/validate.ts'
 
 function rpcClient(handler) {
   return { rpc: handler }

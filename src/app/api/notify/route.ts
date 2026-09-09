@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { notifyMentorOfMatch, notifyMenteeOfRequest } from '@/lib/email'
 import { scoreMentor } from '@/lib/match'
@@ -13,19 +13,10 @@ import {
   releaseEmailBudgetSlots,
   reserveNotifyEmailBudget,
 } from '@/lib/email-budget'
-import { isUuid } from '@/lib/uuid'
-import { isNotifyDryRunAllowed } from '@/lib/notify-request'
+import { isUuid } from '@/lib/validate'
+import { isNotifyDryRunAllowed } from '@/lib/test-mode'
 import { absoluteUrl, getBaseUrlForHostname, getRequestHostname } from '@/lib/site'
 import type { Mentor } from '@/types/mentor'
-
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase server environment variables')
-  }
-  return createClient(supabaseUrl, supabaseServiceRoleKey)
-}
 
 const MAX_NOTES = 2000
 

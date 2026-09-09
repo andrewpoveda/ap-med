@@ -23,3 +23,16 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export function isValidEmail(value: unknown): boolean {
   return typeof value === 'string' && EMAIL_RE.test(value.trim())
 }
+
+/** Preserve exact canonical tags and first-occurrence order; discard unknown values. */
+export function pickTags(value: unknown, allowed: readonly string[]): string[] {
+  if (!Array.isArray(value)) return []
+  const allowedSet = new Set(allowed)
+  return [...new Set(value.filter((tag): tag is string => typeof tag === 'string' && allowedSet.has(tag)))]
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function isUuid(value: string): boolean {
+  return value.length === 36 && UUID_RE.test(value)
+}

@@ -6,3 +6,11 @@
 export function isMutationDryRunAllowed(nodeEnv: string | undefined): boolean {
   return nodeEnv === 'development' || nodeEnv === 'test'
 }
+
+// Notification previews return before side effects, unlike mutation dry runs.
+export function isNotifyDryRunAllowed(
+  nodeEnv: string | undefined,
+  vercelEnv: string | undefined,
+): boolean {
+  return nodeEnv === 'development' || vercelEnv === 'preview'
+}

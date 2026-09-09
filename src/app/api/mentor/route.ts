@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyTurnstileToken } from '@/lib/turnstile'
 import { PUBLIC_MENTOR_COLUMNS } from '@/types/mentor'
 import { isHttpUrl } from '@/lib/url'
-import { cap, isValidEmail, LIMITS } from '@/lib/validate'
+import { cap, isValidEmail, LIMITS, pickTags } from '@/lib/validate'
 import { SPECIALTIES } from '@/data/specialties'
 import { HELP_WITH_OPTIONS, IDENTITY_OPTIONS } from '@/data/tags'
 import { normalizeEmail } from '@/lib/email-identity'
@@ -12,17 +12,6 @@ import {
   MENTOR_CONTACT_OPTIONS,
   MENTOR_STAGE_OPTIONS,
 } from '@/data/mentor-onboarding'
-
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase server environment variables')
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey)
-}
 
 export async function GET() {
   try {
@@ -218,10 +207,4 @@ export async function POST(request: Request) {
 
 function pickOne(value: unknown, allowed: readonly string[]): string {
   return typeof value === 'string' && allowed.includes(value) ? value : ''
-}
-
-function pickTags(value: unknown, allowed: readonly string[]): string[] {
-  if (!Array.isArray(value)) return []
-  const allowedSet = new Set(allowed)
-  return [...new Set(value.filter((tag): tag is string => typeof tag === 'string' && allowedSet.has(tag)))]
 }
