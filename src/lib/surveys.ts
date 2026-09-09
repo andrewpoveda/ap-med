@@ -38,9 +38,7 @@ export function waveLabel(wave: string): string {
 
 export const SURVEY_STATUSES = ['draft', 'open', 'closed'] as const
 export type SurveyStatus = (typeof SURVEY_STATUSES)[number]
-export function isSurveyStatus(value: unknown): value is SurveyStatus {
-  return typeof value === 'string' && (SURVEY_STATUSES as readonly string[]).includes(value)
-}
+
 
 export const QUESTION_TYPES = ['text', 'scale', 'select'] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
