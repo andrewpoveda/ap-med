@@ -1,3 +1,4 @@
+import { recordProgramAccess } from '@/lib/program-access'
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
@@ -194,6 +195,7 @@ export default async function AscensoDashboardPage({
     memberId: mentee.id,
     cohortId: mentee.cohort_id,
   }
+  await recordProgramAccess(admin, user.id, ref)
 
   // Surveys are cohort-wide (scoped to the member's cohort + id, not to a
   // match), so they resolve alongside the match/onboarding fetch.

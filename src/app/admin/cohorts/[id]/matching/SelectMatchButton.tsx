@@ -18,20 +18,23 @@ export default function SelectMatchButton({
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reason, setReason] = useState('')
+  const [recorded, setRecorded] = useState(false)
 
-  async function select() {
+  async function select(action: 'select' | 'skip') {
     setPending(true)
     setError(null)
     try {
       const res = await fetch('/api/admin/cohort-matches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cohortId, mentorId, menteeId }),
+        body: JSON.stringify({ cohortId, mentorId, menteeId, action, reason }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data.error ?? 'Could not select this pair.')
       } else {
+        setRecorded(action === 'skip')
         router.refresh()
       }
     } catch {
@@ -43,8 +46,12 @@ export default function SelectMatchButton({
 
   return (
     <span className="inline-flex items-center gap-2">
+      <label className="text-xs">Choice / skip reason
+        <input value={reason} onChange={event => setReason(event.target.value)} maxLength={2000}
+          placeholder="Optional for selection" className="block rounded border p-1" />
+      </label>
       <button
-        onClick={select}
+        onClick={() => select('select')}
         disabled={pending}
         style={{
           background: '#ffffff',
@@ -60,6 +67,9 @@ export default function SelectMatchButton({
       >
         {pending ? 'Selecting…' : 'Select'}
       </button>
+      <button onClick={() => select('skip')} disabled={pending || reason.trim().length < 3 || recorded}
+        className="text-xs underline">{recorded ? 'Skip recorded' : 'Record skip'}</button>
+      <span role="status" className="sr-only">{recorded ? 'Candidate skip reason recorded; no match was created.' : ''}</span>
       {error && (
         <span style={{ color: '#a34a42', fontSize: '0.78rem' }}>{error}</span>
       )}

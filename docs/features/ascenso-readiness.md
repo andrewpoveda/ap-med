@@ -22,7 +22,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 12 — Privacy / Data Governance | Fixed | 42–44 |
 | 13 — Features To Defer, But Explicitly Track | Intentionally deferred | 45–55 |
 | 14 — Institutional Items To Document, Not Overbuild | Fixed | 56–60 |
-| 15 — Pilot Learning / Product Evidence | Pending | 61–64 |
+| 15 — Pilot Learning / Product Evidence | Fixed | 61–64 |
 
 ## Numbered item dispositions
 
@@ -88,10 +88,10 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 58 | Reader / Reviewer Role Separation | Intentionally deferred | Institutional. Defer fine reader/reviewer separation until staffing requires it; dependency: correct grant model (25–27). |
 | 59 | Access / Export Auditing | Intentionally deferred | Institutional. Defer deeper access/export audit until procurement requires it; dependency: operational events (32–33). |
 | 60 | Procurement-Driven Auth/Calendar Compatibility | Intentionally deferred | Requested. Procurement-driven auth/calendar compatibility follows separate triggers in 45–46; dependency: current identity and scheduling correctness. |
-| 61 | Match Override / Rejection Reasons | Pending | Record lightweight board override/rejection reasons before algorithm sophistication. |
-| 62 | Support / Manual Work Tracking | Pending | Small manual support/intervention/time tracking workflow; no helpdesk. |
-| 63 | Pilot Funnel | Pending | Honest application/approval/sign-in/selection/activation/first meeting/repeat activity/goals/survey funnel. |
-| 64 | Participant Feedback Timing | Pending | Early pilot feedback wave only if trivial; otherwise document external feedback survey, not a builder. |
+| 61 | Match Override / Rejection Reasons | Fixed | Candidate controls record optional selection reasons and required skip reasons with server-derived pair/track/score. Selection and reason commit atomically; skip creates no match or permanent exclusion. Operational export preserves feedback for policy review. |
+| 62 | Support / Manual Work Tracking | Fixed | ascenso-pilot-learning.md defines a restricted manual register, categories, reference IDs, minutes/outcomes/owners and weekly review. Captures external support and interventions without copying private records or building a helpdesk. |
+| 63 | Pilot Funnel | Fixed | Cohort-scoped funnel export distinguishes application/approval, first observed authenticated dashboard access, selection/activation, distinct past meeting dates, shared goals and named responses. Unknown historical access/activation stays blank; proposed rows and duplicate same-day logs do not inflate stages. Pair activity is not individual retention. |
+| 64 | Participant Feedback Timing | Fixed | Documented organization-approved external feedback after 2–4 weeks/first conversation, named-versus-anonymous disclosure, review owner and intervention follow-up. Built-in versioned waves remain unchanged; no generic builder. |
 
 ## Phase 1 implementation and rollout
 
@@ -216,8 +216,17 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 14 checkpoint
 
+- Commit: `d008112`.
 - Items 56–60 explicitly dispositioned: procurement evidence documented; formal accessibility validation, finer roles, deeper access auditing and procurement-specific identity/calendar work remain intentionally deferred to their stated requirements. See `docs/features/ascenso-institutional-evidence.md`.
 - Validation: documentation reviewed against implementation paths and prior local evidence; diff check passed. No code, migration, provider/configuration, dependency or production changes. This checkpoint does not claim accessibility/security certification or a completed institutional procurement review.
+
+## Phase 15 checkpoint
+
+- Working-tree candidate controls accept optional selection reasons and required skip reasons. The new scoped transaction records pair/track/score/reason alongside selection, or records a skip without creating a match. Validation remains outstanding.
+- Added first observed authenticated program-dashboard access storage and an owner-checked idempotent RPC, called only after resolving an owned member. No historical first-sign-in dates are fabricated. Funnel export/definitions and focused SQL tests remain unfinished, as do the manual-work and early-feedback workflows. Phase 15 is not yet complete or committed.
+- Funnel export and `ascenso-pilot-learning.md` now distinguish application/approval, observed access, selection, activation, distinct past meeting dates, shared goals and named responses. The document supplies a restricted manual-work register workflow and an external early-feedback process without changing built-in survey definitions. Local SQL checks for owned/idempotent access, candidate skip/selection history and client denial passed; Node funnel tests preserve unknown history, exclude future/cross-cohort records and avoid duplicate-date repeat counts. Final phase review/commit remains outstanding.
+- Completion: items 61–64 dispositioned. Migration `20260909001134_ascenso_pilot_learning.sql` follows Phase 9's schema migration and precedes dependent code; no hosted migration performed. It adds observed-access records and candidate-feedback transactions, without historical timestamp fabrication. No dependencies, environment/provider changes or deployment.
+- Validation: 78 Node tests, focused TypeScript/ESLint and disposable Phase 15 SQL checks passed. Manual steps: assign the work-register and early-feedback owners, agree denominators/cutoff and protect named exports. Full cumulative release validation remains the final goal gate, not implied by this checkpoint.
 
 ## Remaining audit boundaries
 

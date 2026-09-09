@@ -5,6 +5,7 @@ import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getMemberTrackMaps } from '@/lib/cohort-matching'
 import { scoreMentor } from '@/lib/match'
+import { cap, LIMITS } from '@/lib/validate'
 
 // Board match selection (ascenso-prm.md §5.4): POST records a board-selected
 // pair as a cohort_matches row with status `board_approved`. The click IS the
@@ -29,6 +30,11 @@ export async function POST(request: Request) {
     const cohortId = String(body.cohortId ?? '')
     const mentorId = String(body.mentorId ?? '')
     const menteeId = String(body.menteeId ?? '')
+    const action = body.action ?? 'select'
+    const reason = cap(body.reason, LIMITS.text).trim()
+    if (!['select', 'skip'].includes(action) || (action === 'skip' && reason.length < 3)) {
+      return NextResponse.json({ error: 'Choose an action and explain any skipped candidate' }, { status: 400 })
+    }
     if (!cohortId || !mentorId || !menteeId) {
       return NextResponse.json({ error: 'Missing ids' }, { status: 400 })
     }
@@ -101,9 +107,10 @@ export async function POST(request: Request) {
       help_with: Array.isArray(mentee.help_with) ? mentee.help_with : [],
     })
 
-    const { data: created, error: insertError } = await admin.rpc('ascenso_select_match', {
+    const { data: created, error: insertError } = await admin.rpc('ascenso_candidate_choice', {
       p_cohort: cohortId, p_actor: adminUser.id, p_mentor: mentor.id,
       p_mentee: mentee.id, p_track: mentorTrack, p_score: score,
+      p_action: action, p_reason: reason,
     })
 
     if (insertError || !created) {
@@ -118,7 +125,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not save the match' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, matchId: created, score })
+    return NextResponse.json({ success: true, matchId: created.matchId, score })
   } catch (err) {
     console.error('Match selection crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

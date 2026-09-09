@@ -1,4 +1,5 @@
 import { completeQuery } from '@/lib/complete-query'
+import { buildPilotFunnel } from '@/lib/pilot-funnel'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { TRACK_LABELS } from '@/types/cohort'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
@@ -27,6 +28,7 @@ export const EXPORT_TABLES = [
   'surveys',
   'events',
   'sessions',
+  'funnel',
 ] as const
 export type ExportTable = (typeof EXPORT_TABLES)[number]
 
@@ -45,6 +47,7 @@ export const EXPORT_LABELS: Record<ExportTable, string> = {
   surveys: 'Named survey responses',
   events: 'Operational events',
   sessions: 'Attributed session records',
+  funnel: 'Pilot funnel (observed evidence)',
 }
 
 export type CohortExport = {
@@ -115,6 +118,7 @@ export async function buildCohortExport(
   table: ExportTable,
 ): Promise<CohortExport> {
   switch (table) {
+    case 'funnel': return buildPilotFunnel(admin, cohortId)
     case 'members': {
       const [mentorsRes, menteesRes] = await Promise.all([
         completeQuery(admin
