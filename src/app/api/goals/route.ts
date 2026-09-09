@@ -7,16 +7,9 @@ import { cap, LIMITS } from '@/lib/validate'
 import { resolveActingMember, checkPartyToMatch, parseTargetDate } from '@/lib/goals'
 
 /**
- * Create a goal on a match (ascenso-prm.md §4 / §7.10). Goals are a shared
- * per-pair list — both the cohort mentor and the cohort mentee create/edit them
- * (PATCH /api/goals/[id] handles status/title/target_date). Same member-write
- * posture as item 9 (§6.3 P0): resolve the acting member from the session to
- * their OWN cohort row, then verify they are a party to the target match before
- * inserting — a member must never write another pair's goals.
- *
- * Posture: 401 anon; 403 signed-in but not a cohort member; 404 for a match the
- * member isn't a party to, or an unknown/pre-activation match (non-probeable);
- * 400 bad title or target date. New goals always start 'active'.
+ * Either participant may create goals on their own active/ended match. Resolve
+ * the actor server-side; foreign and unknown matches share a non-probeable 404.
+ * New goals always start active.
  */
 export async function POST(request: Request) {
   try {

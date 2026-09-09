@@ -7,19 +7,10 @@ import { resolveActingMember } from '@/lib/goals'
 import { coerceQuestions, validateAnswers } from '@/lib/surveys'
 
 /**
- * Submit a survey response (ascenso-prm.md §5.12 / §7.15). The member's identity
- * comes from the session — NO email matching, NO Turnstile (every cohort member
- * has an account) — and the DB's unique(survey_id, member_id) enforces one
- * response per member. Same member-write posture as items 9/10 (§6.3 P0): resolve
- * the acting member from the session to their OWN cohort row, then verify the
- * survey belongs to that cohort and is open before inserting. A member submits
- * only for themselves and can never read or write another member's response.
- *
- * Posture: 401 anon; 403 signed-in non-member; 404 for a survey that isn't in the
- * member's cohort (non-probeable — cross-cohort isolation); 409 if the survey is
- * closed/draft (a real state conflict on the member's OWN cohort survey — e.g.
- * the form was open when the admin closed it) or already answered; 400 for
- * malformed/incomplete answers.
+ * Resolve identity from the session and scope the survey to the member's cohort.
+ * Only the member may submit their response. Foreign surveys return a non-probeable
+ * 404; closed/draft or already-answered surveys return 409. Database uniqueness
+ * prevents duplicate responses; malformed or incomplete answers return 400.
  */
 export async function POST(request: Request) {
   try {

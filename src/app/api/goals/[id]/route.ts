@@ -12,16 +12,9 @@ import {
 } from '@/lib/goals'
 
 /**
- * Update a goal (ascenso-prm.md §4 / §7.10) — change its status (mark done /
- * reopen / drop), title, or target date. Goals are a shared per-pair list, so
- * BOTH the cohort mentor and mentee can edit the same goal. Same member-write
- * posture as create: resolve the acting member from the session, then re-verify
- * they are a party to the goal's OWN match before writing (§6.3 P0) — a member
- * must never edit another pair's goals.
- *
- * Posture: 401 anon; 403 non-member; 404 for an unknown goal or one on a match
- * the member isn't a party to (non-probeable — same response either way); 400
- * for a bad value or an empty update.
+ * Either participant may update a goal on their own match. Resolve the actor
+ * and the goal's actual match before writing; foreign and unknown goals share a
+ * non-probeable 404. Require at least one valid field.
  */
 export async function PATCH(
   request: Request,

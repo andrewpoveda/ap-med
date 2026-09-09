@@ -1,15 +1,7 @@
 /**
- * Minimal RFC-4180 CSV serialization for the annual-report exports
- * (ascenso-prm.md §5.14). Board members open these in Excel / Google Sheets, so
- * two things matter beyond correctness:
- *
- *  - **Formula-injection guard.** A cell whose text starts with `=`, `+`, `-`,
- *    `@`, tab, or CR is interpreted by Excel/Sheets as an executable formula.
- *    Names, notes, and goal titles are user-supplied free text, so a leading
- *    such character is neutralized with a `'` prefix — the same escape-at-the-
- *    boundary discipline the write routes use with escapeHtml().
- *  - **UTF-8 legibility.** A leading BOM makes Excel read accented names
- *    (e.g. "José") as UTF-8 rather than mojibake.
+ * RFC-4180 exports for Excel/Sheets. Prefix formula-like user text with an
+ * apostrophe to prevent spreadsheet execution; include a UTF-8 BOM so accented
+ * names remain legible in Excel.
  */
 
 export type CsvCell = string | number | null | undefined

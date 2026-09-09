@@ -3,20 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard'
 
 /**
- * Engagement analytics for one cohort (ascenso-prm.md §5.13).
- *
- * Read-only aggregation over the existing cohort tables — pure SQL/JS, NO
- * PostHog (that's product analytics; cohort accountability numbers come from our
- * own rows). The five metrics the board sees: active matches, meetings logged
- * per pair per month, milestone completion %, goal completion %, and members
- * who've gone quiet (no logged activity in the last 30 days).
- *
- * Error posture: unlike the digest cron — which THROWS on a bad query so a
- * silent "nobody pending" can't hide breakage forever — this page is looked at
- * live by an admin, so it logs-and-degrades per the admin-page pattern. But it
- * records which queries failed in `errors` so the page can WARN that a number is
- * incomplete, rather than silently presenting a wrong number as if it were
- * whole.
+ * Cohort engagement metrics come from scoped database rows, not PostHog.
+ * Query failures are recorded in errors so the admin page can mark incomplete
+ * metrics; the digest instead throws to avoid silently hiding pending work.
  */
 
 const ACTIVITY_WINDOW_DAYS = 30

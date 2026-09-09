@@ -2,18 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CohortMemberRef } from '@/lib/cohort-dashboard'
 
 /**
- * Meeting logs — the core accountability feature (ascenso-prm.md §5.8 / §7.9).
- *
- * Two-sided: both the cohort mentor and the cohort mentee log meetings from
- * their own authed /dashboard. Two sources: (a) sessions booked on-platform
- * (session_id set = marks that session held) and (b) manual entries for
- * off-platform meetings (phone / hallway / async — session_id null). Item 9
- * writes + displays; the union counting is item 13 (analytics).
- *
- * SECURITY (P0, §6.3): a member must NEVER read or write another pair's logs.
- * Every read here is scoped to match ids the caller already resolved from the
- * member's OWN active matches (plus cohort_id); the write route independently
- * re-verifies the acting member is a party to the target match before insert.
+ * Both matched participants may log manual or booked meetings. Reads must use
+ * match IDs resolved from the member's own active matches and scope by cohort;
+ * the write route independently verifies ownership. A session-linked log marks
+ * the booking held; a manual log has no session_id.
  */
 
 export const MEETING_MODES = ['zoom', 'phone', 'in_person', 'async'] as const

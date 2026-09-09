@@ -1,46 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * DEPRECATED (superseded Jul 30 2026) — the magic-link path for Ascenso mentee
- * accounts. Kept working, no longer the way in.
+ * Legacy emailed sign-in remains available through /api/ascenso/signin-link;
+ * Google at /login is the primary path. Retire the issuer, callback, email and
+ * recovery UI together only after verifying nobody depends on signin_link mail.
  *
- * Mentees now sign in with Google at /login, the same door as mentors, per the
- * PRM's original decision (§2 "Cohort accounts", Jul 12 2026: both cohort roles
- * authenticate through the existing OAuth + claim-by-email pattern). Match
- * activation stopped minting these links, so the ONLY remaining caller is
- * /api/ascenso/signin-link — the Turnstile-gated "email me a link" form on the
- * signed-out /ascenso/dashboard. That exists purely so a mentee who signed in by
- * link before the switch, or who is still holding an older match email, isn't
- * locked out mid-program.
- *
- * REMOVAL, once no one depends on it: delete this file, /ascenso/auth/callback,
- * /api/ascenso/signin-link, sendAscensoSignInLink (src/lib/email.ts), the legacy
- * card + SignInLinkForm on /ascenso/dashboard, its link_expired / missing_token
- * banners, and the 'signin_link' email_log kind. Check email_log for recent
- * kind='signin_link' rows first — that table is the record of who is still using
- * it. Nothing else reads these; the OAuth path shares none of it.
- *
- * The original rationale, for the record: a mentee never opted into anything but
- * an application, so an account created FOR them and reached by one emailed link
- * asked less of them than OAuth consent. In practice it cost more than it saved —
- * a credential in an inbox, a one-hour expiry, a resend form to keep it usable,
- * and a second auth strategy to reason about — while Google sign-in a mentee
- * already has does the same job with no expiry.
- *
- * WHY hashed_token and not the returned action_link: generateLink's action_link
- * points at Supabase's own /auth/v1/verify, which completes the session with a
- * URL fragment the server can't read and depends on the dashboard's redirect
- * allowlist. Handing the hashed token to our own route handler instead lets it
- * call verifyOtp server-side, so the session lands in the same @supabase/ssr
- * cookies every other authed surface already reads. This is the documented
- * pattern for sending Supabase auth mail through your own provider (we send via
- * Resend, not Supabase's mailer).
- *
- * The returned URL is a BEARER CREDENTIAL for the mentee's account: it goes into
- * exactly one email addressed to that mentee and is never logged, never
- * persisted, and never returned to a browser. It expires on Supabase's OTP
- * schedule (default one hour), which is why /ascenso/dashboard offers a
- * re-request form rather than treating the emailed link as the only way in.
+ * Use hashed_token with our server-side verifyOtp callback: action_link completes
+ * via a URL fragment the server cannot read. This preserves the shared SSR cookies.
+ * The returned URL is a bearer credential: send only to the resolved mentee, never
+ * log, persist or return it to a browser. Supabase's OTP expiry governs its lifetime.
  */
 
 export const ASCENSO_CALLBACK_PATH = '/ascenso/auth/callback'
