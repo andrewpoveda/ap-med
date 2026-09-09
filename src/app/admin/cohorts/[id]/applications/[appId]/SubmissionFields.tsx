@@ -12,7 +12,7 @@ import { TRACK_LABELS, type CohortTrack } from '@/types/cohort'
  * but still rendered as text, never markup.
  */
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <p

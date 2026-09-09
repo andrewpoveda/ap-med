@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type UpcomingSession = {
-  id: string
-  scheduledAt: string
-  meetLink: string | null
-  status: string
-  menteeFirstName: string
-  calendarCleanupPending?: boolean
-}
+import type { UpcomingSession } from '@/lib/sessions'
 
 export default function SessionsList({ sessions }: { sessions: UpcomingSession[] }) {
   const router = useRouter()

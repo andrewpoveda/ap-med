@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { cn } from "@/components/institutions/cn";
+import { cn } from "@/components/institutions/frame";
 import { isValidEmail } from "@/lib/validate";
 
 const CONTACT = "apmedpodcast@gmail.com";

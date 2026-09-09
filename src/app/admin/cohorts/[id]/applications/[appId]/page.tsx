@@ -1,6 +1,5 @@
 import { cardStyle } from '@/components/styles'
 import type { Metadata } from 'next'
-import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -14,7 +13,7 @@ import {
 import { STATUS_CHIP_STYLES, NEUTRAL_CHIP } from '../chips'
 import DeliveryStatus from '../../DeliveryStatus'
 import ReviewActions from './ReviewActions'
-import SubmissionFields from './SubmissionFields'
+import SubmissionFields, { Field } from './SubmissionFields'
 import SubmissionTabs from './SubmissionTabs'
 
 export const dynamic = 'force-dynamic'
@@ -22,31 +21,6 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Application · Admin | AP MED Mentors',
   robots: { index: false, follow: false },
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <p
-        className="text-[#6b6b6b]"
-        style={{
-          margin: 0,
-          fontSize: '0.72rem',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </p>
-      <div
-        className="text-[#1a1a2e]"
-        style={{ marginTop: '0.25rem', fontSize: '0.95rem', lineHeight: 1.6 }}
-      >
-        {children}
-      </div>
-    </div>
-  )
 }
 
 const shortDate = (value: string) =>

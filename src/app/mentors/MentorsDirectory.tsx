@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { PublicMentor } from "@/types/mentor";
 import MentorCard from "@/components/MentorCard";
-import FilterBar from "@/components/FilterBar";
 
 function SkeletonCard() {
   return (
@@ -110,17 +109,24 @@ export default function MentorsDirectory() {
       </div>
 
       {!loadError && (
-        <FilterBar
-          selectedIdentity={selectedIdentity}
-          setSelectedIdentity={setSelectedIdentity}
-          selectedSpecialty={selectedSpecialty}
-          setSelectedSpecialty={setSelectedSpecialty}
-          selectedOpenTo={selectedOpenTo}
-          setSelectedOpenTo={setSelectedOpenTo}
-          uniqueIdentities={uniqueIdentities}
-          uniqueSpecialties={uniqueSpecialties}
-          uniqueOpenTo={uniqueOpenTo}
-        />
+        <div className="flex flex-row flex-wrap items-center gap-3 mb-4">
+          {[
+            { label: "identity", all: "All Identities", value: selectedIdentity, set: setSelectedIdentity, options: uniqueIdentities },
+            { label: "specialty", all: "All Specialties", value: selectedSpecialty, set: setSelectedSpecialty, options: uniqueSpecialties },
+            { label: "help type", all: "All Help Types", value: selectedOpenTo, set: setSelectedOpenTo, options: uniqueOpenTo },
+          ].map(filter => (
+            <select
+              key={filter.label}
+              aria-label={`Filter mentors by ${filter.label}`}
+              value={filter.value}
+              onChange={e => filter.set(e.target.value)}
+              className="w-44 border border-[#e8e4dc] bg-white text-[#1a1a2e] rounded-lg p-2.5"
+            >
+              <option value="">{filter.all}</option>
+              {filter.options.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          ))}
+        </div>
       )}
 
       {loadError ? (

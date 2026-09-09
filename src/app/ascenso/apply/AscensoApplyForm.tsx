@@ -517,74 +517,24 @@ export default function AscensoApplyForm({
               <div>
                 <h3>Basic information</h3>
                 <div className="ascenso-fields-grid">
-                  <div>
-                    <label style={labelStyle}>Full name *</label>
-                    <input
-                      style={inputStyle}
-                      autoComplete="name"
-                      placeholder="John Doe"
-                      value={form.full_name}
-                      onChange={e => setForm(prev => ({ ...prev, full_name: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Email address *</label>
-                    <input
-                      style={inputStyle}
-                      type="email"
-                      autoComplete="email"
-                      placeholder="you@example.com"
-                      value={form.email}
-                      onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>School / Institution *</label>
-                    <input
-                      style={inputStyle}
-                      autoComplete="organization"
-                      placeholder={isMentor ? 'Boston Medical Center' : 'Rutgers University'}
-                      value={form.institution}
-                      onChange={e => setForm(prev => ({ ...prev, institution: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>
-                      {isMentor ? 'Current role *' : 'Current stage / year *'}
-                    </label>
-                    <input
-                      style={inputStyle}
-                      placeholder={isMentor ? 'PGY-2, Internal Medicine' : 'MS2 / Junior, Biology'}
-                      value={form.current_position}
-                      onChange={e =>
-                        setForm(prev => ({ ...prev, current_position: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Current city and state *</label>
-                    <input
-                      style={inputStyle}
-                      autoComplete="address-level2"
-                      placeholder="Newark, NJ"
-                      value={form.current_location}
-                      onChange={e =>
-                        setForm(prev => ({ ...prev, current_location: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>
-                      LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span>
-                    </label>
-                    <input
-                      style={inputStyle}
-                      type="url"
-                      placeholder="https://linkedin.com/in/yourname"
-                      value={form.linkedin_url}
-                      onChange={e => setForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
-                    />
-                  </div>
+                  {([
+                    { field: 'full_name', label: 'Full name *', autoComplete: 'name', placeholder: 'John Doe' },
+                    { field: 'email', label: 'Email address *', type: 'email', autoComplete: 'email', placeholder: 'you@example.com' },
+                    { field: 'institution', label: 'School / Institution *', autoComplete: 'organization', placeholder: isMentor ? 'Boston Medical Center' : 'Rutgers University' },
+                    { field: 'current_position', label: isMentor ? 'Current role *' : 'Current stage / year *', placeholder: isMentor ? 'PGY-2, Internal Medicine' : 'MS2 / Junior, Biology' },
+                    { field: 'current_location', label: 'Current city and state *', autoComplete: 'address-level2', placeholder: 'Newark, NJ' },
+                    { field: 'linkedin_url', label: <>LinkedIn URL <span style={{ color: '#9a948a' }}>(optional)</span></>, type: 'url', placeholder: 'https://linkedin.com/in/yourname' },
+                  ] as const).map(({ field, label, ...props }) => (
+                    <div key={field}>
+                      <label style={labelStyle}>{label}</label>
+                      <input
+                        style={inputStyle}
+                        {...props}
+                        value={form[field]}
+                        onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
