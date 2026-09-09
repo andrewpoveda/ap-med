@@ -8,10 +8,8 @@ export const APPLICATION_STATUSES = [
   'rejected',
   'waitlisted',
 ] as const
-export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
 
 export const APPLICATION_ROLES = ['mentor', 'mentee'] as const
-export type ApplicationRole = (typeof APPLICATION_ROLES)[number]
 
 import { ASCENSO_V1 } from '@/lib/program-definition'
 export const COHORT_TRACKS = ASCENSO_V1.tracks
@@ -36,7 +34,6 @@ export const MATCH_STATUSES = [
   'active',
   'ended',
 ] as const
-export type MatchStatus = (typeof MATCH_STATUSES)[number]
 
 // Row shape of cohort_matches (migration 0006). `score` is numeric in the DB;
 // PostgREST serializes it as a JSON number.

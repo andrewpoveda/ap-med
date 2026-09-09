@@ -86,11 +86,6 @@ function primaryButton(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;background:${brand.gold};color:${brand.ink};border:1px solid ${brand.gold};border-radius:8px;padding:11px 27px;font-weight:600;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">${label}</a>`
 }
 
-/** Outlined — the site's secondary button ("Browse Mentors"), pairs beside a primary. */
-function secondaryButton(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;background:${brand.card};color:${brand.ink};border:1px solid ${brand.ink};border-radius:8px;padding:11px 27px;font-weight:600;font-size:15px;text-decoration:none;margin:0 8px 24px 0;">${label}</a>`
-}
-
 /** Inset panel on the card — used wherever a template highlights a block. */
 function panel(inner: string): string {
   return `<div style="background:${brand.panel};border:1px solid ${brand.border};border-radius:12px;padding:24px;margin-bottom:24px;">${inner}</div>`
@@ -196,96 +191,6 @@ export async function notifyMenteeOfRequest(params: {
 
   if (error) {
     console.error(`Failed to send mentee confirmation to ${menteeEmail}:`, error)
-    throw error
-  }
-}
-
-/**
- * Cohort match activation email (ascenso-prm.md §5.4) — one per party, sent by
- * the admin activate route after board approval. All recipient/partner fields
- * are resolved server-side from DB rows by the caller; everything interpolated
- * into the HTML is escaped here. replyTo is the partner, so replying starts the
- * actual mentorship conversation.
- *
- * `loginUrl` is the shared /login page, rendered as a second CTA beside "Email
- * <partner>" for BOTH parties — mentors and mentees sign in through the same
- * Google flow, which routes each to their own dashboard. Unlike the magic link it
- * replaced, this URL is not a credential: it carries no token, grants nothing on
- * its own, and is safe in either party's copy of the email. It is also the only
- * place a mentor is told where to sign in, so it isn't optional dressing.
- */
-export async function notifyCohortMatchActivated(params: {
-  recipientEmail: string
-  recipientName: string
-  recipientRole: 'mentor' | 'mentee'
-  partnerName: string
-  partnerEmail: string
-  cohortName: string
-  /** Server-built absolute URL of /login (never a client-supplied host). */
-  loginUrl: string
-}) {
-  const { recipientEmail, recipientName, recipientRole, partnerName, partnerEmail, cohortName, loginUrl } = params
-  const partnerLabel = recipientRole === 'mentor' ? 'mentee' : 'mentor'
-  const safeFirst = escapeHtml(recipientName.trim().split(/\s+/)[0])
-  const safePartner = escapeHtml(partnerName)
-  const safePartnerEmail = escapeHtml(partnerEmail)
-  const safeCohort = escapeHtml(cohortName)
-
-  // Server-constructed URL, but run through the same href guard as every other
-  // link in this file.
-  const safeLoginUrl = safeUrl(loginUrl)
-  const accountBlock =
-    safeLoginUrl !== '#'
-      ? secondaryButton(escapeHtml(safeLoginUrl), 'Sign in with Google &rarr;')
-      : ''
-  const dashboardPurpose =
-    recipientRole === 'mentee'
-      ? `you'll see the meetings your mentor logs, track the goals you set
-      together, and book sessions with them`
-      : `you'll log your meetings, track the goals you set together, and open
-      bookable hours so your mentee can pick a time`
-  const accountNote =
-    safeLoginUrl !== '#'
-      ? `
-      <p style="color:${brand.muted};margin:0 0 24px;line-height:1.7;font-size:13px;">
-        Your ${safeCohort} dashboard is where ${dashboardPurpose}. Sign in at
-        <a href="${escapeHtml(safeLoginUrl)}" style="color:${brand.goldText};">${escapeHtml(safeLoginUrl)}</a>
-        with the Google account for this email address — no password to set up. We
-        use Google only to confirm it's you; we ask for no access to your Gmail,
-        Drive, or Calendar.
-      </p>`
-      : ''
-
-  const { error } = await resend.emails.send({
-    from: 'AP MED Mentors <mentors@ap-med.org>',
-    to: recipientEmail,
-    replyTo: partnerEmail,
-    // Subject is plain text (not HTML) — use the raw values, not escaped ones.
-    subject: `You've been matched with ${partnerName} — ${cohortName}`,
-    html: emailShell({
-      eyebrow: `AP MED MENTORS · ${safeCohort}`,
-      heading: 'Your match is confirmed',
-      body: `
-      <p style="color:${brand.muted};margin:0 0 24px;line-height:1.7;">
-        Hi ${safeFirst}, the ${safeCohort} board has matched you with your ${partnerLabel},
-        <strong style="color:${brand.ink};">${safePartner}</strong>.
-      </p>
-      ${panel(`
-        <h2 style="font-family:${headingFont};font-size:19px;font-weight:400;color:${brand.ink};margin:0 0 4px;">${safePartner}</h2>
-        <p style="color:${brand.muted};font-size:14px;margin:0;">Your ${partnerLabel} · <a href="mailto:${safePartnerEmail}" style="color:${brand.goldText};">${safePartnerEmail}</a></p>
-      `)}
-      <p style="color:${brand.muted};margin:0 0 24px;line-height:1.7;">
-        ${partnerLabel === 'mentee' ? 'They received this same introduction, so feel free to reach out first — a short hello and a time to meet is all it takes to get started.' : 'Your mentor received this same introduction. Go ahead and say hello — suggest a couple of times that work for a first conversation.'}
-      </p>
-      ${primaryButton(`mailto:${safePartnerEmail}`, `Email ${safePartner} →`)}${accountBlock}
-      ${accountNote}`,
-      footer: `You received this because you're part of ${safeCohort} on AP MED Mentors.
-        Questions any time? Reply to this email or reach us at mentors@ap-med.org.`,
-    }),
-  })
-
-  if (error) {
-    console.error(`Failed to send match activation email to ${recipientEmail}:`, error)
     throw error
   }
 }

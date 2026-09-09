@@ -83,15 +83,6 @@ export const CANDIDATES = [
   },
 ];
 
-export const MILESTONES = [
-  { name: "Elena Voss", role: "Mentee", orientation: true, training: true, account: true },
-  { name: "Luis Ortega", role: "Mentee", orientation: true, training: false, account: true },
-  { name: "Priya Shah", role: "Mentee", orientation: true, training: true, account: true },
-  { name: "Jordan Ellis", role: "Mentor", orientation: true, training: true, account: true },
-  { name: "Amina Cole", role: "Mentor", orientation: true, training: false, account: true },
-  { name: "Dr. Marcus Hale", role: "Mentor", orientation: false, training: false, account: true },
-];
-
 export const SESSIONS = [
   { pair: "Ellis · Voss", when: "Tue · 6:30 PM", mode: "Video", status: "Booked" },
   { pair: "Cole · Ortega", when: "Wed · 12:15 PM", mode: "Campus", status: "Booked" },
