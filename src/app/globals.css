@@ -713,6 +713,245 @@ a:not([class*="text-"]):hover {
   text-align: center;
 }
 
+/* Approved mentor-matching transition. The delayed panel only mounts while
+   /api/mentees is genuinely pending; these animations never control state. */
+.match-pending-panel {
+  margin-bottom: 1.25rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid var(--global-border-color);
+  border-radius: 16px;
+  background: var(--global-card-bg);
+  box-shadow: 0 18px 50px rgba(46, 38, 24, 0.06);
+  animation: match-interval-in 180ms cubic-bezier(0.22, 0.75, 0.36, 1) both;
+}
+
+.match-pending-kicker,
+.match-results-kicker {
+  margin: 0;
+  color: #8a6d3b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.match-pending-dimensions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1.2rem;
+  border-top: 1px solid var(--global-border-color);
+  border-bottom: 1px solid var(--global-border-color);
+}
+
+.match-pending-dimensions > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+}
+
+.match-pending-dimensions > div + div {
+  border-left: 1px solid var(--global-border-color);
+}
+
+.match-pending-dimensions strong {
+  color: var(--global-text-color);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.match-pending-dimensions span {
+  color: var(--global-muted-color);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.match-pending-note {
+  margin: 1rem 0 0;
+  color: var(--global-muted-color);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.match-results-page {
+  min-height: 100vh;
+  background: var(--global-bg-color);
+  color: var(--global-text-color);
+}
+
+.match-results-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+}
+
+.match-results-intro {
+  animation: match-settle-in 220ms cubic-bezier(0.22, 0.75, 0.36, 1) both;
+}
+
+.match-results-heading {
+  margin: 0.5rem 0 0.75rem;
+  font-size: clamp(2.35rem, 7vw, 3.5rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  outline: none;
+  scroll-margin-top: 5rem;
+}
+
+.match-results-heading:focus-visible {
+  outline: 2px solid var(--global-theme-color);
+  outline-offset: 6px;
+}
+
+.match-results-description {
+  color: var(--global-muted-color);
+  line-height: 1.6;
+}
+
+.match-results-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.match-results-count {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--global-hover-color);
+  color: #8a6d3b;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.match-result-card.is-revealing {
+  animation: match-card-in 220ms cubic-bezier(0.22, 0.75, 0.36, 1) both;
+  animation-delay: calc(var(--match-reveal-order) * 45ms);
+}
+
+.match-show-all-button {
+  min-height: 44px;
+}
+
+.match-action-stack {
+  width: 9.5rem;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.match-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--global-theme-color);
+  color: var(--global-text-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.match-action-stack .match-primary-action {
+  color: var(--global-text-color);
+  transition: opacity 150ms ease-out;
+}
+
+.match-action-stack .match-primary-action:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.match-primary-action:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.match-request-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid rgba(26, 26, 46, 0.25);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--global-text-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.match-schedule-link {
+  margin-top: 0.5rem;
+}
+
+.match-request-error {
+  margin: 0.5rem 0 0;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.match-request-button:focus-visible,
+.match-show-all-button:focus-visible,
+.match-schedule-link:focus-visible,
+.match-request-status:focus-visible {
+  outline: 2px solid var(--global-text-color);
+  outline-offset: 3px;
+}
+
+@keyframes match-settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes match-interval-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes match-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 640px) {
   .ascenso-apply-shell {
     width: min(100% - 1.25rem, 780px);
@@ -757,6 +996,48 @@ a:not([class*="text-"]):hover {
 
   .ascenso-step-actions button {
     padding: 0.72rem 1rem;
+  }
+
+  .match-pending-panel {
+    padding: 1.2rem 1.1rem;
+  }
+
+  .match-pending-dimensions {
+    grid-template-columns: 1fr;
+  }
+
+  .match-pending-dimensions > div {
+    padding: 0.85rem 0;
+  }
+
+  .match-pending-dimensions > div + div {
+    border-top: 1px solid var(--global-border-color);
+    border-left: 0;
+  }
+
+  .match-results-shell {
+    padding: 2.25rem 0.35rem 3rem;
+  }
+
+  .match-results-heading {
+    font-size: 2.45rem;
+  }
+
+  .match-results-section-heading {
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-pending-panel,
+  .match-results-intro,
+  .match-result-card.is-revealing {
+    animation: none;
+  }
+
+  .match-action-stack .match-primary-action {
+    transition: none !important;
   }
 }
 

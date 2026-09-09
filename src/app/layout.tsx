@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
 import PostHogProvider from "@/components/PostHogProvider";
+import MatchTransitionProvider from "@/components/MatchTransitionProvider";
 import VercelAnalytics from "@/components/VercelAnalytics";
 import {
   ASCENSO_SITE_NAME,
@@ -56,7 +57,9 @@ export default async function RootLayout({
       </head>
       <body className="min-h-screen">
         <PostHogProvider>
-          <SiteShell siteContext={siteContext}>{children}</SiteShell>
+          <SiteShell siteContext={siteContext}>
+            <MatchTransitionProvider>{children}</MatchTransitionProvider>
+          </SiteShell>
           <VercelAnalytics />
         </PostHogProvider>
       </body>

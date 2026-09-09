@@ -13,6 +13,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { fetchWithTimeout, isRequestTimeout } from '@/lib/fetch-with-timeout'
 import { isValidEmail } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
+import { useMatchTransition, type MatchTransitionPayload } from '@/components/MatchTransitionProvider'
+import type { ScoredPublicMentor } from '@/types/mentor'
 
 const STEPS = [
   { eyebrow: 'Start here', title: 'The basics' },
@@ -46,10 +48,12 @@ const HELP_WITH = HELP_WITH_OPTIONS
 
 const OTHER_SPECIALTY = 'Other'
 const INTEREST_OPTIONS = [...SPECIALTIES, OTHER_SPECIALTY].filter((item, index, self) => self.indexOf(item) === index)
+const MATCHING_EXPLANATION_DELAY_MS = 300
 
 export default function MenteeOnboardingForm() {
   const posthog = usePostHog()
   const router = useRouter()
+  const { setMatchTransition } = useMatchTransition()
   const searchParams = useSearchParams()
   const mentorFromUrl = searchParams.get('mentor') || ''
   const testMode = searchParams.get('test') === '1'
@@ -68,6 +72,7 @@ export default function MenteeOnboardingForm() {
   notes: '',
 })
   const [loading, setLoading] = useState(false)
+  const [showMatchingExplanation, setShowMatchingExplanation] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [stepError, setStepError] = useState<string | null>(null)
   const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>('loading')
@@ -76,12 +81,42 @@ export default function MenteeOnboardingForm() {
   const submittingRef = useRef(false)
   const submissionId = useRef<string | null>(null)
   const formTopRef = useRef<HTMLDivElement | null>(null)
+  const matchingRequestPendingRef = useRef(false)
+  const matchingExplanationTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (mentorFromUrl) {
       setForm(prev => ({ ...prev, requested_mentor: mentorFromUrl }))
     }
   }, [mentorFromUrl])
+
+  useEffect(() => {
+    router.prefetch('/mentors/results')
+  }, [router])
+
+  useEffect(() => () => {
+    if (matchingExplanationTimerRef.current !== null) {
+      window.clearTimeout(matchingExplanationTimerRef.current)
+    }
+  }, [])
+
+  const stopMatchingExplanation = () => {
+    matchingRequestPendingRef.current = false
+    if (matchingExplanationTimerRef.current !== null) {
+      window.clearTimeout(matchingExplanationTimerRef.current)
+      matchingExplanationTimerRef.current = null
+    }
+    setShowMatchingExplanation(false)
+  }
+
+  const storeAndOpenResults = (payload: MatchTransitionPayload) => {
+    sessionStorage.setItem('matchResults', JSON.stringify(payload.mentors))
+    sessionStorage.setItem('menteeName', payload.menteeName)
+    sessionStorage.setItem('menteeId', payload.menteeId)
+    sessionStorage.setItem('matchTestMode', payload.testMode ? '1' : '')
+    setMatchTransition(payload)
+    router.push('/mentors/results', { scroll: true })
+  }
 
   const moveToStep = (step: number) => {
     if (currentStep === STEPS.length - 1 && step < currentStep) {
@@ -91,7 +126,7 @@ export default function MenteeOnboardingForm() {
     setStepError(null)
     setCurrentStep(step)
     window.requestAnimationFrame(() => {
-      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      formTopRef.current?.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start' })
     })
   }
 
@@ -196,6 +231,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
 
     submittingRef.current = true
     setLoading(true)
+    setShowMatchingExplanation(false)
     setStepError(null)
     const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`
 
@@ -204,16 +240,32 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
       // 1. Save mentee + run matching in one Turnstile-verified request.
       //    No email fires on submit — mentors are only notified when the mentee
       //    clicks "Request" on the results page.
-      const saveRes = await fetchWithTimeout('/api/mentees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          full_name: fullName,
-          submission_id: submissionId.current,
-          turnstile_token: turnstileToken.current,
-        }),
-      })
+      matchingRequestPendingRef.current = true
+      matchingExplanationTimerRef.current = window.setTimeout(() => {
+        if (!matchingRequestPendingRef.current) return
+        setShowMatchingExplanation(true)
+        window.requestAnimationFrame(() => {
+          formTopRef.current?.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start' })
+        })
+      }, MATCHING_EXPLANATION_DELAY_MS)
+
+      let saveRes: Response
+      try {
+        saveRes = await fetchWithTimeout('/api/mentees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...form,
+            full_name: fullName,
+            submission_id: submissionId.current,
+            turnstile_token: turnstileToken.current,
+          }),
+        })
+      } finally {
+        // The explanation is allowed to exist only while the real request is pending.
+        // There is deliberately no minimum dwell once the response is available.
+        stopMatchingExplanation()
+      }
 
       const saveData = await saveRes.json().catch(() => null)
 
@@ -236,24 +288,25 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         console.error('Matching failed (mentee saved) — showing browse-all results')
         // Preserve the saved submission context instead of sending the results
         // page there empty (which would bounce back to a blank form).
-        sessionStorage.setItem('matchResults', JSON.stringify([]))
-        sessionStorage.setItem('menteeName', fullName)
-        sessionStorage.setItem('menteeId', saveData.menteeId || '')
-        sessionStorage.setItem('matchTestMode', testMode ? '1' : '')
-        router.push('/mentors/results')
+        storeAndOpenResults({
+          mentors: [],
+          menteeName: fullName,
+          menteeId: saveData.menteeId || '',
+          testMode,
+        })
         return
       }
 
       // 2. Store results in sessionStorage and redirect. The menteeId is the
       //    request capability the results page sends to /api/notify — the
       //    endpoint resolves all mentee data from the DB row by this id.
-      sessionStorage.setItem('matchResults', JSON.stringify(saveData.mentors))
-      sessionStorage.setItem('menteeName', fullName)
-      sessionStorage.setItem('menteeId', saveData.menteeId || '')
-      // Carry dry-run mode to the results page so the "Request" button also skips email
-      sessionStorage.setItem('matchTestMode', testMode ? '1' : '')
       posthog?.capture('mentee_submission_succeeded')
-      router.push('/mentors/results')
+      storeAndOpenResults({
+        mentors: saveData.mentors as ScoredPublicMentor[],
+        menteeName: fullName,
+        menteeId: saveData.menteeId || '',
+        testMode,
+      })
     } catch (error) {
       console.error('Submit error:', error)
       const timedOut = isRequestTimeout(error)
@@ -267,6 +320,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
         reason: timedOut ? 'request_timeout' : 'network_error',
       })
     } finally {
+      stopMatchingExplanation()
       submittingRef.current = false
       setLoading(false)
     }
@@ -301,6 +355,32 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           </div>
         )}
 
+        {showMatchingExplanation && (
+          <section className="match-pending-panel" aria-labelledby="match-pending-title">
+            <p id="match-pending-title" className="match-pending-kicker">
+              Calculating ranked mentor matches
+            </p>
+            <div className="match-pending-dimensions">
+              <div>
+                <strong>Identity &amp; background</strong>
+                <span>40% weight</span>
+              </div>
+              <div>
+                <strong>Specialty interests</strong>
+                <span>35% weight</span>
+              </div>
+              <div>
+                <strong>Requested mentorship help</strong>
+                <span>25% weight</span>
+              </div>
+            </div>
+            <p className="match-pending-note">
+              Exact-tag overlap is calculated across all three dimensions together.
+            </p>
+            <p className="sr-only" role="status">Matching your mentorship information.</p>
+          </section>
+        )}
+
         <div className="ascenso-step-meta">
           <span>Step {currentStep + 1} of {STEPS.length}</span>
           <span>{STEPS[currentStep].title}</span>
@@ -325,7 +405,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           ))}
         </div>
 
-        <section className="ascenso-step-card" aria-live="polite">
+        <section className="ascenso-step-card" aria-busy={loading || undefined}>
           <div className="ascenso-step-heading">
             <p>{STEPS[currentStep].eyebrow}</p>
             <h2>{STEPS[currentStep].title}</h2>
@@ -657,7 +737,7 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
                 disabled={loading || turnstileStatus !== 'ready'}
               >
                 {loading
-                  ? 'Finding your matches…'
+                  ? showMatchingExplanation ? 'Matching has begun · · ·' : 'Submitting your information…'
                   : turnstileStatus !== 'ready'
                     ? 'Finishing security check…'
                     : 'See my matches →'}
@@ -666,7 +746,11 @@ const toggleArrayField = (field: 'identity' | 'interests' | 'help_with', value: 
           </div>
         </section>
 
-        <p className="ascenso-save-note">Your answers stay here while this page remains open.</p>
+        <p className="ascenso-save-note">
+          {loading
+            ? 'Submitting your information… Results will appear as soon as they’re ready.'
+            : 'Your answers stay here while this page remains open.'}
+        </p>
       </div>
     </div>
   )
@@ -719,6 +803,11 @@ function createSubmissionId(): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+function preferredScrollBehavior(): ScrollBehavior {
+  if (typeof window === 'undefined') return 'auto'
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
 }
 
 const radioCardStyle = (selected: boolean): React.CSSProperties => ({

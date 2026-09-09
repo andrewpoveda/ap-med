@@ -1,26 +1,35 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ScoredPublicMentor } from '@/types/mentor'
 import EpisodeLink from '@/components/EpisodeLink'
+import { useMatchTransition, type MatchTransitionPayload } from '@/components/MatchTransitionProvider'
 
-type RequestStatus = 'idle' | 'loading' | 'success' | 'error'
-type RequestState = { status: RequestStatus; message?: string }
+type RequestState =
+  | { status: 'loading' }
+  | { status: 'success'; scheduleUrl?: string }
+  | { status: 'already_requested' }
+  | { status: 'error'; message: string }
 
 export default function MatchResultsPage() {
   const router = useRouter()
-  const [mentors, setMentors] = useState<ScoredPublicMentor[]>([])
-  const [menteeName, setMenteeName] = useState('')
-  const [menteeId, setMenteeId] = useState('')
-  const [loaded, setLoaded] = useState(false)
+  const { getMatchTransition } = useMatchTransition()
+  const [initialHandoff] = useState<MatchTransitionPayload | null>(() => getMatchTransition())
+  const [mentors, setMentors] = useState<ScoredPublicMentor[]>(initialHandoff?.mentors ?? [])
+  const [, setMenteeName] = useState(initialHandoff?.menteeName ?? '')
+  const [menteeId, setMenteeId] = useState(initialHandoff?.menteeId ?? '')
+  const [loaded, setLoaded] = useState(initialHandoff !== null)
   const [showAll, setShowAll] = useState(false)
   const [requestStates, setRequestStates] = useState<Record<string, RequestState>>({})
-  const [scheduleUrls, setScheduleUrls] = useState<Record<string, string>>({})
-  const [testMode, setTestMode] = useState(false)
+  const [testMode, setTestMode] = useState(initialHandoff?.testMode ?? false)
+  const resultsHeadingRef = useRef<HTMLHeadingElement | null>(null)
+  const hasOrientedResultsRef = useRef(false)
 
   useEffect(() => {
+    if (initialHandoff) return
+
     try {
       const raw = sessionStorage.getItem('matchResults')
       const name = sessionStorage.getItem('menteeName') || ''
@@ -36,7 +45,27 @@ export default function MatchResultsPage() {
     } catch {
       router.replace('/mentee-onboarding')
     }
-  }, [router])
+  }, [initialHandoff, router])
+
+  useEffect(() => {
+    if (!loaded || hasOrientedResultsRef.current) return
+
+    let orientationFrame: number | null = null
+    const routeFrame = window.requestAnimationFrame(() => {
+      // Wait until the App Router has finished its own route-focus restoration,
+      // otherwise it can move focus back to <body> after this effect runs.
+      orientationFrame = window.requestAnimationFrame(() => {
+        resultsHeadingRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+        resultsHeadingRef.current?.focus({ preventScroll: true })
+        hasOrientedResultsRef.current = true
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(routeFrame)
+      if (orientationFrame !== null) window.cancelAnimationFrame(orientationFrame)
+    }
+  }, [loaded])
 
   const handleRequest = async (mentor: ScoredPublicMentor) => {
     if (!menteeId) {
@@ -57,18 +86,18 @@ export default function MatchResultsPage() {
         body: JSON.stringify({ mentorId: mentor.id, menteeId }),
       })
       const data = await res.json().catch(() => ({}))
-      // Self-serve booking link, minted with the request (also emailed).
-      if (res.ok && typeof data.scheduleUrl === 'string') {
-        setScheduleUrls(prev => ({ ...prev, [mentor.id]: data.scheduleUrl }))
-      }
       if (res.ok) {
-        setRequestStates(prev => ({ ...prev, [mentor.id]: { status: 'success' } }))
+        // Preserve the self-serve booking link minted with the request (also emailed).
+        const scheduleUrl = typeof data.scheduleUrl === 'string' ? data.scheduleUrl : undefined
+        setRequestStates(prev => ({
+          ...prev,
+          [mentor.id]: { status: 'success', scheduleUrl },
+        }))
         return
       }
       if (res.status === 409) {
         setRequestStates(prev => ({
-          ...prev,
-          [mentor.id]: { status: 'success', message: 'You already requested this mentor.' },
+          ...prev, [mentor.id]: { status: 'already_requested' },
         }))
         return
       }
@@ -84,7 +113,6 @@ export default function MatchResultsPage() {
     }
   }
 
-  const firstName = menteeName.split(' ')[0] || 'there'
   const top3 = mentors.slice(0, 3)
   const rest = mentors.slice(3)
 
@@ -102,16 +130,26 @@ export default function MatchResultsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#faf8f4', color: '#1a1a2e', fontFamily: 'inherit' }}>
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-        <p style={{ color: '#c8a96e', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-          AP MED MENTORS
-        </p>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-          Your top matches, {firstName}
-        </h1>
-        <p style={{ color: '#6b6b6b', marginBottom: testMode ? '1.5rem' : '3rem', lineHeight: 1.6 }}>
-          Based on your specialty interests, background, and what you need help with.
+    <div className="match-results-page">
+      <div className="match-results-shell">
+        <div className="match-results-intro">
+          <p className="match-results-kicker">
+            AP MED MENTORS
+          </p>
+          <h1 ref={resultsHeadingRef} tabIndex={-1} className="match-results-heading">
+            Mentor matches, ranked for you.
+          </h1>
+          <p className="match-results-description" style={{ marginBottom: testMode ? '1.5rem' : '3rem' }}>
+            Ranked using exact-tag overlap across the mentorship information you submitted.
+          </p>
+        </div>
+
+        <p className="sr-only" role="status">
+          {mentors.length === 0
+            ? 'No ranked mentor matches are available.'
+            : mentors.length === 1
+            ? 'One ranked mentor match is ready.'
+            : `${mentors.length} ranked mentor matches are ready.`}
         </p>
 
         {testMode && (
@@ -122,9 +160,9 @@ export default function MatchResultsPage() {
 
         {top3.length > 0 && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Best matches</span>
-              <span style={{ background: '#f5efe2', color: '#c8a96e', borderRadius: '9999px', padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600 }}>
+            <div className="match-results-section-heading">
+              <span>Top ranked matches</span>
+              <span className="match-results-count">
                 Top {top3.length}
               </span>
             </div>
@@ -136,8 +174,8 @@ export default function MatchResultsPage() {
                   rank={i + 1}
                   featured
                   requestState={requestStates[mentor.id]}
-                  scheduleUrl={scheduleUrls[mentor.id]}
                   onRequest={() => handleRequest(mentor)}
+                  revealOrder={i}
                 />
               ))}
             </div>
@@ -156,6 +194,7 @@ export default function MatchResultsPage() {
               </div>
               <button
                 onClick={() => setShowAll(v => !v)}
+                className="match-show-all-button"
                 style={{
                   background: '#ffffff', border: '1px solid #e8e4dc', borderRadius: '6px',
                   color: '#c8a96e', padding: '0.4rem 0.85rem', fontSize: '0.8rem',
@@ -174,7 +213,6 @@ export default function MatchResultsPage() {
                     mentor={mentor}
                     featured={false}
                     requestState={requestStates[mentor.id]}
-                    scheduleUrl={scheduleUrls[mentor.id]}
                     onRequest={() => handleRequest(mentor)}
                   />
                 ))}
@@ -227,14 +265,14 @@ function SkeletonCard() {
 }
 
 function MatchCard({
-  mentor, rank, featured, requestState, scheduleUrl, onRequest,
+  mentor, rank, featured, requestState, onRequest, revealOrder,
 }: {
   mentor: ScoredPublicMentor
   rank?: number
   featured: boolean
   requestState?: RequestState
-  scheduleUrl?: string
   onRequest: () => void
+  revealOrder?: number
 }) {
   const matchColor =
     mentor.matchPercent >= 75 ? '#2f8f5f' :
@@ -243,19 +281,52 @@ function MatchCard({
 
   const fullName = `${mentor.first_name} ${mentor.last_name}`
   const requestStatus = requestState?.status ?? 'idle'
-  const requested = requestStatus === 'success'
   const requesting = requestStatus === 'loading'
+  const requested = requestState?.status === 'success'
+  const alreadyRequested = requestState?.status === 'already_requested'
+  const requestError = requestState?.status === 'error' ? requestState.message : undefined
+  const scheduleUrl = requestState?.status === 'success' ? requestState.scheduleUrl : undefined
+  const requestButtonRef = useRef<HTMLButtonElement | null>(null)
+  const requestStatusRef = useRef<HTMLParagraphElement | null>(null)
+  const scheduleLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const shouldMoveFocusRef = useRef(false)
+
+  useEffect(() => {
+    if (!shouldMoveFocusRef.current) return
+
+    if (requested) {
+      const nextFocusTarget = scheduleLinkRef.current ?? requestStatusRef.current
+      nextFocusTarget?.focus({ preventScroll: true })
+      shouldMoveFocusRef.current = false
+    } else if (alreadyRequested) {
+      requestStatusRef.current?.focus({ preventScroll: true })
+      shouldMoveFocusRef.current = false
+    } else if (requestStatus === 'error') {
+      requestButtonRef.current?.focus({ preventScroll: true })
+      shouldMoveFocusRef.current = false
+    }
+  }, [alreadyRequested, requestStatus, requested, scheduleUrl])
+
+  const handleRequestClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Native keyboard and assistive activations dispatch click events with detail 0.
+    shouldMoveFocusRef.current = event.detail === 0
+    onRequest()
+  }
+
+  const statusId = `request-status-${mentor.id}`
+  const errorId = `request-error-${mentor.id}`
 
   return (
     <div
-      className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5"
+      className={`match-result-card flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5${revealOrder === undefined ? '' : ' is-revealing'}`}
       style={{
         background: featured ? '#fffdf9' : '#ffffff',
         border: `1px solid ${featured ? '#e0cfa3' : '#e8e4dc'}`,
         boxShadow: '0 1px 2px rgba(26,26,46,0.04), 0 6px 16px rgba(26,26,46,0.06)',
         borderRadius: '12px',
         padding: featured ? '1.5rem' : '1.25rem',
-      }}
+        '--match-reveal-order': revealOrder ?? 0,
+      } as React.CSSProperties}
     >
       <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-5">
         <Avatar name={fullName} photoUrl={mentor.photo_url} />
@@ -298,57 +369,61 @@ function MatchCard({
         </div>
       </div>
 
-      <div className="flex w-full shrink-0 items-center justify-between sm:w-auto sm:flex-col sm:items-end sm:justify-start">
+      <div className="flex w-full shrink-0 items-start justify-between sm:w-auto sm:flex-col sm:items-end sm:justify-start">
         <div className="text-left sm:text-right">
           <div style={{ fontSize: featured ? '1.5rem' : '1.25rem', fontWeight: 800, color: matchColor, marginBottom: '0.25rem' }}>
             {mentor.matchPercent}%
           </div>
           <div style={{ fontSize: '0.7rem', color: '#9a948a' }}>match</div>
         </div>
-        <button
-          onClick={onRequest}
-          disabled={requested || requesting}
-          aria-describedby={requestState?.message ? `request-status-${mentor.id}` : undefined}
-          className="sm:mt-4"
-          style={{
-            display: 'inline-block',
-            background: requested ? '#e6f4ec' : featured ? '#c8a96e' : '#f5efe2',
-            color: requested ? '#2f8f5f' : featured ? '#1a1a2e' : '#8a6a2f',
-            border: requested ? '1px solid #9ed9b8' : featured ? 'none' : '1px solid #c8a96e',
-            borderRadius: '6px',
-            padding: '0.4rem 0.85rem',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: requested || requesting ? 'default' : 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {requested ? 'Requested ✓' : requesting ? 'Sending…' : 'Request →'}
-        </button>
-        {requested && scheduleUrl && (
-          <a
-            href={scheduleUrl}
-            className="sm:mt-2"
-            style={{
-              color: '#8a6a2f',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Pick a time →
-          </a>
-        )}
-        {requestState?.message && (
-          <p
-            id={`request-status-${mentor.id}`}
-            role={requestStatus === 'error' ? 'alert' : 'status'}
-            className="mt-2 max-w-48 text-right text-xs"
-            style={{ color: requestStatus === 'error' ? '#b91c1c' : '#6b6b6b' }}
-          >
-            {requestState.message}
-          </p>
-        )}
+        <div className="match-action-stack sm:mt-4">
+          {!requested && !alreadyRequested && (
+            <button
+              ref={requestButtonRef}
+              onClick={handleRequestClick}
+              disabled={requesting}
+              aria-describedby={requestError ? errorId : undefined}
+              className="match-request-button match-primary-action"
+            >
+              {requesting ? 'Sending…' : 'Request →'}
+            </button>
+          )}
+
+          {requesting && (
+            <p className="sr-only" role="status">
+              Sending your request to {fullName}.
+            </p>
+          )}
+
+          {(requested || alreadyRequested) && (
+            <p
+              ref={requestStatusRef}
+              id={statusId}
+              role="status"
+              tabIndex={-1}
+              className="match-request-status"
+            >
+              {requested ? 'Requested ✓' : 'Already requested'}
+            </p>
+          )}
+
+          {requested && scheduleUrl && (
+            <a
+              ref={scheduleLinkRef}
+              href={scheduleUrl}
+              aria-describedby={statusId}
+              className="match-schedule-link match-primary-action"
+            >
+              Pick a time →
+            </a>
+          )}
+
+          {requestError && (
+            <p id={errorId} role="alert" className="match-request-error">
+              {requestError}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )
