@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { cardStyle, eyebrowStyle, labelStyle, inputStyle, goldButton, linkButton } from '@/components/styles'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { GoalView } from '@/lib/goals'
 
@@ -14,61 +15,6 @@ import type { GoalView } from '@/lib/goals'
  */
 
 type MatchOption = { matchId: string; partnerName: string }
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
-
-const eyebrowStyle: CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#9a948a',
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  margin: '0 0 0.5rem',
-}
-
-const labelStyle: CSSProperties = {
-  display: 'block',
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  color: '#4a4a5a',
-  margin: '0 0 0.35rem',
-}
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '8px',
-  padding: '0.55rem 0.7rem',
-  fontSize: '0.95rem',
-  color: '#1a1a2e',
-}
-
-const goldButton: CSSProperties = {
-  background: '#c8a96e',
-  color: '#1a1a2e',
-  padding: '0.6rem 1.4rem',
-  borderRadius: '8px',
-  fontWeight: 600,
-  fontSize: '0.9rem',
-  border: 'none',
-  cursor: 'pointer',
-}
-
-const linkButton: CSSProperties = {
-  background: 'none',
-  border: 'none',
-  padding: 0,
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  color: '#8a6a2f',
-  cursor: 'pointer',
-}
 
 function todayLocalISO(): string {
   const now = new Date()

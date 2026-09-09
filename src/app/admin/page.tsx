@@ -1,6 +1,6 @@
+import { cardStyle } from '@/components/styles'
 import { completeQuery, completeInQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { requireAdminSession } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
@@ -28,14 +28,6 @@ type ApplicationCounts = {
   mentors: number
   mentees: number
   pending: number
-}
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
 }
 
 // Neutral chip for most statuses; only the states an admin acts on are tinted.

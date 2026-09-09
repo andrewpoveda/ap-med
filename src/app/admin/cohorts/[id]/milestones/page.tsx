@@ -1,6 +1,6 @@
+import { compactCardStyle as cardStyle, centeredHeaderStyle as thStyle } from '@/components/styles'
 import { completeQuery } from '@/lib/complete-query'
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -43,22 +43,6 @@ type MilestoneRow = {
   member_id: string
   milestone: string
   completed_at: string
-}
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.25rem 1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
-
-const thStyle: CSSProperties = {
-  textAlign: 'center',
-  fontWeight: 600,
-  fontSize: '0.78rem',
-  padding: '0.5rem 0.75rem',
-  whiteSpace: 'nowrap',
 }
 
 function MilestoneTable({

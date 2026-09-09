@@ -1,5 +1,6 @@
+import { cardStyle } from '@/components/styles'
 import type { Metadata } from 'next'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -21,14 +22,6 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Application · Admin | AP MED Mentors',
   robots: { index: false, follow: false },
-}
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

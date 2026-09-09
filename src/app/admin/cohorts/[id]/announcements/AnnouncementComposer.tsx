@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState, type CSSProperties } from 'react'
+import { sessionInputStyle as inputStyle } from '@/components/styles'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 // Announcement composer (ascenso-prm.md §5.10). Subject/body/audience → POST
@@ -11,16 +12,6 @@ import { useRouter } from 'next/navigation'
 // only surfaces them ahead of time.
 
 type Audience = 'all' | 'mentors' | 'mentees'
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '8px',
-  padding: '0.6rem 0.75rem',
-  fontSize: '0.95rem',
-  color: '#1a1a2e',
-}
 
 export default function AnnouncementComposer({
   cohortId,

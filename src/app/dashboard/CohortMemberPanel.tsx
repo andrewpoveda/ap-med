@@ -1,24 +1,8 @@
-import type { CSSProperties } from 'react'
+import { cardStyle, eyebrowStyle } from '@/components/styles'
 import { TRACK_LABELS, type CohortTrack } from '@/types/cohort'
 import type { ActiveMatchView, MilestoneView, CohortMemberType } from '@/lib/cohort-dashboard'
 import styles from './CohortRelationshipWorkspace.module.css'
 import CohortSupportPanel from './CohortSupportPanel'
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
-
-const eyebrowStyle: CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#9a948a',
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  margin: '0 0 0.5rem',
-}
 
 function trackLabel(track: string): string {
   return TRACK_LABELS[track as CohortTrack] ?? track

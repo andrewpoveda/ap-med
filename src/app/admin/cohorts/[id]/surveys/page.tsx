@@ -1,5 +1,5 @@
+import { cardStyle } from '@/components/styles'
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -22,14 +22,6 @@ export const metadata: Metadata = {
 // is never manually marked. Members submit from their own dashboards; the digest
 // cron nags non-responders while a survey is open, and analytics counts a
 // response as activity — both already wired, no change needed here.
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
 
 const STATUS_CHIPS: Record<string, { bg: string; border: string; color: string }> = {
   open: { bg: '#eaf6ef', border: '#9bd3b3', color: '#2f8f5f' },

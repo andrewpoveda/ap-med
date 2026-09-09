@@ -1,4 +1,5 @@
 'use client'
+import { onboardingLabelStyle as labelStyle, onboardingInputStyle as inputStyle, securityPanelStyle, retryButtonStyle } from '@/components/styles'
 import { useState, useRef } from 'react'
 import {
   ReliableTurnstile,
@@ -995,43 +996,6 @@ export default function AscensoApplyForm({
       </div>
     </div>
   )
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.875rem',
-  color: '#4a4a5a',
-  marginBottom: '0.4rem',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '8px',
-  padding: '0.75rem 1rem',
-  color: '#1a1a2e',
-  fontSize: '0.95rem',
-  outline: 'none',
-  boxSizing: 'border-box',
-}
-
-const securityPanelStyle: React.CSSProperties = {
-  padding: '1rem',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  background: '#f7f3ec',
-}
-
-const retryButtonStyle: React.CSSProperties = {
-  alignSelf: 'flex-start',
-  border: 0,
-  background: 'transparent',
-  color: '#8a6a2f',
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  textDecoration: 'underline',
-  cursor: 'pointer',
 }
 
 const radioCardStyle = (selected: boolean): React.CSSProperties => ({
