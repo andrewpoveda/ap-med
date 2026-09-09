@@ -20,7 +20,7 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 | 10 — Scale / Query Completeness | Fixed | 37–38 |
 | 11 — Testing / Recovery | Fixed | 39–41 |
 | 12 — Privacy / Data Governance | Fixed | 42–44 |
-| 13 — Features To Defer, But Explicitly Track | Pending | 45–55 |
+| 13 — Features To Defer, But Explicitly Track | Intentionally deferred | 45–55 |
 | 14 — Institutional Items To Document, Not Overbuild | Pending | 56–60 |
 | 15 — Pilot Learning / Product Evidence | Pending | 61–64 |
 
@@ -203,9 +203,15 @@ Status vocabulary: **Pending**, **In progress**, **Fixed**, **Partially addresse
 
 ## Phase 12 checkpoint
 
+- Commit: `4eac4a5`.
 - Items 42–44 implemented and dispositioned. Participant disclosures now match named survey/meeting/application visibility. Sentry diagnostics intentionally omit arbitrary private content; reduced debugging detail is an explicit tradeoff. Data-governance decisions are documented in `docs/operations/ascenso-data-governance.md`.
 - Validation: 77 Node tests passed, including client/server/edge configuration checks and synthetic credential/PII payload rejection; TypeScript and focused ESLint passed. No provider telemetry transmission, historical deletion or hosted configuration changes performed. No migration/dependency/environment changes.
 - Manual steps: agree retention/deletion/export/support/access/recovery expectations with each paid customer; review actual provider retention/access and any previously collected telemetry separately. Repository sanitization does not prove hosting logs contain no personal information or establish legal compliance.
+
+## Phase 13 checkpoint
+
+- Items 45–55 remain explicitly **Intentionally deferred**. `docs/features/ascenso-deferred-features.md` records each current capability, reason to defer and exact customer/evidence trigger. No feature implementation was added.
+- Validation: reviewed all eleven numbered dispositions against the roadmap and existing capability boundaries; documentation diff check passed. No migration, dependency, configuration, provider, production or deployment steps. Revisit only upon the recorded trigger, not generic enterprise expectations.
 
 ## Remaining audit boundaries
 
