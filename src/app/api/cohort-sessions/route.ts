@@ -10,26 +10,10 @@ import { getActiveMatchForMember, computeBookingSlots } from '@/lib/cohort-sessi
 import { isMutationDryRunAllowed } from '@/lib/test-mode'
 
 /**
- * Authed cohort session booking (ascenso-prm.md §7.11). A matched pair books a
- * real Google Meet session through the mentor's availability — the same
- * scheduling core as the magic-link route (computeOpenSlots + bookSession), but
- * authed via the member's OWN account instead of a tokenized link. Two-sided
- * like items 9/10: the cohort mentor or the cohort mentee may book for their
- * pair; the event always lands on the mentor's calendar.
- *
- * Member-write posture (§6.3 P0), matching item 9/10: resolve the acting member
- * from the session, then verify they are a party to the target ACTIVE match
- * before booking. Posture: 401 anon; 403 signed-in non-member (incl. a
- * general-platform mentor whose cohort_id is null); 404 for a match the member
- * isn't a party to or a pre-activation/unknown match (non-probeable); 409 the
- * pair already has an upcoming session, or the slot was taken; 400 bad input or
- * booking isn't live for this mentor; 502 the calendar invite couldn't be made.
- *
- * The requested slot is re-validated against a FRESH availability + freebusy
- * recompute (the same computeBookingSlots the dashboard rendered), which closes
- * the stale-dashboard TOCTOU; the partial unique index sessions_mentor_slot_key
- * is the final race guard (→ 409). In local/test environments only, ?test=1
- * records the row and skips Google.
+ * Either member may book their active match on the mentor's calendar. Resolve
+ * ownership server-side; foreign and pre-activation matches return the same 404.
+ * Recompute availability/freebusy at submission to reject stale slots; the unique
+ * slot constraint handles races. Local/test ?test=1 writes a row but skips Google.
  */
 export async function POST(request: Request) {
   try {

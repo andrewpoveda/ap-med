@@ -44,26 +44,13 @@ type ApplicationFormData = {
   experience_goals: string
   linkedin_url: string
   can_commit: boolean
-  // Structured matching inputs. These are what the cohort matcher actually
-  // scores (identity 40% · specialty 35% · mentorship needs 25%) — the free-text
-  // answers above are for the board's review, not for matching. Held in one
-  // shape here and mapped to the role-appropriate key on submit, mirroring the
-  // member columns each side is promoted into: a mentor's `specialty` is what
-  // they practice and their `can_help_with` is what they offer; a mentee's
-  // `preferred_specialty` is what they want to explore and their `help_with` is
-  // what they need. BOTH sides answer the support-needs question — that's what
-  // gives the 25% weight something to compare.
+  // Exact matching tags map to each role's member columns on submission.
+  // Free-text answers are for board review, not matching.
   specialty: string[]
   help_with: string[]
   help_with_other: string
   identity: string[]
-  // Board additions for the 2026–27 cycle. Free text and single-selects only —
-  // none of these are matcher inputs; they're read by the board at review.
-  //
-  // Role-scoped, and asked of one side only: a mentee's goals / prior
-  // mentorship, a mentor's capacity / what they're prepared to support. Like
-  // `track` and the tag arrays above, they reset on a role switch so a
-  // half-filled mentee answer can't ride along on a mentor submission.
+  // Review-only answers reset on role switch, preventing cross-role carryover.
   goals_milestones: string
   previous_mentor: string
   previous_mentor_notes: string

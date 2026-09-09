@@ -5,22 +5,10 @@ import { cap, LIMITS } from '@/lib/validate'
 import type { CohortMemberRef, CohortMemberType } from '@/lib/cohort-dashboard'
 
 /**
- * Native mid-year / end-of-year surveys (ascenso-prm.md §5.12 / §7.15) — the
- * final Ascenso feature.
- *
- * Members submit one response each from their authed /dashboard: identity comes
- * from the session (no email matching, no Turnstile — every cohort member has an
- * account), and the DB's unique(survey_id, member_id) enforces one response per
- * member. Admins create a survey per wave and open/close it; who has responded
- * is DERIVED from survey_responses (no manual marking — §5.12). Three earlier
- * items already read these tables and light up automatically: the digest cron
- * (§5.9) nags open-survey non-responders, analytics (§5.13) counts a response as
- * activity, and the milestone grid (§5.5–5.7) excludes survey keys by
- * construction, so item 15 only adds survey CRUD + submission.
- *
- * SECURITY (P0, §6.3): the member read model and the submission route both scope
- * every query to the caller's OWN cohort + member id, resolved server-side. A
- * member must never read or write another member's response.
+ * Survey ownership comes from the session. Scope member reads and writes to
+ * their own cohort and member ID; the database enforces one response per survey
+ * and member. Response status is derived from survey_responses, never manually
+ * marked. Digests and cohort analytics consume those same records.
  */
 
 export const SURVEY_WAVES = ASCENSO_V1.surveyWaves

@@ -8,19 +8,10 @@ import { cap, LIMITS } from '@/lib/validate'
 import { isMeetingMode } from '@/lib/meeting-logs'
 
 /**
- * Log a mentorship meeting — the FIRST member-facing write route in Ascenso
- * (ascenso-prm.md §5.8 / §7.9). Two-sided: the acting member is resolved from
- * the auth session to their OWN cohort mentor or mentee row, then verified to be
- * a party to the target match before anything is written (§6.3 P0 — a member
- * must never write another pair's logs).
- *
- * Posture: 401 anon; 403 signed-in but not a cohort member; 404 for a match the
- * member isn't a party to, or a session that isn't their pair's (non-probeable
- * — never leaks that the row exists). 409 if a booked session is already logged.
- *
- * Two sources: a manual off-platform entry (sessionId omitted) or logging a
- * booked session held (sessionId set → the session flips to 'completed' and
- * met_at is derived from the session date, not client-supplied).
+ * Resolve the session's cohort member and verify match ownership before writing.
+ * Foreign matches/sessions return the same non-probeable 404; duplicate booked
+ * logs return 409. For booked meetings, derive met_at from the session and mark
+ * it completed. Manual entries supply a validated date without a session_id.
  */
 
 const MAX_DURATION_MINUTES = 1440 // a single meeting can't exceed a day
