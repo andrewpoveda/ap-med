@@ -361,8 +361,9 @@
 
 .scoreRing strong > span {
   display: inline-block;
-  min-width: 2ch;
-  text-align: right;
+  width: 2.1ch;
+  flex: 0 0 2.1ch;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 

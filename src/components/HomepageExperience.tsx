@@ -25,7 +25,6 @@ const SPOTIFY_SHOW_URL =
   "https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB";
 
 const SCORE_TARGET = 96;
-const SCORE_INCREMENT = 3;
 const SCORE_DURATION_MS = 1_500;
 
 type WaitlistFeedback =
@@ -323,13 +322,7 @@ function MatchingExperience() {
             1,
             (now - startedAt) / SCORE_DURATION_MS,
           );
-          const increments = Math.round(
-            (progress * SCORE_TARGET) / SCORE_INCREMENT,
-          );
-
-          setScore(
-            Math.min(SCORE_TARGET, increments * SCORE_INCREMENT),
-          );
+          setScore(Math.floor(progress * SCORE_TARGET));
 
           if (progress < 1) {
             animationFrame = window.requestAnimationFrame(animateScore);
