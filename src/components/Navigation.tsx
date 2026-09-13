@@ -14,7 +14,7 @@ type NavItem = {
 
 const apMedNavItems: NavItem[] = [
   { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
+  { href: "/institutions", label: "For programs" },
   { href: "/blog", label: "Blog" },
   { href: SPOTIFY_SHOW_URL, label: "Podcast", external: true },
   { href: "/mentors", label: "Mentors" },

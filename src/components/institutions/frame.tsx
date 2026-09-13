@@ -21,7 +21,7 @@ export function WindowFrame({
     >
       <div className="flex items-center gap-3 border-b border-line px-4 py-2.5">
         <div className="flex gap-1.5" aria-hidden="true">
-          <span className="size-2 rounded-full bg-mist" />
+          <span className="size-2 rounded-full bg-gold" />
           <span className="size-2 rounded-full bg-mist" />
           <span className="size-2 rounded-full bg-mist" />
         </div>

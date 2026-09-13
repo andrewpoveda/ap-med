@@ -1,34 +1,5 @@
-/* Institutional landing (/institutions). Tokens match live AP MED gold/navy/cream.
-   Scoped to .enterprise so student-facing pages keep Inter + existing chrome. */
-@theme {
-  --color-canvas: #faf8f4;
-  --color-ink: #1a1a2e;
-  --color-muted: #4a4a5a;
-  --color-faint: #6b6b6b;
-  --color-paper: #fffdf8;
-  --color-mist: #ece7dd;
-  --color-line: #e8e4dc;
-  --color-gold: #c8a96e;
-  --color-gold-fg: #1a1a2e;
-  --color-gold-dark: #8a6d3b;
-  --color-gold-soft: #f5efe2;
-  --color-ok: #1f6b47;
-  --color-ok-soft: #e5f1ea;
-  --color-warn: #7a5c22;
-  --color-warn-soft: #f3ecd4;
-  --color-danger: #9a3f3f;
-  --color-danger-soft: #f4e4e1;
-  --color-chip: #f0ece4;
-
-  --shadow-border:
-    0px 0px 0px 1px rgba(26, 26, 46, 0.06),
-    0px 1px 2px -1px rgba(26, 26, 46, 0.06),
-    0px 8px 24px -12px rgba(26, 26, 46, 0.12);
-  --shadow-lift:
-    0px 0px 0px 1px rgba(26, 26, 46, 0.08),
-    0px 18px 50px -20px rgba(26, 26, 46, 0.22);
-}
-
+/* Institutional landing (/institutions). Scoped so student-facing pages keep
+   their existing typography and chrome; shared tokens live in globals.css. */
 .enterprise,
 .enterprise * {
   font-family: var(--font-enterprise-sans), "Source Sans 3", "Segoe UI", sans-serif;
@@ -69,6 +40,28 @@
 
 .enterprise [id] {
   scroll-margin-top: 6.5rem;
+}
+
+.enterprise .institutionHero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 78% 34%, rgba(200, 169, 110, 0.11), transparent 23rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.48), rgba(250, 248, 244, 0));
+}
+
+.enterprise .institutionHero::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(138, 109, 59, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 109, 59, 0.055) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 62%, transparent 100%);
+  pointer-events: none;
+  content: "";
 }
 
 .enterprise a:focus-visible,

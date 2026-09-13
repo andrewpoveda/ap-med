@@ -95,7 +95,7 @@ export default function BlogArticle({ post }: { post: BlogPost }) {
 
           <aside className="inline-article-cta">
             <div><span>AP MED Mentors</span><h2>Operating a structured professional pipeline?</h2><p>See how applications, matching, milestones, relationship activity, surveys, and reporting can fit into one program model.</p></div>
-            <Link className="seo-button seo-button-primary" href="/about">Explore AP MED Mentors <ArrowRight size={17} /></Link>
+            <Link className="seo-button seo-button-primary" href="/institutions">Explore AP MED Mentors <ArrowRight size={17} /></Link>
           </aside>
         </article>
       </div>
@@ -109,7 +109,7 @@ export default function BlogArticle({ post }: { post: BlogPost }) {
         <span>AP MED Mentors</span>
         <h2>Build the program, not just the match.</h2>
         <p>Infrastructure for healthcare, education, association, and professional pipeline mentorship programs.</p>
-        <div className="seo-actions"><Link className="seo-button seo-button-primary" href="/about">Explore AP MED Mentors <ArrowRight size={17} /></Link><a className="seo-button seo-button-light" href="mailto:apmedpodcast@gmail.com">Talk to us</a></div>
+        <div className="seo-actions"><Link className="seo-button seo-button-primary" href="/institutions">Explore AP MED Mentors <ArrowRight size={17} /></Link><a className="seo-button seo-button-light" href="mailto:apmedpodcast@gmail.com">Talk to us</a></div>
       </section>
     </div>
   );

@@ -108,7 +108,7 @@ export default function AlternativePage({ alternative }: { alternative: Alternat
         <h1>Looking for a {alternative.name} alternative?</h1>
         <p>{alternative.description}</p>
         <div className="seo-actions">
-          <Link className="seo-button seo-button-primary" href="/about">Explore AP MED Mentors <ArrowRight size={17} /></Link>
+          <Link className="seo-button seo-button-primary" href="/institutions">Explore AP MED Mentors <ArrowRight size={17} /></Link>
           <Link className="seo-button seo-button-secondary" href="#pipeline">See how it works</Link>
         </div>
         <div className="fit-summary" aria-label="At a glance">
@@ -262,7 +262,7 @@ export default function AlternativePage({ alternative }: { alternative: Alternat
         <span>Mentorship infrastructure for professional pipelines</span>
         <h2>{alternative.closingHeading}</h2>
         <p>{alternative.closingCopy}</p>
-        <div className="seo-actions"><Link className="seo-button seo-button-primary" href="/about">Explore AP MED Mentors <ArrowRight size={17} /></Link><a className="seo-button seo-button-light" href="mailto:apmedpodcast@gmail.com">Talk to us</a></div>
+        <div className="seo-actions"><Link className="seo-button seo-button-primary" href="/institutions">Explore AP MED Mentors <ArrowRight size={17} /></Link><a className="seo-button seo-button-light" href="mailto:apmedpodcast@gmail.com">Talk to us</a></div>
       </section>
     </div>
   );
