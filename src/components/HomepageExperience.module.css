@@ -728,6 +728,27 @@
   }
 }
 
+@media (min-width: 981px) {
+  .hero {
+    min-height: 0;
+    padding-top: clamp(2.75rem, 4.5vw, 4rem);
+    padding-bottom: 2rem;
+  }
+
+  .matchStage {
+    min-height: 26rem;
+  }
+
+  .stageWorld {
+    min-height: 20rem;
+  }
+
+  .waitlistBanner {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+}
+
 @media (max-width: 700px) {
   .homeShell {
     width: calc(100vw - 2rem);
