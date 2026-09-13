@@ -18,6 +18,8 @@ const NAV = [
   { href: "#for", label: "For programs" },
 ];
 
+const HOME_LINK = { href: "/", label: "Main site" };
+
 const kicker = "text-[12px] font-semibold tracking-[0.16em] text-gold-dark uppercase";
 
 const YEAR = [
@@ -109,13 +111,21 @@ function SiteNav() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:h-[4.25rem] sm:px-8">
-        <a href="#top" className="flex items-center gap-2.5 text-ink" onClick={() => setOpen(false)}>
+        <a
+          href={HOME_LINK.href}
+          aria-label="AP MED home"
+          className="flex items-center gap-2.5 text-ink"
+          onClick={() => setOpen(false)}
+        >
           <span className="text-gold-dark">
             <Mark />
           </span>
           <span className="wordmark text-[1.65rem] leading-none">AP MED</span>
         </a>
         <nav aria-label="Primary" className="hidden items-center gap-7 text-[14px] text-muted lg:flex">
+          <a href={HOME_LINK.href} className="text-gold-dark transition-colors duration-150 hover:text-ink">
+            {HOME_LINK.label}
+          </a>
           {NAV.map((item) => (
             <a key={item.href} href={item.href} className="transition-colors duration-150 hover:text-ink">
               {item.label}
@@ -145,6 +155,13 @@ function SiteNav() {
       {open ? (
         <div id="mobile-menu" className="border-t border-line bg-canvas px-5 py-4 lg:hidden">
           <nav aria-label="Mobile" className="flex flex-col">
+            <a
+              href={HOME_LINK.href}
+              className="flex min-h-12 items-center text-[16px] text-gold-dark"
+              onClick={() => setOpen(false)}
+            >
+              {HOME_LINK.label}
+            </a>
             {NAV.map((item) => (
               <a
                 key={item.href}
