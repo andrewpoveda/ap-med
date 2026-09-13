@@ -409,7 +409,7 @@ function SiteFooter() {
             title="AP MED"
             links={[
               { href: "/", label: "Student-facing site" },
-              { href: "/about", label: "About" },
+              { href: "/institutions", label: "For programs" },
               { href: "mailto:apmedpodcast@gmail.com", label: "apmedpodcast@gmail.com" },
             ]}
           />
