@@ -87,6 +87,8 @@ export async function POST(request: Request) {
     !institution ||
     bio.length < 20 ||
     !currentStage ||
+    identity.length === 0 ||
+    selectedSpecialties.length === 0 ||
     canHelpWith.length === 0 ||
     !menteeCapacity ||
     data.directory_consent !== true

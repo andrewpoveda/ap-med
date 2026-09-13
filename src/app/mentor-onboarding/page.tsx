@@ -220,9 +220,11 @@ export default function MentorOnboardingPage() {
     }
     if (idx === 1) {
       if (form.bio.trim().length < 20) e.bio = "Please write at least a few sentences";
+      if (form.identity.length === 0) e.identity = "Please select at least one";
       if (!form.stage) e.stage = "Please select one";
     }
     if (idx === 2) {
+      if (form.specialties.length === 0) e.specialties = "Please select at least one";
       if (form.specialties.includes("Other") && !form.specialtyOther.trim()) e.specialtyOther = "Please specify your specialty";
       if (form.helpWith.length === 0) e.helpWith = "Please select at least one";
       if (!form.capacity) e.capacity = "Please select one";
@@ -431,8 +433,9 @@ export default function MentorOnboardingPage() {
           </Field>
 
           <div className="border-t border-[#e8e4dc] pt-5">
-            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Identity <span className="text-[#9a948a] font-normal">(optional)</span></p>
+            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Identity *</p>
             <p className="text-xs text-[#9a948a] mb-3">Select any that apply — helps students find mentors who share their background.</p>
+            {errors.identity && <p className="text-xs text-red-600 mb-2">{errors.identity}</p>}
             <div className="grid grid-cols-2 gap-2">
               {IDENTITY_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="identity" label={opt} checked={form.identity.includes(opt)} onChange={() => toggleArray("identity", opt)} />
@@ -461,8 +464,9 @@ export default function MentorOnboardingPage() {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Specialty <span className="text-[#9a948a] font-normal">(optional)</span></p>
-            <p className="text-xs text-[#9a948a] mb-3">Current or intended — select all that apply</p>
+            <p className="text-sm font-medium text-[#1a1a2e] mb-1">Specialty *</p>
+            <p className="text-xs text-[#9a948a] mb-3">Current or intended — select at least one</p>
+            {errors.specialties && <p className="text-xs text-red-600 mb-2">{errors.specialties}</p>}
             <div className="grid grid-cols-2 gap-2">
               {SPECIALTY_OPTIONS.map((opt) => (
                 <CheckItem key={opt} name="specialties" label={opt} checked={form.specialties.includes(opt)} onChange={() => toggleArray("specialties", opt)} />
