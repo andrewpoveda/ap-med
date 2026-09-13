@@ -81,7 +81,7 @@ export default function AlternativesHub() {
 
       <section className="hub-positioning">
         <div><span>AP MED Mentors</span><h2>Mentorship infrastructure built for healthcare, education, and professional pipelines.</h2></div>
-        <div><p>AP MED focuses on organizations managing structured mentorship programs across stages of professional development rather than attempting to be generic HR software.</p><p>The product model starts with participant intake: applications, review, matching, relationship activity, milestones, communications, measurement, and the next cohort.</p><Link className="seo-button seo-button-primary" href="/about">Explore AP MED Mentors <ArrowRight size={17} /></Link></div>
+        <div><p>AP MED focuses on organizations managing structured mentorship programs across stages of professional development rather than attempting to be generic HR software.</p><p>The product model starts with participant intake: applications, review, matching, relationship activity, milestones, communications, measurement, and the next cohort.</p><Link className="seo-button seo-button-primary" href="/institutions">Explore AP MED Mentors <ArrowRight size={17} /></Link></div>
       </section>
     </div>
   );

@@ -87,6 +87,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...blogEntries,
     ...ascensoEntries,
     { url: absoluteUrl('/mentor-onboarding'), changeFrequency: 'monthly', priority: 0.7 },
-    { url: absoluteUrl('/about'), changeFrequency: 'monthly', priority: 0.5 },
   ]
 }

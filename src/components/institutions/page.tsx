@@ -18,6 +18,8 @@ const NAV = [
   { href: "#for", label: "For programs" },
 ];
 
+const HOME_LINK = { href: "/", label: "Main site" };
+
 const kicker = "text-[12px] font-semibold tracking-[0.16em] text-gold-dark uppercase";
 
 const YEAR = [
@@ -109,13 +111,21 @@ function SiteNav() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:h-[4.25rem] sm:px-8">
-        <a href="#top" className="flex items-center gap-2.5 text-ink" onClick={() => setOpen(false)}>
+        <a
+          href={HOME_LINK.href}
+          aria-label="AP MED home"
+          className="flex items-center gap-2.5 text-ink"
+          onClick={() => setOpen(false)}
+        >
           <span className="text-gold-dark">
             <Mark />
           </span>
           <span className="wordmark text-[1.65rem] leading-none">AP MED</span>
         </a>
         <nav aria-label="Primary" className="hidden items-center gap-7 text-[14px] text-muted lg:flex">
+          <a href={HOME_LINK.href} className="text-gold-dark transition-colors duration-150 hover:text-ink">
+            {HOME_LINK.label}
+          </a>
           {NAV.map((item) => (
             <a key={item.href} href={item.href} className="transition-colors duration-150 hover:text-ink">
               {item.label}
@@ -145,6 +155,13 @@ function SiteNav() {
       {open ? (
         <div id="mobile-menu" className="border-t border-line bg-canvas px-5 py-4 lg:hidden">
           <nav aria-label="Mobile" className="flex flex-col">
+            <a
+              href={HOME_LINK.href}
+              className="flex min-h-12 items-center text-[16px] text-gold-dark"
+              onClick={() => setOpen(false)}
+            >
+              {HOME_LINK.label}
+            </a>
             {NAV.map((item) => (
               <a
                 key={item.href}
@@ -171,7 +188,7 @@ function SiteNav() {
 
 function Hero() {
   return (
-    <section id="top" className="mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 sm:pt-16 lg:pb-20 lg:pt-20">
+    <section id="top" className="institutionHero mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 sm:pt-16 lg:pb-20 lg:pt-20">
       <p className={kicker}>Mentorship infrastructure</p>
       <h1 className="mt-5 max-w-[20ch] font-display text-[clamp(2.5rem,6.4vw,5rem)] font-normal leading-[0.96] tracking-[-0.035em] text-ink">
         One system to <span className="mark">run</span>
@@ -233,14 +250,14 @@ function Why() {
         <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2rem,4.5vw,3.4rem)]">
           One operating system. Not a pile of tools.
         </h2>
-        <div className="mt-10 overflow-hidden rounded-2xl border border-line">
+        <div className="mt-10 overflow-hidden rounded-2xl border border-line bg-canvas shadow-(--shadow-border)">
           <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="border-b border-line bg-canvas px-5 py-4 md:border-r md:border-b-0 md:px-7">
               <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
                 How it usually runs
               </p>
             </div>
-            <div className="border-b border-line bg-paper px-5 py-4 md:border-l-2 md:border-l-gold md:px-7">
+            <div className="border-b border-line bg-gold-soft px-5 py-4 md:border-l-2 md:border-l-gold md:px-7">
               <p className="text-[11px] font-semibold tracking-[0.14em] text-gold-dark uppercase">
                 How it runs on AP MED
               </p>
@@ -254,7 +271,7 @@ function Why() {
                 </span>
                 {row.manual}
               </p>
-              <p className="border-t border-line bg-paper px-5 py-4 text-[14px] leading-relaxed text-ink md:border-l-2 md:border-l-gold md:px-7">
+              <p className="border-t border-line bg-gold-soft px-5 py-4 text-[14px] leading-relaxed text-ink md:border-l-2 md:border-l-gold md:px-7">
                 <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-gold-dark uppercase md:hidden">
                   On AP MED
                 </span>
@@ -313,8 +330,8 @@ function ForPrograms() {
           year from forms and a spreadsheet. Reviewers stay in control. Mentoring
           still happens in the room. AP MED holds the operating record.
         </p>
-        <div className="mt-10 grid gap-3 sm:grid-cols-3">
-          <article className="rounded-2xl border border-line bg-canvas p-5">
+        <div className="mt-10 grid gap-3 md:grid-cols-3">
+          <article className="rounded-2xl border border-line border-t-2 border-t-gold bg-canvas p-5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
               Isolated membership
             </p>
@@ -323,7 +340,7 @@ function ForPrograms() {
               AP MED’s public student directory.
             </p>
           </article>
-          <article className="rounded-2xl border border-line bg-canvas p-5">
+          <article className="rounded-2xl border border-line border-t-2 border-t-gold bg-canvas p-5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
               Provisioned
             </p>
@@ -332,7 +349,7 @@ function ForPrograms() {
               after a fit conversation — including gaps.
             </p>
           </article>
-          <article className="rounded-2xl border border-line bg-canvas p-5">
+          <article className="rounded-2xl border border-line border-t-2 border-t-gold bg-canvas p-5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
               Stood up with you
             </p>
@@ -361,20 +378,20 @@ function ForPrograms() {
 
 function Contact() {
   return (
-    <section id="talk" className="bg-ink text-paper">
+    <section id="talk" className="border-y border-line bg-gold-soft">
       <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div>
           <p className="text-[12px] font-semibold tracking-[0.16em] text-gold uppercase">
             Fit conversation
           </p>
-          <h2 className="mt-4 font-display text-[clamp(2rem,4vw,3.2rem)] text-paper">
+          <h2 className="mt-4 font-display text-[clamp(2rem,4vw,3.2rem)] text-ink">
             If you operate a cohort, tell us how the year runs.
           </h2>
-          <p className="mt-5 max-w-[38ch] text-[16px] leading-relaxed text-paper/70">
+          <p className="mt-5 max-w-[38ch] text-[16px] leading-relaxed text-muted">
             Tell us the program you operate. Fit, timing, and constraints belong
             in the conversation that follows.
           </p>
-          <p className="mt-6 max-w-[38ch] text-[14px] leading-relaxed text-paper/55">
+          <p className="mt-6 max-w-[38ch] text-[14px] leading-relaxed text-faint">
             The form opens a message to apmedpodcast@gmail.com. There is no separate
             sales inbox.
           </p>
@@ -389,7 +406,7 @@ function Contact() {
 
 function SiteFooter() {
   return (
-    <footer className="bg-ink text-paper">
+    <footer className="border-t border-line bg-canvas text-ink">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-5 py-12 sm:px-8 lg:flex-row lg:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
@@ -398,7 +415,7 @@ function SiteFooter() {
             </span>
             <span className="wordmark text-[1.65rem] leading-none">AP MED</span>
           </div>
-          <p className="mt-3 max-w-[32ch] text-[14px] leading-relaxed text-paper/65">
+          <p className="mt-3 max-w-[32ch] text-[14px] leading-relaxed text-muted">
             Mentorship infrastructure for structured programs. Provisioned with
             you — not sold at checkout.
           </p>
@@ -409,7 +426,7 @@ function SiteFooter() {
             title="AP MED"
             links={[
               { href: "/", label: "Student-facing site" },
-              { href: "/about", label: "About" },
+              { href: "/institutions", label: "For programs" },
               { href: "mailto:apmedpodcast@gmail.com", label: "apmedpodcast@gmail.com" },
             ]}
           />
@@ -423,8 +440,8 @@ function SiteFooter() {
           />
         </div>
       </div>
-      <div className="border-t border-white/10">
-        <p className="mx-auto max-w-6xl px-5 py-6 text-[12px] text-paper/50 sm:px-8">
+      <div className="border-t border-line">
+        <p className="mx-auto max-w-6xl px-5 py-6 text-[12px] text-faint sm:px-8">
           © {new Date().getFullYear()} AP MED. Console views show {EXAMPLE_PROGRAM.label} as
           one named program on the platform.
         </p>
@@ -449,14 +466,14 @@ function FooterCol({
             {link.href.startsWith("/") ? (
               <Link
                 href={link.href}
-                className="text-paper/85 transition-opacity duration-150 hover:opacity-70"
+                className="text-muted transition-colors duration-150 hover:text-ink"
               >
                 {link.label}
               </Link>
             ) : (
               <a
                 href={link.href}
-                className="text-paper/85 transition-opacity duration-150 hover:opacity-70"
+                className="text-muted transition-colors duration-150 hover:text-ink"
                 {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               >
                 {link.label}
