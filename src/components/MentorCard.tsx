@@ -16,6 +16,7 @@ const GOLD = '#c8a96e';
 // unchanged in Supabase.
 const PHOTO_POSITIONS: Record<string, string> = {
   'Devin Barzallo': '50% 15%',
+  'Michael Chidueme': '50% 15%',
   'Ricardo Correa': '50% 6%',
   'Henry del Carmen': '50% 21%',
   'Marcos Gomez Ambriz': '50% 7%',
