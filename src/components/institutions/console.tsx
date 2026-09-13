@@ -195,7 +195,7 @@ export function YearShowcase() {
                   fontSize: 12,
                 }}
               />
-              <Bar dataKey="count" fill="var(--color-gold)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="#c8a96e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

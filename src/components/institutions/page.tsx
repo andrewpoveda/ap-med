@@ -171,7 +171,7 @@ function SiteNav() {
 
 function Hero() {
   return (
-    <section id="top" className="mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 sm:pt-16 lg:pb-20 lg:pt-20">
+    <section id="top" className="institutionHero mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 sm:pt-16 lg:pb-20 lg:pt-20">
       <p className={kicker}>Mentorship infrastructure</p>
       <h1 className="mt-5 max-w-[20ch] font-display text-[clamp(2.5rem,6.4vw,5rem)] font-normal leading-[0.96] tracking-[-0.035em] text-ink">
         One system to <span className="mark">run</span>
@@ -227,35 +227,35 @@ function Hero() {
 
 function Why() {
   return (
-    <section id="why" className="border-y border-line bg-paper">
+    <section id="why" className="border-y border-white/10 bg-ink text-paper">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-        <p className={kicker}>Why AP MED</p>
-        <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2rem,4.5vw,3.4rem)]">
+        <p className="text-[12px] font-semibold tracking-[0.16em] text-gold uppercase">Why AP MED</p>
+        <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2rem,4.5vw,3.4rem)] text-paper">
           One operating system. Not a pile of tools.
         </h2>
-        <div className="mt-10 overflow-hidden rounded-2xl border border-line">
+        <div className="mt-10 overflow-hidden rounded-2xl border border-white/10">
           <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="border-b border-line bg-canvas px-5 py-4 md:border-r md:border-b-0 md:px-7">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
+            <div className="border-b border-white/10 bg-[#161626] px-5 py-4 md:border-r md:border-b-0 md:px-7">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-paper/50 uppercase">
                 How it usually runs
               </p>
             </div>
-            <div className="border-b border-line bg-paper px-5 py-4 md:border-l-2 md:border-l-gold md:px-7">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-gold-dark uppercase">
+            <div className="border-b border-white/10 bg-[#252238] px-5 py-4 md:border-l-2 md:border-l-gold md:px-7">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-gold uppercase">
                 How it runs on AP MED
               </p>
             </div>
           </div>
           {VERSUS.map((row) => (
             <div key={row.manual} className="grid grid-cols-1 md:grid-cols-2">
-              <p className="border-t border-line px-5 py-4 text-[14px] leading-relaxed text-muted md:border-r md:px-7">
-                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-faint uppercase md:hidden">
+              <p className="border-t border-white/10 px-5 py-4 text-[14px] leading-relaxed text-paper/60 md:border-r md:px-7">
+                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-paper/45 uppercase md:hidden">
                   Usually
                 </span>
                 {row.manual}
               </p>
-              <p className="border-t border-line bg-paper px-5 py-4 text-[14px] leading-relaxed text-ink md:border-l-2 md:border-l-gold md:px-7">
-                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-gold-dark uppercase md:hidden">
+              <p className="border-t border-white/10 bg-[#211f31] px-5 py-4 text-[14px] leading-relaxed text-paper md:border-l-2 md:border-l-gold md:px-7">
+                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-gold uppercase md:hidden">
                   On AP MED
                 </span>
                 {row.platform}
@@ -313,8 +313,8 @@ function ForPrograms() {
           year from forms and a spreadsheet. Reviewers stay in control. Mentoring
           still happens in the room. AP MED holds the operating record.
         </p>
-        <div className="mt-10 grid gap-3 sm:grid-cols-3">
-          <article className="rounded-2xl border border-line bg-canvas p-5">
+        <div className="mt-10 grid gap-3 md:grid-cols-3">
+          <article className="rounded-2xl border border-line border-t-2 border-t-gold bg-canvas p-5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
               Isolated membership
             </p>
@@ -323,7 +323,7 @@ function ForPrograms() {
               AP MED’s public student directory.
             </p>
           </article>
-          <article className="rounded-2xl border border-line bg-canvas p-5">
+          <article className="rounded-2xl border border-line border-t-2 border-t-gold bg-canvas p-5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
               Provisioned
             </p>
@@ -332,7 +332,7 @@ function ForPrograms() {
               after a fit conversation — including gaps.
             </p>
           </article>
-          <article className="rounded-2xl border border-line bg-canvas p-5">
+          <article className="rounded-2xl border border-line border-t-2 border-t-gold bg-canvas p-5">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
               Stood up with you
             </p>
