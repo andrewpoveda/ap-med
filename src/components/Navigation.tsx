@@ -18,7 +18,6 @@ const apMedNavItems: NavItem[] = [
   { href: "/blog", label: "Blog" },
   { href: SPOTIFY_SHOW_URL, label: "Podcast", external: true },
   { href: "/mentors", label: "Mentors" },
-  { href: "/mentor-onboarding", label: "Become a Mentor" },
 ];
 
 const ascensoNavItems: NavItem[] = [
