@@ -169,6 +169,7 @@ test('public mentor intake preserves exact duplicate success and does not update
   const options = loadTs('src/data/mentor-onboarding.ts')
   const body = { first_name: 'Alex', last_name: 'Smith', current_role: 'Student', institution: 'School',
     bio: 'A sufficiently long mentor biography.', current_stage: options.MENTOR_STAGE_OPTIONS[0],
+    identity: [tags.IDENTITY_OPTIONS[0]], specialty: [SPECIALTIES[0]],
     can_help_with: [tags.HELP_WITH_OPTIONS[0]], mentee_capacity: options.MENTOR_CAPACITY_OPTIONS[0], directory_consent: true }
   assert.equal((await route.POST(request({ ...body, email: ' ALEX.SMITH@example.org ' }))).status, 200)
   assert.equal(db.tables.mentor.length, 1)
