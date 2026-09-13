@@ -244,35 +244,35 @@ function Hero() {
 
 function Why() {
   return (
-    <section id="why" className="border-y border-white/10 bg-ink text-paper">
+    <section id="why" className="border-y border-line bg-paper">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-        <p className="text-[12px] font-semibold tracking-[0.16em] text-gold uppercase">Why AP MED</p>
-        <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2rem,4.5vw,3.4rem)] text-paper">
+        <p className={kicker}>Why AP MED</p>
+        <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2rem,4.5vw,3.4rem)]">
           One operating system. Not a pile of tools.
         </h2>
-        <div className="mt-10 overflow-hidden rounded-2xl border border-white/10">
+        <div className="mt-10 overflow-hidden rounded-2xl border border-line bg-canvas shadow-(--shadow-border)">
           <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="border-b border-white/10 bg-[#161626] px-5 py-4 md:border-r md:border-b-0 md:px-7">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-paper/50 uppercase">
+            <div className="border-b border-line bg-canvas px-5 py-4 md:border-r md:border-b-0 md:px-7">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-faint uppercase">
                 How it usually runs
               </p>
             </div>
-            <div className="border-b border-white/10 bg-[#252238] px-5 py-4 md:border-l-2 md:border-l-gold md:px-7">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-gold uppercase">
+            <div className="border-b border-line bg-gold-soft px-5 py-4 md:border-l-2 md:border-l-gold md:px-7">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-gold-dark uppercase">
                 How it runs on AP MED
               </p>
             </div>
           </div>
           {VERSUS.map((row) => (
             <div key={row.manual} className="grid grid-cols-1 md:grid-cols-2">
-              <p className="border-t border-white/10 px-5 py-4 text-[14px] leading-relaxed text-paper/60 md:border-r md:px-7">
-                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-paper/45 uppercase md:hidden">
+              <p className="border-t border-line px-5 py-4 text-[14px] leading-relaxed text-muted md:border-r md:px-7">
+                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-faint uppercase md:hidden">
                   Usually
                 </span>
                 {row.manual}
               </p>
-              <p className="border-t border-white/10 bg-[#211f31] px-5 py-4 text-[14px] leading-relaxed text-paper md:border-l-2 md:border-l-gold md:px-7">
-                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-gold uppercase md:hidden">
+              <p className="border-t border-line bg-gold-soft px-5 py-4 text-[14px] leading-relaxed text-ink md:border-l-2 md:border-l-gold md:px-7">
+                <span className="mb-1 block text-[10px] font-semibold tracking-[0.12em] text-gold-dark uppercase md:hidden">
                   On AP MED
                 </span>
                 {row.platform}
@@ -378,20 +378,20 @@ function ForPrograms() {
 
 function Contact() {
   return (
-    <section id="talk" className="bg-ink text-paper">
+    <section id="talk" className="border-y border-line bg-gold-soft">
       <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div>
           <p className="text-[12px] font-semibold tracking-[0.16em] text-gold uppercase">
             Fit conversation
           </p>
-          <h2 className="mt-4 font-display text-[clamp(2rem,4vw,3.2rem)] text-paper">
+          <h2 className="mt-4 font-display text-[clamp(2rem,4vw,3.2rem)] text-ink">
             If you operate a cohort, tell us how the year runs.
           </h2>
-          <p className="mt-5 max-w-[38ch] text-[16px] leading-relaxed text-paper/70">
+          <p className="mt-5 max-w-[38ch] text-[16px] leading-relaxed text-muted">
             Tell us the program you operate. Fit, timing, and constraints belong
             in the conversation that follows.
           </p>
-          <p className="mt-6 max-w-[38ch] text-[14px] leading-relaxed text-paper/55">
+          <p className="mt-6 max-w-[38ch] text-[14px] leading-relaxed text-faint">
             The form opens a message to apmedpodcast@gmail.com. There is no separate
             sales inbox.
           </p>
@@ -406,7 +406,7 @@ function Contact() {
 
 function SiteFooter() {
   return (
-    <footer className="bg-ink text-paper">
+    <footer className="border-t border-line bg-canvas text-ink">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-5 py-12 sm:px-8 lg:flex-row lg:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
@@ -415,7 +415,7 @@ function SiteFooter() {
             </span>
             <span className="wordmark text-[1.65rem] leading-none">AP MED</span>
           </div>
-          <p className="mt-3 max-w-[32ch] text-[14px] leading-relaxed text-paper/65">
+          <p className="mt-3 max-w-[32ch] text-[14px] leading-relaxed text-muted">
             Mentorship infrastructure for structured programs. Provisioned with
             you — not sold at checkout.
           </p>
@@ -440,8 +440,8 @@ function SiteFooter() {
           />
         </div>
       </div>
-      <div className="border-t border-white/10">
-        <p className="mx-auto max-w-6xl px-5 py-6 text-[12px] text-paper/50 sm:px-8">
+      <div className="border-t border-line">
+        <p className="mx-auto max-w-6xl px-5 py-6 text-[12px] text-faint sm:px-8">
           © {new Date().getFullYear()} AP MED. Console views show {EXAMPLE_PROGRAM.label} as
           one named program on the platform.
         </p>
@@ -466,14 +466,14 @@ function FooterCol({
             {link.href.startsWith("/") ? (
               <Link
                 href={link.href}
-                className="text-paper/85 transition-opacity duration-150 hover:opacity-70"
+                className="text-muted transition-colors duration-150 hover:text-ink"
               >
                 {link.label}
               </Link>
             ) : (
               <a
                 href={link.href}
-                className="text-paper/85 transition-opacity duration-150 hover:opacity-70"
+                className="text-muted transition-colors duration-150 hover:text-ink"
                 {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               >
                 {link.label}
