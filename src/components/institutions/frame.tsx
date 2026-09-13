@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { cn } from "@/components/institutions/cn";
+
+export function cn(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
 
 export function WindowFrame({
   title = "Program console",

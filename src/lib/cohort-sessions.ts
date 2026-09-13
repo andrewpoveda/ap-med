@@ -15,20 +15,10 @@ import {
 } from '@/lib/availability'
 
 /**
- * Authed cohort session booking (ascenso-prm.md §7.11).
- *
- * Matched pairs book real sessions through the mentor's availability, reusing
- * the 0005 scheduling core (computeOpenSlots + bookSession) — but authed via the
- * member's own account, not the magic-link /schedule/[token] flow. It's
- * two-sided like items 9/10: EITHER the cohort mentor OR the cohort mentee books
- * for their pair, always against the mentor's bookable hours + freebusy, with the
- * Google Meet event landing on the mentor's calendar.
- *
- * SECURITY (P0, §6.3): a member must never book on another pair's match. The POST
- * route resolves the acting member from the session (resolveActingMember, shared
- * with goals) and party-checks the ACTIVE match here before any booking. The
- * dashboard read side (getBookingInfoForMember) re-derives the member's own
- * active matches from their own side, so partner ids never leave the server.
+ * Either participant may book an active match using the mentor's availability
+ * and calendar. The route resolves the actor from the session and verifies the
+ * active match; dashboard reads independently resolve owned active matches.
+ * Partner IDs remain server-side.
  */
 
 export type PartyMatch = { mentorId: string; menteeId: string }

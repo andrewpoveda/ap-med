@@ -1,5 +1,6 @@
+import { compactCardStyle as cardStyle, centeredHeaderStyle as thStyle } from '@/components/styles'
 import type { Metadata } from 'next'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -21,22 +22,6 @@ export const metadata: Metadata = {
 // and members who've gone quiet. Read-only over the existing cohort tables
 // (pure SQL + recharts) — the numbers that justify LMSA-NE's funding ask. No
 // PostHog: that's product analytics; cohort accountability comes from our rows.
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.25rem 1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
-
-const thStyle: CSSProperties = {
-  textAlign: 'center',
-  fontWeight: 600,
-  fontSize: '0.78rem',
-  padding: '0.5rem 0.75rem',
-  whiteSpace: 'nowrap',
-}
 
 const TRACK_LABELS: Record<string, string> = {
   ms_premed: 'Med student → Premed',

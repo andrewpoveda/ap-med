@@ -9,7 +9,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { cn } from "@/components/institutions/cn";
 import {
   APPLICATIONS,
   CANDIDATES,
@@ -19,7 +18,7 @@ import {
   PAIRS,
   SESSIONS,
 } from "@/components/institutions/demo";
-import { MiniBar, StatusChip } from "@/components/institutions/frame";
+import { cn, MiniBar, StatusChip } from "@/components/institutions/frame";
 
 const STATUS_TONE = {
   submitted: "warn",

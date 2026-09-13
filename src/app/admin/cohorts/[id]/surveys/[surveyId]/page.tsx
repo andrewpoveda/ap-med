@@ -1,5 +1,5 @@
+import { cardStyle, eyebrowStyle } from '@/components/styles'
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
@@ -16,22 +16,6 @@ export const metadata: Metadata = {
 // Survey responses view (ascenso-prm.md §5.12). The derived-completion picture:
 // who has responded (with their answers) and who hasn't — never a manually
 // marked one. Same admin gate + non-probeable 404 posture as the sibling pages.
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
-
-const eyebrowStyle: CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#9a948a',
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  margin: '0 0 0.5rem',
-}
 
 /** Render one stored answer for a question as display text. */
 function answerText(question: SurveyQuestion, value: unknown): string {

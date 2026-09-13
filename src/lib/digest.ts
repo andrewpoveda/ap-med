@@ -4,23 +4,10 @@ import { MILESTONE_CATALOG, type CohortMemberType } from '@/lib/cohort-dashboard
 import { isValidEmail } from '@/lib/validate'
 
 /**
- * Daily digest computation (ascenso-prm.md §5.9 / §7.12).
- *
- * Once a day the cron route asks: who has pending items? Five kinds —
- * an unlogged meeting this month, an incomplete milestone past the cohort's
- * orientation date, an active goal past its target date, an open survey they
- * haven't answered, and a session in the next 24 hours. ALL of a person's items
- * batch into ONE email (the route sends; this module only computes).
- *
- * Scope: cohorts with status 'active' only. Members shouldn't be nagged about
- * meetings/milestones while a cohort is still in setup/applications/matching,
- * and nothing here fires after 'closed'.
- *
- * Cooldown (§5.9): anyone who already received a digest within the cooldown
- * window (default 7 days) is skipped — EXCEPT session-in-24h items, which are
- * time-critical and exempt. Anyone already digested TODAY is skipped entirely,
- * which is what makes a same-day re-invocation of the cron a no-op (idempotent
- * per day).
+ * Compute pending meetings, milestones, goals, surveys and upcoming sessions
+ * for active cohorts only. Items are batched by recipient and program. Skip
+ * recipients within the cooldown (default seven days), except urgent sessions
+ * in the next 24 hours. Same-day sends are always excluded for idempotency.
  */
 
 export const DIGEST_KIND = 'digest'

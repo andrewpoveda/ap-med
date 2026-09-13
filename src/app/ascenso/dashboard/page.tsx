@@ -1,6 +1,6 @@
+import { cardStyle, eyebrowStyle } from '@/components/styles'
 import { recordProgramAccess } from '@/lib/program-access'
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
@@ -64,22 +64,6 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Your Ascenso Dashboard | AP MED',
   robots: { index: false, follow: false },
-}
-
-const cardStyle: CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '12px',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(26,26,46,0.04)',
-}
-
-const eyebrowStyle: CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#9a948a',
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  margin: '0 0 0.5rem',
 }
 
 const SIGN_IN_BANNERS: Record<string, string> = {

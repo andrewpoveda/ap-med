@@ -12,30 +12,11 @@ import { releaseEmailBudgetSlots } from '@/lib/email-budget'
 import { normalizeEmail } from '@/lib/email-identity'
 
 /**
- * DEPRECATED (superseded Jul 30 2026) — re-request an Ascenso mentee magic-link
- * sign-in. Mentees now sign in with Google at /login, and match-confirmation
- * emails no longer carry a magic link, so this is the last issuer of them.
- *
- * It stays live for the mentees who signed in by emailed link before the switch,
- * or who are still holding an older match email: those links expire on Supabase's
- * OTP schedule (about an hour), so without this route their only door closes
- * overnight and they're locked out mid-program. Retire it together with the rest
- * of the magic-link path (checklist in src/lib/ascenso-auth.ts) once email_log
- * shows no recent kind='signin_link' rows.
- *
- * Public and unauthenticated by necessity —
- * the whole point is that the caller can't sign in — so it carries the same
- * posture as the other public write routes plus two extra constraints:
- *
- *   - The link is mailed ONLY to the address on the cohort mentee row we found.
- *     The request body's address is a lookup key, never a recipient, so this
- *     can't be used to mail someone else's credential to a chosen inbox.
- *   - The response is identical whether or not a mentee exists, so the route
- *     isn't a membership oracle for the cohort roster.
- *
- * Turnstile gates it against drive-by automation, and the shared daily email
- * budget (email_log, same soft cap as announcements/digests/match notifies)
- * bounds the damage a determined caller can do to the Resend quota.
+ * Legacy recovery for emailed sign-in; Google at /login is the primary path.
+ * Retain until use can be ruled out (see ascenso-auth). This public route mails
+ * only the stored cohort mentee address, never an authoritative browser-provided
+ * recipient. Identical responses hide membership. Turnstile and the shared
+ * email_log soft cap limit automated requests.
  */
 
 

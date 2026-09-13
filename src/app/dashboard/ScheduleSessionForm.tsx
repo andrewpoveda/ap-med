@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { sessionInputStyle as inputStyle } from '@/components/styles'
+import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Mentee = { id: string; firstName: string }
@@ -10,16 +11,6 @@ function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
     d.getHours(),
   )}:${pad(d.getMinutes())}`
-}
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  background: '#ffffff',
-  border: '1px solid #e8e4dc',
-  borderRadius: '8px',
-  padding: '0.6rem 0.75rem',
-  fontSize: '0.95rem',
-  color: '#1a1a2e',
 }
 
 export default function ScheduleSessionForm({ mentees }: { mentees: Mentee[] }) {

@@ -3,18 +3,9 @@ import { getMentorForUser } from '@/lib/mentor-link'
 import { getCohortMenteeForUser } from '@/lib/mentee-link'
 
 /**
- * Goals — the shared per-pair accountability list (ascenso-prm.md §4 / §7.10).
- *
- * Unlike meeting logs, a goal has no per-author column: it belongs to the MATCH,
- * not to whoever typed it. Both the cohort mentor and the cohort mentee see the
- * SAME list and can create / edit / complete / drop the same goals from their
- * own authed /dashboard. Item 10 writes + displays; goal-completion % is item 13.
- *
- * SECURITY (P0, §6.3): a member must NEVER read or write another pair's goals.
- * The read model is scoped to match ids the caller already resolved from their
- * OWN active matches (plus cohort_id); both write routes independently re-resolve
- * the acting member and verify they are a party to the target match before any
- * insert/update — see resolveActingMember + checkPartyToMatch below.
+ * Goals belong to the match, so either participant can edit them. Reads scope
+ * to the caller's resolved match IDs and cohort; writes independently resolve
+ * the actor and verify match ownership before inserting or updating.
  */
 
 export const GOAL_STATUSES = ['active', 'done', 'dropped'] as const
