@@ -390,6 +390,15 @@ export default function HomepageExperience({
 }) {
   return (
     <div className={styles.homeShell}>
+      <section className={styles.waitlistBanner} id="waitlist" aria-labelledby="waitlist-title">
+        <div className={styles.waitlistBannerCopy}>
+          <p className={styles.sectionKicker}>Early access</p>
+          <h2 id="waitlist-title">Get first access to AP MED Mentors.</h2>
+          <p>We&apos;re opening to more premeds soon.</p>
+        </div>
+        <WaitlistForm />
+      </section>
+
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroIntro}>
           <p className={styles.eyebrow}>
@@ -448,18 +457,6 @@ export default function HomepageExperience({
             </div>
           </li>
         </ol>
-      </section>
-
-      <section className={styles.waitlist} aria-labelledby="waitlist-title">
-        <div className={styles.waitlistCopy}>
-          <p className={styles.sectionKicker}>AP MED Mentors</p>
-          <h2 id="waitlist-title">Get early access to AP Med Mentors</h2>
-          <p>
-            We&apos;re opening the platform to more premeds soon. Join the
-            waitlist and we&apos;ll let you know when you&apos;re in.
-          </p>
-        </div>
-        <WaitlistForm />
       </section>
 
       {ascensoVisible && (

@@ -83,6 +83,56 @@
   margin-top: 2rem;
 }
 
+.waitlistBanner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(22rem, 1.1fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 5rem);
+  padding: 1.2rem 1rem;
+  border-bottom: 1px solid #e8e4dc;
+  background: #f5efe2;
+}
+
+.waitlistBannerCopy h2 {
+  max-width: 18ch;
+  margin: 0.45rem 0 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(1.9rem, 3.2vw, 2.65rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+}
+
+.waitlistBannerCopy > p:not(.sectionKicker) {
+  margin: 0.45rem 0 0;
+  color: var(--body);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.waitlistBanner .waitlistForm {
+  min-width: 0;
+}
+
+.waitlistBanner .waitlistFields {
+  min-width: 0;
+}
+
+.waitlistBanner .waitlistMeta {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.waitlistBanner .waitlistSecurity {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.waitlistBanner .waitlistConfirmation {
+  margin: 0;
+}
+
 .primaryButton,
 .secondaryButton {
   display: inline-flex;
@@ -649,6 +699,11 @@
 }
 
 @media (max-width: 980px) {
+  .waitlistBanner {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
   .hero {
     grid-template-columns: 1fr;
     gap: 2.75rem;
