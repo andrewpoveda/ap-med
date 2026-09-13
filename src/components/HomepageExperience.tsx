@@ -25,7 +25,7 @@ const SPOTIFY_SHOW_URL =
   "https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB";
 
 const SCORE_TARGET = 96;
-const SCORE_DURATION_MS = 1_875;
+const SCORE_DURATION_MS = 1_999;
 
 type WaitlistFeedback =
   | { kind: "error"; message: string; fieldInvalid: boolean }
