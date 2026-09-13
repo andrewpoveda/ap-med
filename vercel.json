@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/fix-admin-timestamp-hydration": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/digest",
