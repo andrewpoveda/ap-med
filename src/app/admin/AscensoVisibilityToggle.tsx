@@ -192,6 +192,9 @@ export default function AscensoVisibilityToggle({
         >
           Last changed{' '}
           {new Date(updatedAt).toLocaleString('en-US', {
+            // Keep the server and initial browser render identical.
+            timeZone: 'UTC',
+            timeZoneName: 'short',
             month: 'short',
             day: 'numeric',
             year: 'numeric',
