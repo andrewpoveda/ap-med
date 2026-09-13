@@ -91,15 +91,22 @@ for (const table of ['mentor', 'mentees']) {
 }
 
 test('admin-only OAuth routes to admin while preserving mentor/mentee destinations', async () => {
+  const callbackState = 'callback-state'
+  const callbackCookies = {
+    get: name => name === 'google_sign_in_state' ? { value: callbackState } : undefined,
+    set: () => {},
+  }
+
   for (const [resolution, admin, expected] of [['none', true, '/admin'], ['none', false, '/login?error=no_account'], ['mentor', true, '/dashboard'], ['mentee', true, '/ascenso/dashboard'], ['conflict', true, '/login?error=account_conflict']]) {
     const { signInDestination } = loadTs('src/lib/account-role.ts')
     const auth = { auth: { exchangeCodeForSession: async () => ({}), getUser: async () => ({ data: { user: { id: 'u', email: 'admin@example.org' } } }) } }
     const callback = route('src/app/auth/callback/route.ts', {}, session, {
+      'next/headers': { cookies: async () => callbackCookies },
       '@/lib/supabase-server': { createSupabaseServerClient: async () => auth },
       '@/lib/account-role': { resolveAccountForUser: async () => resolution, signInDestination },
       '@/lib/admin': { getAdminUserByEmail: async () => admin ? adminUser : null },
     })
-    const res = await callback.GET(new Request('https://ascenso.test/auth/callback?code=verified'))
+    const res = await callback.GET(new Request(`https://ascenso.test/auth/callback?code=verified&state=${callbackState}`))
     assert.equal(res.headers.get('location'), `https://ascenso.test${expected}`)
   }
 })

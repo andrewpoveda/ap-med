@@ -1,17 +1,21 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminUserByEmail } from '@/lib/admin'
 import { resolveAccountForUser, signInDestination } from '@/lib/account-role'
+import { GOOGLE_SIGN_IN_STATE_COOKIE_OPTIONS } from '@/lib/cookie-options'
+import { GOOGLE_SIGN_IN_STATE_COOKIE, matchesOAuthState } from '@/lib/oauth-state'
 
 /**
  * The one OAuth callback for AP MED — mentors and Ascenso cohort mentees both
  * arrive here from "Continue with Google" at /login. Supabase redirects in with a
- * one-time `code`; we exchange it for a session (setting the auth cookies), then
- * resolve which member table holds the Google-verified email and route to that
- * role's dashboard.
+ * one-time `code`; the app's one-time state cookie is checked first, then we
+ * exchange the code for a session (setting the auth cookies), resolve which
+ * member table holds the Google-verified email, and route to that role's
+ * dashboard.
  *
  * The role decision lives in src/lib/account-role.ts, including the mentor-first
  * precedence that keeps one auth user from claiming rows in both tables. Only the
@@ -24,8 +28,23 @@ import { resolveAccountForUser, signInDestination } from '@/lib/account-role'
  */
 export async function GET(request: Request) {
   const url = new URL(request.url)
-  const code = url.searchParams.get('code')
   const origin = url.origin
+  const cookieStore = await cookies()
+  const expectedState = cookieStore.get(GOOGLE_SIGN_IN_STATE_COOKIE)?.value
+  const state = url.searchParams.get('state')
+
+  // Consume the state before any exchange so a callback can never be replayed,
+  // including after a failed code exchange or an invalid state attempt.
+  cookieStore.set(GOOGLE_SIGN_IN_STATE_COOKIE, '', {
+    ...GOOGLE_SIGN_IN_STATE_COOKIE_OPTIONS,
+    maxAge: 0,
+  })
+
+  if (!matchesOAuthState(expectedState, state)) {
+    return NextResponse.redirect(`${origin}/login?error=state`)
+  }
+
+  const code = url.searchParams.get('code')
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`)

@@ -32,6 +32,7 @@ export const metadata: Metadata = {
 const ERRORS: Record<string, string> = {
   auth: 'Something went wrong signing you in. Please try again.',
   missing_code: 'That sign-in link was incomplete. Please try again.',
+  state: 'That sign-in attempt expired or was not started here. Please try again.',
 }
 
 const cardStyle: CSSProperties = {

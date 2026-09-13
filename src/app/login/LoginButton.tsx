@@ -9,6 +9,11 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
  * a mentee never has to find /login first; /auth/callback routes each role to its
  * own dashboard afterwards.
  *
+ * The same-origin /auth/start route creates a short-lived, HttpOnly callback
+ * state cookie. Supabase's SSR browser client separately handles the PKCE
+ * verifier, so the application state and Supabase's provider state stay
+ * separate.
+ *
  * `scopes` is stated explicitly even though these are Supabase's defaults for
  * Google: sign-in needs nothing but a verified email address, and writing that
  * down here is what keeps a later "just add Drive/Calendar while we're at it"
@@ -25,11 +30,24 @@ export default function LoginButton() {
     setErrorMessage('')
 
     try {
+      const stateResponse = await fetch('/auth/start', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      })
+      if (!stateResponse.ok) throw new Error(`OAuth state setup failed: ${stateResponse.status}`)
+
+      const { state } = (await stateResponse.json()) as { state?: string }
+      if (!state) throw new Error('OAuth state setup returned no state')
+
       const supabase = createSupabaseBrowserClient()
+      const callbackUrl = new URL('/auth/callback', window.location.origin)
+      callbackUrl.searchParams.set('state', state)
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl.toString(),
           scopes: 'openid email profile',
         },
       })

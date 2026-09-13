@@ -20,3 +20,11 @@ export const GOOGLE_OAUTH_STATE_COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   secure,
 }
+
+/** Short-lived, server-only CSRF state for the Supabase Google sign-in flow. */
+export const GOOGLE_SIGN_IN_STATE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  path: '/auth/callback',
+  sameSite: 'lax' as const,
+  secure,
+}
