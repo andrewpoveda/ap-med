@@ -24,6 +24,10 @@ const SIGNALS: Signal[] = [
 const SPOTIFY_SHOW_URL =
   "https://open.spotify.com/show/2CsWyH724wl7qHG1E6M3DB";
 
+const SCORE_TARGET = 96;
+const SCORE_INCREMENT = 3;
+const SCORE_DURATION_MS = 1_500;
+
 type WaitlistFeedback =
   | { kind: "error"; message: string; fieldInvalid: boolean }
   | { kind: "success"; message: string };
@@ -292,7 +296,7 @@ function MatchingExperience() {
     ).matches;
 
     if (reducedMotion) {
-      setScore(96);
+      setScore(SCORE_TARGET);
       setStep(7);
       return;
     }
@@ -307,25 +311,43 @@ function MatchingExperience() {
       window.setTimeout(() => setStep(4), 3050),
       window.setTimeout(() => setStep(5), 4200),
     ];
-    let ticker: number | undefined;
+    let animationFrame: number | undefined;
 
     timeouts.push(
       window.setTimeout(() => {
         setStep(6);
-        ticker = window.setInterval(() => {
-          setScore((current) => Math.min(96, current + 3));
-        }, 46);
+        const startedAt = window.performance.now();
+
+        const animateScore = (now: number) => {
+          const progress = Math.min(
+            1,
+            (now - startedAt) / SCORE_DURATION_MS,
+          );
+          const increments = Math.round(
+            (progress * SCORE_TARGET) / SCORE_INCREMENT,
+          );
+
+          setScore(
+            Math.min(SCORE_TARGET, increments * SCORE_INCREMENT),
+          );
+
+          if (progress < 1) {
+            animationFrame = window.requestAnimationFrame(animateScore);
+          } else {
+            setScore(SCORE_TARGET);
+            setStep(7);
+          }
+        };
+
+        animationFrame = window.requestAnimationFrame(animateScore);
       }, 4380),
-      window.setTimeout(() => {
-        if (ticker !== undefined) window.clearInterval(ticker);
-        setScore(96);
-        setStep(7);
-      }, 6000),
     );
 
     return () => {
       timeouts.forEach((timeout) => window.clearTimeout(timeout));
-      if (ticker !== undefined) window.clearInterval(ticker);
+      if (animationFrame !== undefined) {
+        window.cancelAnimationFrame(animationFrame);
+      }
     };
   }, [run]);
 
