@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { AvailabilityRule } from '@/lib/availability'
+import useHydratedTimeZone from './useHydratedTimeZone'
 
 const DAYS = [
   'Sunday',
@@ -31,19 +32,21 @@ export default function AvailabilityForm({
   initialTimezone: string | null
   initialRules: AvailabilityRule[]
 }) {
-  const browserTz = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-    [],
-  )
-  const timezones = useMemo<string[]>(() => {
-    try {
-      return Intl.supportedValuesOf('timeZone')
-    } catch {
-      return [browserTz]
-    }
-  }, [browserTz])
+  const browserTz = useHydratedTimeZone()
+  const [timezones, setTimezones] = useState<string[]>(['UTC'])
+  const [timezone, setTimezone] = useState(initialTimezone ?? 'UTC')
 
-  const [timezone, setTimezone] = useState(initialTimezone ?? browserTz)
+  useEffect(() => {
+    let supportedTimezones: string[]
+    try {
+      supportedTimezones = Intl.supportedValuesOf('timeZone')
+    } catch {
+      supportedTimezones = [browserTz]
+    }
+    setTimezones([...new Set([browserTz, ...supportedTimezones])])
+    if (!initialTimezone) setTimezone(browserTz)
+  }, [browserTz, initialTimezone])
+
   const [rules, setRules] = useState<AvailabilityRule[]>(initialRules)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)

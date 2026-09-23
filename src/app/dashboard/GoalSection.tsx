@@ -1,7 +1,7 @@
 'use client'
 
 import { cardStyle, eyebrowStyle, labelStyle, inputStyle, goldButton, linkButton } from '@/components/styles'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { GoalView } from '@/lib/goals'
 
@@ -57,6 +57,11 @@ export default function GoalSection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editTarget, setEditTarget] = useState('')
+  const [today, setToday] = useState('')
+
+  useEffect(() => {
+    setToday(todayLocalISO())
+  }, [])
 
   const goalsForMatch = goals.filter((g) => g.matchId === matchId)
   const active = goalsForMatch.filter((g) => g.status === 'active')
@@ -139,8 +144,6 @@ export default function GoalSection({
     // Send targetDate as null (not undefined) so clearing the field clears it.
     patchGoal(id, { title: editTitle.trim(), targetDate: editTarget || null })
   }
-
-  const today = todayLocalISO()
 
   return (
     <div style={cardStyle}>
@@ -237,7 +240,7 @@ export default function GoalSection({
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="space-y-3">
             {active.map((goal) => {
-              const overdue = !!goal.targetDate && goal.targetDate < today
+              const overdue = !!today && !!goal.targetDate && goal.targetDate < today
               const isEditing = editingId === goal.id
               const isBusy = busyId === goal.id
               return (

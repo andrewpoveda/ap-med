@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import type { UpcomingSession } from '@/lib/sessions'
+import LocalDateTime from './LocalDateTime'
 
 export default function SessionsList({ sessions }: { sessions: UpcomingSession[] }) {
   const router = useRouter()
@@ -57,10 +58,7 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
             </p>
             {s.calendarCleanupPending && <p className="text-sm">Cancelled in AP MED. Calendar removal is unconfirmed; reconnect Calendar and retry, or remove the event manually and confirm with your partner.</p>}
             <p className="text-[#6b6b6b]" style={{ margin: '0.15rem 0 0', fontSize: '0.85rem' }}>
-              {new Date(s.scheduledAt).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
+              <LocalDateTime iso={s.scheduledAt} />
             </p>
           </div>
           <div className="flex items-center gap-3">

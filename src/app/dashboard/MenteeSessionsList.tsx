@@ -1,4 +1,5 @@
 import type { MenteeUpcomingSession } from '@/lib/sessions'
+import LocalDateTime from './LocalDateTime'
 
 /**
  * Read-only upcoming-sessions list for a cohort mentee. A mentee can't cancel
@@ -35,10 +36,7 @@ export default function MenteeSessionsList({
               {s.mentorName}
             </p>
             <p className="text-[#6b6b6b]" style={{ margin: '0.15rem 0 0', fontSize: '0.85rem' }}>
-              {new Date(s.scheduledAt).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
+              <LocalDateTime iso={s.scheduledAt} />
             </p>
           </div>
           {s.meetLink && (

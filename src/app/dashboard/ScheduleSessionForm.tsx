@@ -1,7 +1,7 @@
 'use client'
 
 import { sessionInputStyle as inputStyle } from '@/components/styles'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Mentee = { id: string; firstName: string }
@@ -20,6 +20,11 @@ export default function ScheduleSessionForm({ mentees }: { mentees: Mentee[] }) 
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [minDateTime, setMinDateTime] = useState<string | undefined>()
+
+  useEffect(() => {
+    setMinDateTime(toLocalInputValue(new Date()))
+  }, [])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -81,7 +86,7 @@ export default function ScheduleSessionForm({ mentees }: { mentees: Mentee[] }) 
         <input
           type="datetime-local"
           value={when}
-          min={toLocalInputValue(new Date())}
+          min={minDateTime}
           onChange={e => setWhen(e.target.value)}
           style={inputStyle}
         />

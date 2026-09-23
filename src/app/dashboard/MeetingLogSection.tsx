@@ -1,7 +1,7 @@
 'use client'
 
 import { cardStyle, eyebrowStyle, labelStyle, inputStyle, goldButton } from '@/components/styles'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   MEETING_MODES,
@@ -9,6 +9,8 @@ import {
   type LoggableSession,
   type MeetingLogView,
 } from '@/lib/meeting-logs'
+import { formatDashboardDateTime } from './date-time'
+import useHydratedTimeZone from './useHydratedTimeZone'
 
 /**
  * The cohort member's meeting log (ascenso-prm.md §5.8): a form to record a
@@ -42,8 +44,8 @@ function formatDate(ymd: string): string {
   })
 }
 
-function formatSessionOption(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+function formatSessionOption(iso: string, timeZone: string): string {
+  return formatDashboardDateTime(iso, timeZone)
 }
 
 export default function MeetingLogSection({
@@ -61,15 +63,23 @@ export default function MeetingLogSection({
 }) {
   const router = useRouter()
   const partnerNoun = role === 'mentor' ? 'mentee' : 'mentor'
+  const timeZone = useHydratedTimeZone()
 
   const [matchId, setMatchId] = useState(matches[0]?.matchId ?? '')
   const [sessionId, setSessionId] = useState(OFF_PLATFORM)
-  const [metAt, setMetAt] = useState(todayLocalISO())
+  const [metAt, setMetAt] = useState('')
+  const [today, setToday] = useState('')
   const [duration, setDuration] = useState('')
   const [mode, setMode] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const localToday = todayLocalISO()
+    setToday(localToday)
+    setMetAt(localToday)
+  }, [])
 
   const sessionsForMatch = loggableSessions[matchId] ?? []
   const isSessionLog = sessionId !== OFF_PLATFORM
@@ -192,7 +202,7 @@ export default function MeetingLogSection({
               <option value={OFF_PLATFORM}>No — off-platform meeting</option>
               {sessionsForMatch.map((s) => (
                 <option key={s.id} value={s.id}>
-                  Booked session · {formatSessionOption(s.scheduledAt)}
+                  Booked session · {formatSessionOption(s.scheduledAt, timeZone)}
                 </option>
               ))}
             </select>
@@ -209,7 +219,7 @@ export default function MeetingLogSection({
               type="date"
               required
               value={metAt}
-              max={todayLocalISO()}
+              max={today || undefined}
               onChange={(e) => setMetAt(e.target.value)}
               style={inputStyle}
             />
