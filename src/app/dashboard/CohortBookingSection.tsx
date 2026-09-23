@@ -4,6 +4,7 @@ import { cardStyle, eyebrowStyle, labelStyle, inputStyle } from '@/components/st
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import type { MatchBookingInfo } from '@/lib/cohort-sessions'
+import useHydratedTimeZone from './useHydratedTimeZone'
 
 /**
  * Authed cohort session booking (ascenso-prm.md §7.11). A matched pair books a
@@ -56,22 +57,19 @@ export default function CohortBookingSection({
   const current = matches.find((m) => m.matchId === matchId) ?? matches[0]
   const info = current?.info
   const slots = info?.status === 'ok' ? info.slots : NO_SLOTS
-
-  const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-    [],
-  )
+  const timezone = useHydratedTimeZone()
   const timeFmt = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }),
-    [],
+    () => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone }),
+    [timezone],
   )
 
   // Group the ISO slot instants by the viewer's local calendar day.
   const days = useMemo(() => {
-    const dayFmt = new Intl.DateTimeFormat(undefined, {
+    const dayFmt = new Intl.DateTimeFormat('en-US', {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
+      timeZone: timezone,
     })
     const grouped: Array<{ label: string; slots: string[] }> = []
     for (const iso of slots) {
@@ -81,7 +79,7 @@ export default function CohortBookingSection({
       else grouped.push({ label, slots: [iso] })
     }
     return grouped
-  }, [slots])
+  }, [slots, timezone])
 
   function selectMatch(id: string) {
     setMatchId(id)
