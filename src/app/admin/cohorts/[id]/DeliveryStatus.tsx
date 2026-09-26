@@ -12,7 +12,7 @@ export default function DeliveryStatus({ deliveries }: { deliveries: DeliverySum
     if (action !== 'retry') {
       reason = window.prompt(action === 'confirm_accepted'
         ? 'After checking the email provider, describe the evidence that this email was accepted (include the provider ID).'
-        : 'Only proceed after the provider confirms this email was NOT accepted. Describe your evidence. This permits a new send.') ?? ''
+        : 'Only proceed after the provider confirms this email was NOT accepted. Describe your evidence. A retry is available only if the cohort still permits sending.') ?? ''
       if (reason.trim().length < 10) return
     }
     setBusy(true)
