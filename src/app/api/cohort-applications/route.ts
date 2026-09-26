@@ -8,6 +8,7 @@ import { isHttpUrl } from '@/lib/url'
 import { getAscensoCohortId } from '@/lib/site'
 import { isAscensoVisible } from '@/lib/app-settings'
 import { normalizeEmail } from '@/lib/email-identity'
+import { smsConsentAnswers, validateSmsContactInput } from '@/lib/sms-consent'
 import { ASCENSO_V1 } from '@/lib/program-definition'
 import { SPECIALTIES } from '@/data/specialties'
 import {
@@ -146,6 +147,14 @@ export async function POST(request: Request) {
     )
   }
 
+  const smsContact = validateSmsContactInput(data.phone_number, data.sms_consent)
+  if (!smsContact.ok) {
+    return NextResponse.json(
+      { error: smsContact.error, code: 'invalid_submission' },
+      { status: 400 },
+    )
+  }
+
   const identity = pickTags(data.identity, IDENTITY_OPTIONS)
   if (identity.length === 0) {
     return NextResponse.json(
@@ -279,6 +288,7 @@ export async function POST(request: Request) {
     motivation,
     experience_goals: experienceGoals,
     linkedin_url: linkedinUrl,
+    ...smsConsentAnswers(smsContact.value),
     can_commit: data.can_commit === true,
     identity,
     help_with_other: helpWithOther,

@@ -56,6 +56,90 @@ test('application decision remains saved when notifications are incomplete', asy
   assert.match((await res.json()).warning, /Decision saved/)
 })
 
+test('approval copies validated SMS consent without replacing an existing preference', async () => {
+  const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
+  const answers = {
+    ...smsConsentAnswers({ phoneE164: '+12015550123', consent: true }, new Date('2026-09-26T14:00:00.000Z')),
+    sms_consent_notice: 'Earlier AP MED cohort SMS wording shown at application time.',
+    sms_consent_notice_version: '2025-v1',
+  }
+  const db = database({
+    cohort_applications: [{ id: 'target', cohort_id: 'cohort', role: 'mentor', member_id: 'member', email: 'member@example.org', answers }],
+    mentor: [{ id: 'member', cohort_id: 'cohort', person_id: 'person' }],
+  })
+  db.rpc = async () => ({ data: 'approved' })
+  const originalFrom = db.from.bind(db)
+  let inserted = null
+  db.from = table => table === 'cohort_sms_contacts'
+    ? { upsert: async (value, options) => { inserted = { value, options }; return { error: null } } }
+    : originalFrom(table)
+  let deliveryAttempts = 0
+  const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db, session, {
+    '@/lib/cohort-delivery': { sendCohortDeliveries: async () => { deliveryAttempts++; return true } },
+  }).PATCH(request({ action: 'approve' }), ctx)
+
+  assert.equal(res.status, 200)
+  assert.deepEqual(await res.json(), { success: true, status: 'approved' })
+  assert.equal(deliveryAttempts, 1)
+  assert.deepEqual(inserted, {
+    value: {
+      cohort_id: 'cohort', person_id: 'person', phone_e164: '+12015550123',
+      consented_at: '2026-09-26T14:00:00.000Z', consent_source: 'cohort_application',
+      consent_notice: answers.sms_consent_notice,
+      consent_notice_version: answers.sms_consent_notice_version,
+    },
+    options: { onConflict: 'cohort_id,person_id', ignoreDuplicates: true },
+  })
+})
+
+test('invalid SMS evidence or contact insert failure warns after approval and still attempts email', async () => {
+  const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
+  const valid = smsConsentAnswers({ phoneE164: '+12015550123', consent: true })
+  for (const [answers, shouldInsert] of [
+    [{ ...valid, sms_consent_notice: ' ' }, false],
+    [{ ...valid, sms_consent_notice_version: null }, false],
+    [{ ...valid, sms_consented_at: 'not-a-date' }, false],
+    [{ ...valid, sms_phone_e164: null }, false],
+    [valid, true],
+  ]) {
+    const db = database({
+      cohort_applications: [{ id: 'target', cohort_id: 'cohort', role: 'mentee', member_id: 'member', email: 'member@example.org', answers }],
+      mentees: [{ id: 'member', cohort_id: 'cohort', person_id: 'person' }],
+    })
+    db.rpc = async () => ({ data: 'approved' })
+    const originalFrom = db.from.bind(db)
+    let insertAttempted = false
+    db.from = table => table === 'cohort_sms_contacts'
+      ? { upsert: async () => { insertAttempted = true; return { error: { code: '23505', message: 'duplicate' } } } }
+      : originalFrom(table)
+    let deliveryAttempts = 0
+    const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db, session, {
+      '@/lib/cohort-delivery': { sendCohortDeliveries: async () => { deliveryAttempts++; return true } },
+    }).PATCH(request({ action: 'approve' }), ctx)
+
+    assert.equal(res.status, 200)
+    assert.match((await res.json()).warning, /SMS phone preference could not be copied/)
+    assert.equal(insertAttempted, shouldInsert)
+    assert.equal(deliveryAttempts, 1)
+  }
+})
+
+test('approval skips a blank optional phone with no SMS consent', async () => {
+  const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
+  const answers = smsConsentAnswers({ phoneE164: null, consent: false })
+  const db = database({
+    cohort_applications: [{ id: 'target', cohort_id: 'cohort', email: 'member@example.org', answers }],
+  })
+  db.rpc = async () => ({ data: 'approved' })
+  let deliveryAttempts = 0
+  const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db, session, {
+    '@/lib/cohort-delivery': { sendCohortDeliveries: async () => { deliveryAttempts++; return true } },
+  }).PATCH(request({ action: 'approve' }), ctx)
+  assert.deepEqual(await res.json(), { success: true, status: 'approved' })
+  assert.equal(db.calls.filter(call => call.table === 'cohort_applications').length, 1)
+  assert.equal(deliveryAttempts, 1)
+})
+
 test('member route rejects ownership/cohort injection and blank names', async () => {
   const db = database()
   for (const changes of [{ auth_user_id: 'attacker' }, { email: 'attacker@example.org' }, { cohort_id: 'other' }, { first_name: ' ' }, { membership_status: 'unknown' }]) {

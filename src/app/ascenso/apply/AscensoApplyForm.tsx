@@ -19,6 +19,7 @@ import {
 import { isValidEmail } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
 import { fetchWithTimeout, isRequestTimeout } from '@/lib/fetch-with-timeout'
+import { SMS_CONSENT_NOTICE, validateSmsContactInput } from '@/lib/sms-consent'
 
 type Role = 'mentor' | 'mentee'
 
@@ -37,6 +38,8 @@ type ApplicationFormData = {
   track: string
   full_name: string
   email: string
+  phone_number: string
+  sms_consent: boolean
   institution: string
   current_position: string
   current_location: string
@@ -104,6 +107,8 @@ export default function AscensoApplyForm({
     track: '',
     full_name: '',
     email: '',
+    phone_number: '',
+    sms_consent: false,
     institution: '',
     current_position: '',
     current_location: '',
@@ -201,6 +206,8 @@ export default function AscensoApplyForm({
       }
     }
     if (step === 6) {
+      const smsContact = validateSmsContactInput(form.phone_number, form.sms_consent)
+      if (!smsContact.ok) return smsContact.error
       if (!form.can_commit) {
         return 'Confirm that you can commit to regular meetings for the program year.'
       }
@@ -798,6 +805,34 @@ export default function AscensoApplyForm({
                 Review the commitments below. You can use Back or the completed progress bars to
                 edit earlier answers.
               </p>
+
+              <div>
+                <h3>Text reminders and check-ins (optional)</h3>
+                <label style={labelStyle} htmlFor="ascenso-sms-phone">US mobile phone number</label>
+                <input
+                  id="ascenso-sms-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(201) 555-0123"
+                  value={form.phone_number}
+                  onChange={e => setForm(prev => ({ ...prev, phone_number: e.target.value }))}
+                  style={inputStyle}
+                  aria-describedby="ascenso-sms-phone-help"
+                />
+                <p id="ascenso-sms-phone-help" className="ascenso-helper">
+                  Providing a number does not sign you up for texts. You can take part in the cohort without SMS.
+                </p>
+                <label style={checkCardStyle(form.sms_consent)}>
+                  <input
+                    type="checkbox"
+                    checked={form.sms_consent}
+                    onChange={e => setForm(prev => ({ ...prev, sms_consent: e.target.checked }))}
+                    style={{ accentColor: '#c8a96e' }}
+                  />
+                  {SMS_CONSENT_NOTICE}
+                </label>
+              </div>
 
               <div className="ascenso-acknowledgments">
                 <label style={checkCardStyle(form.can_commit)}>

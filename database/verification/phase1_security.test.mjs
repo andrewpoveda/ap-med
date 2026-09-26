@@ -146,6 +146,38 @@ for (const role of ['mentor', 'mentee']) {
   })
 }
 
+test('cohort intake records only server-approved SMS consent evidence', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open' }] })
+  const response = await intakeRoute(db).POST(request({
+    ...applicationBody('mentee'),
+    phone_number: '(201) 555-0123',
+    sms_consent: true,
+    sms_consent_notice: 'forged disclosure',
+    sms_consented_at: '2000-01-01T00:00:00.000Z',
+  }))
+  assert.equal(response.status, 200)
+  const answers = db.tables.cohort_applications[0].answers
+  const { SMS_CONSENT_NOTICE, SMS_CONSENT_NOTICE_VERSION } = loadTs('src/lib/sms-consent.ts')
+  assert.equal(answers.sms_phone_e164, '+12015550123')
+  assert.equal(answers.sms_consent, true)
+  assert.equal(answers.sms_consent_notice, SMS_CONSENT_NOTICE)
+  assert.equal(answers.sms_consent_notice_version, SMS_CONSENT_NOTICE_VERSION)
+  assert.ok(!Number.isNaN(Date.parse(answers.sms_consented_at)))
+  assert.notEqual(answers.sms_consented_at, '2000-01-01T00:00:00.000Z')
+  assert.equal('phone_number' in answers, false)
+})
+
+test('cohort intake rejects SMS opt-in without a valid phone', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open' }] })
+  const route = intakeRoute(db)
+  for (const phone_number of ['', '+44 20 7946 0958', '201-555-CALL']) {
+    const response = await route.POST(request({ ...applicationBody('mentee'), phone_number, sms_consent: true }))
+    assert.equal(response.status, 400)
+    assert.equal((await response.json()).code, 'invalid_submission')
+  }
+  assert.deepEqual(db.tables.cohort_applications ?? [], [])
+})
+
 test('intake retains Turnstile, validation, destination and closed-cohort gates', async () => {
   const db = database({ cohorts: [{ id: cohortId, status: 'closed' }] })
   assert.equal((await intakeRoute(db, false).POST(request(applicationBody('mentee')))).status, 400)
