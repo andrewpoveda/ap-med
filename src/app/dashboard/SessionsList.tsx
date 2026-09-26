@@ -56,7 +56,10 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
             <p className="text-[#1a1a2e]" style={{ margin: 0, fontWeight: 500 }}>
               {s.menteeFirstName}
             </p>
-            {s.calendarCleanupPending && <p className="text-sm">Cancelled in AP MED. Calendar removal is unconfirmed; reconnect Calendar and retry, or remove the event manually and confirm with your partner.</p>}
+            {s.calendarCleanupPending && <p className="text-sm">Calendar removal is unconfirmed; reconnect Calendar and retry, or remove the event manually and confirm with your partner.</p>}
+            {['completed', 'no_show'].includes(s.status) && (
+              <p className="text-sm">This future session was marked {s.status === 'completed' ? 'complete' : 'no-show'} before its scheduled time. Cancel it to resolve its Calendar event before cohort closeout.</p>
+            )}
             <p className="text-[#6b6b6b]" style={{ margin: '0.15rem 0 0', fontSize: '0.85rem' }}>
               <LocalDateTime iso={s.scheduledAt} />
             </p>
@@ -73,7 +76,7 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
               </a>
             )}
             <button
-              onClick={() => cancel(s.id, !!s.calendarCleanupPending)}
+              onClick={() => cancel(s.id, s.status === 'cancelled' && !!s.calendarCleanupPending)}
               disabled={busyId === s.id}
               style={{
                 background: 'transparent',
@@ -85,7 +88,7 @@ export default function SessionsList({ sessions }: { sessions: UpcomingSession[]
                 cursor: busyId === s.id ? 'default' : 'pointer',
               }}
             >
-              {busyId === s.id ? 'Working…' : s.calendarCleanupPending ? 'Retry calendar removal' : 'Cancel'}
+              {busyId === s.id ? 'Working…' : s.status === 'cancelled' && s.calendarCleanupPending ? 'Retry calendar removal' : 'Cancel'}
             </button>
           </div>
         </li>

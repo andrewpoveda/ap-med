@@ -49,7 +49,7 @@ export async function PATCH(
     // existence isn't leaked.
     const { data: sessionRow, error: fetchErr } = await admin
       .from('sessions')
-      .select('id, mentor_id, google_event_id, status, calendar_cleanup_pending')
+      .select('id, mentor_id, google_event_id, scheduled_at, status, calendar_cleanup_pending')
       .eq('id', id)
       .maybeSingle()
     if (fetchErr) {
@@ -60,30 +60,35 @@ export async function PATCH(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
+    const isFuture = Date.parse(sessionRow.scheduled_at) > Date.now()
+    const canCancel = sessionRow.status === 'scheduled' ||
+      (isFuture && ['completed', 'no_show'].includes(sessionRow.status))
+
     if (action === 'cancel' || action === 'retry_calendar_cleanup') {
-      if (action === 'cancel' && !['scheduled', 'cancelled'].includes(sessionRow.status)) {
-        return NextResponse.json({ error: 'Only scheduled sessions can be cancelled.' }, { status: 409 })
+      if (action === 'cancel' && !canCancel && sessionRow.status !== 'cancelled') {
+        return NextResponse.json({ error: 'Only scheduled or future sessions can be cancelled.' }, { status: 409 })
       }
       if (action === 'retry_calendar_cleanup' && sessionRow.status !== 'cancelled') {
         return NextResponse.json({ error: 'Only cancelled sessions can retry calendar cleanup.' }, { status: 409 })
       }
-      if (sessionRow.status === 'scheduled') {
+      if (canCancel) {
         // Commit cancellation first. A provider outage or process crash leaves
         // a durable cleanup flag visible on the mentor dashboard.
         const { data: cancelled, error } = await admin.from('sessions')
-          .update({ status: 'cancelled', calendar_cleanup_pending: !!sessionRow.google_event_id })
-          .eq('id', id).eq('mentor_id', mentor.id).eq('status', 'scheduled').select('id')
+          .update({ status: 'cancelled', calendar_cleanup_pending: !!sessionRow.google_event_id || !!sessionRow.calendar_cleanup_pending })
+          .eq('id', id).eq('mentor_id', mentor.id).eq('status', sessionRow.status).select('id')
         if (error || !cancelled?.length) return NextResponse.json({ error: 'Session changed; refresh before cancelling.' }, { status: 409 })
       }
-      let pending = !!sessionRow.google_event_id && (sessionRow.status === 'scheduled' || sessionRow.calendar_cleanup_pending)
-      if (pending) {
+      let pending = !!sessionRow.calendar_cleanup_pending || (!!sessionRow.google_event_id && canCancel)
+      if (pending && sessionRow.google_event_id) {
         try {
           const accessToken = await getMentorAccessToken(admin, mentor.id)
           if (!accessToken) throw new Error('Calendar is not connected')
           await deleteCalendarEvent({ accessToken, eventId: sessionRow.google_event_id as string })
-          const { error } = await admin.from('sessions').update({ calendar_cleanup_pending: false })
+          const { data: cleaned, error } = await admin.from('sessions').update({ calendar_cleanup_pending: false })
             .eq('id', id).eq('mentor_id', mentor.id).eq('status', 'cancelled')
-          pending = !!error
+            .eq('google_event_id', sessionRow.google_event_id).select('id')
+          pending = !!error || !cleaned?.length
         } catch { pending = true }
       }
       return NextResponse.json({ success: true, calendarCleanupPending: pending,
@@ -98,10 +103,12 @@ export async function PATCH(
     }
 
     if (newStatus && sessionRow.status !== 'scheduled') return NextResponse.json({ error: 'Only scheduled sessions can change status.' }, { status: 409 })
-    const { data: updated, error: updErr } = await admin.from('sessions').update(update).eq('id', id).eq('status', sessionRow.status).select('id')
+    if (newStatus && isFuture) return NextResponse.json({ error: 'A future session must be cancelled to remove its calendar event.' }, { status: 409 })
+    const { data: updated, error: updErr } = await admin.from('sessions').update(update)
+      .eq('id', id).eq('mentor_id', mentor.id).eq('status', sessionRow.status).select('id')
     if (updErr || !updated?.length) {
       console.error('Session update failed:', updErr?.message ?? 'Session changed concurrently')
-      return NextResponse.json({ error: 'Could not update the session' }, { status: 500 })
+      return NextResponse.json({ error: updErr?.code === '23514' ? 'A future session must be cancelled to remove its calendar event.' : 'Session changed; refresh before updating.' }, { status: 409 })
     }
 
     return NextResponse.json({ success: true })

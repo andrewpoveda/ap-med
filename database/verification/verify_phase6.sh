@@ -22,4 +22,5 @@ done
 psql_local -f "$repo_root/database/baseline/supabase_compatibility_grants.sql"
 psql_local -f "$repo_root/database/verification/phase2_operations.sql"
 psql_local -f "$repo_root/database/verification/phase6_lifecycle.sql"
+psql_local -f "$repo_root/database/verification/phase6_closeout_guards.sql"
 echo 'Phase 6 local PostgreSQL verification passed.'

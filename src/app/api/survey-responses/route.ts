@@ -56,6 +56,15 @@ export async function POST(request: Request) {
     if (survey.status !== 'open') {
       return NextResponse.json({ error: 'This survey is closed' }, { status: 409 })
     }
+    const { data: cohort, error: cohortError } = await admin.from('cohorts')
+      .select('status').eq('id', actor.cohortId).single()
+    if (cohortError || !cohort) {
+      console.error('Survey cohort lookup failed:', cohortError?.message)
+      return NextResponse.json({ error: 'Could not submit your response' }, { status: 500 })
+    }
+    if (cohort.status === 'closed') {
+      return NextResponse.json({ error: 'This cohort is closed' }, { status: 409 })
+    }
 
     const questions = coerceQuestions(survey.questions)
     const answers = validateAnswers(questions, body.answers)
@@ -79,6 +88,9 @@ export async function POST(request: Request) {
           { error: "You've already responded to this survey" },
           { status: 409 },
         )
+      }
+      if (insertError.code === '23514') {
+        return NextResponse.json({ error: 'This survey is closed' }, { status: 409 })
       }
       console.error('Survey response insert failed:', insertError.message)
       return NextResponse.json({ error: 'Could not submit your response' }, { status: 500 })

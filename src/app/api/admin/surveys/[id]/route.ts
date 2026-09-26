@@ -68,6 +68,9 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
     const { error } = await admin.from('surveys').delete().eq('id', survey.id)
     if (error) {
       console.error('Survey delete failed:', error.message)
+      if (error.code === '23514') {
+        return NextResponse.json({ error: 'Closed cohorts cannot delete surveys' }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Could not delete the survey' }, { status: 500 })
     }
     return NextResponse.json({ success: true })
@@ -121,13 +124,29 @@ async function setStatus(
       { status: 409 },
     )
   }
-  const { error } = await admin
+  if (status === 'open') {
+    const { data: cohort, error: cohortError } = await admin.from('cohorts')
+      .select('status').eq('id', survey.cohort_id).single()
+    if (cohortError || !cohort) {
+      console.error('Survey cohort lookup failed:', cohortError?.message)
+      return NextResponse.json({ error: 'Could not update the survey' }, { status: 500 })
+    }
+    if (cohort.status === 'closed') {
+      return NextResponse.json({ error: 'Closed cohorts cannot reopen surveys' }, { status: 409 })
+    }
+  }
+  const { data: updated, error } = await admin
     .from('surveys')
     .update({ status, ...extra })
     .eq('id', survey.id)
+    .eq('status', survey.status)
+    .select('id')
   if (error) {
     console.error('Survey status update failed:', error.message)
-    return NextResponse.json({ error: 'Could not update the survey' }, { status: 500 })
+    return NextResponse.json({ error: error.code === '23514' ? 'Closed cohorts cannot reopen surveys' : 'Could not update the survey' }, { status: error.code === '23514' ? 409 : 500 })
+  }
+  if (!updated?.length) {
+    return NextResponse.json({ error: 'Survey changed; refresh before updating' }, { status: 409 })
   }
   return NextResponse.json({ success: true, status })
 }

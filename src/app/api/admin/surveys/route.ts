@@ -51,11 +51,14 @@ export async function POST(request: Request) {
     // Malformed uuid → lookup error → same 404 as a miss.
     const { data: cohort, error: cohortError } = await admin
       .from('cohorts')
-      .select('id')
+      .select('id, status')
       .eq('id', cohortId)
       .maybeSingle()
     if (cohortError || !cohort) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (cohort.status === 'closed') {
+      return NextResponse.json({ error: 'Closed cohorts cannot create surveys' }, { status: 409 })
     }
 
     const { data: created, error: insertError } = await admin
@@ -79,6 +82,9 @@ export async function POST(request: Request) {
           { error: 'A survey for this wave already exists — open or delete it first' },
           { status: 409 },
         )
+      }
+      if (insertError?.code === '23514') {
+        return NextResponse.json({ error: 'Closed cohorts cannot create surveys' }, { status: 409 })
       }
       console.error('Survey insert failed:', insertError?.message)
       return NextResponse.json({ error: 'Could not create the survey' }, { status: 500 })
