@@ -81,6 +81,8 @@ Program administrators can correct a limited set of profile fields and mark coho
 
 The repository contains cohort-scoped administration and member behavior for applications, proposed and active matches, orientation state, meeting logs, goals, scheduling, surveys, announcements, digest reminders, and analytics. Authorization belongs in the route or server helper for each operation; UI hiding alone is insufficient.
 
+A super administrator can discard an unused cohort while it is still in setup and restore it later. Discarding removes it from the active admin list but retains its row, organization owner and operation history. Any linked program record blocks discard. This is separate from closing a used cohort, which preserves its reports and cannot be reopened through settings.
+
 General and Ascenso help-tag vocabularies are separate in `src/data/tags.ts`. The pilot enforces one proposed, board-approved, or active match per person. Mentor capacity is collected as future willingness and is explicitly non-operational until a program requires a configurable capacity model. Active matches can be ended by an administrator with a retained actor, timestamp and reason; ended participants may be paired with a different person, while the original pair remains historical.
 
 Avoid embedding cohort size, participant names, current application counts, dates, partner approvals, or workflow status in canonical documentation. Those are changing operational facts.

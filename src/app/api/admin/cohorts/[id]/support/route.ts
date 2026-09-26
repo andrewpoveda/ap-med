@@ -19,5 +19,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     p_cohort: id, p_actor: session.adminUser.id,
     p_support: { name: body.name.trim(), email: body.email.trim(), instructions: body.instructions.trim() },
   })
+  if (error?.code === '23514') return NextResponse.json({ error: 'This cohort is discarded. Restore it before changing support settings.' }, { status: 409 })
   return error ? NextResponse.json({ error: 'Could not save support configuration' }, { status: 500 }) : NextResponse.json({ success: true })
 }

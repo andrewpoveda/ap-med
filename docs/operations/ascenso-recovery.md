@@ -28,6 +28,8 @@ Super administrators revoke only the intended cohort grants. Recheck access in a
 
 Before closing a cohort, end live matches, remove unactivated selections, cancel future sessions, clear Calendar cleanup and resolve uncertain email. Closeout refuses unresolved work and retains history. Local tests exercise revoked/multiple grants, invalid transitions and closeout guards. They do not prove external account revocation or provider cleanup.
 
+For a disposable QA cohort, a super administrator can use **Discard unused cohort** in its setup settings. The action requires a reason and refuses cohorts with any linked program records or the configured public application destination. The discarded cohort moves to the **Discarded setup cohorts** list, where **Restore cohort** returns it to setup. The cohort row, organization owner and audit events remain; this is reversible cleanup, not physical deletion. Do not advance a QA cohort through the lifecycle just to make it closable.
+
 ## Restore expectations
 
 Before any paid rollout, identify the backup owner, actual backup/PITR availability and retention, acceptable data-loss/downtime targets, and a safe isolated restore destination. Exercise a restore with realistic non-production data and record date, source, restored row/reference checks and elapsed time. Database restore does not undo provider emails/events or restore external OAuth consent. Reconcile outbox attempts and Calendar state before resuming workers after a restore, to avoid duplicate sends or stale appointments.
