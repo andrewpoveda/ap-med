@@ -24,7 +24,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit --incremental false
-      - run: node --test database/verification/*.test.mjs
+      - run: npm test
       - run: npm run build -- --webpack
   database:
     runs-on: ubuntu-latest

@@ -82,12 +82,13 @@ The package scripts also provide:
 
 ```bash
 npm run lint
-npx tsc --noEmit
-npm run build
+npx tsc --noEmit --incremental false
+npm test
+npm run build -- --webpack
 npm run start
 ```
 
-There is no general `npm test` script. Database-specific verification commands and migration guidance are documented in [`database/README.md`](database/README.md).
+`npm test` runs the Node verification suite. Database-specific PostgreSQL checks and migration guidance are documented in [`database/README.md`](database/README.md).
 
 ## Deployment / Production
 
