@@ -102,13 +102,21 @@ function applicationBody(role) {
     goals_milestones: 'Goals', can_commit: true, agrees_surveys: true, agrees_conduct: true, agrees_participation: true,
   }
 }
-function intakeRoute(db, captcha = true) {
+function intakeRoute(db, captcha = true, visible = true) {
   return loadTs('src/app/api/cohort-applications/route.ts', { ...framework,
     '@/lib/supabase-admin': { getSupabaseAdmin: () => db },
     '@/lib/turnstile': { verifyTurnstileToken: async () => captcha },
+    '@/lib/app-settings': { isAscensoVisible: async () => visible },
     '@/lib/site': { getAscensoCohortId: () => cohortId },
   })
 }
+test('hidden Ascenso intake rejects direct submissions before CAPTCHA or database access', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open' }] })
+  const response = await intakeRoute(db, false, false).POST(request(applicationBody('mentee')))
+  assert.equal(response.status, 503)
+  assert.equal((await response.json()).code, 'applications_unavailable')
+  assert.deepEqual(db.calls, [])
+})
 for (const role of ['mentor', 'mentee']) {
   for (const status of ['submitted', 'approved', 'rejected', 'waitlisted']) {
     test(`public ${role} duplicate cannot read/overwrite ${status} answers or history`, async () => {
