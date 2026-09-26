@@ -21,7 +21,7 @@ This file is the canonical automatic context for the repository. Keep it short a
 
 - Inspect current code and configuration before relying on prose. Never infer deployed values, row counts, feature-flag state, provider configuration, or migration application status from the repository.
 - Keep unrelated user changes intact. Do not alter production services or data unless the task explicitly authorizes it.
-- Before handing off code changes, run the relevant checks. Standard checks are `npm run lint`, `npx tsc --noEmit`, and `npm run build`; use narrower checks when the task is documentation-only.
+- Before handing off code changes, run the relevant checks. Standard application checks are `npm run lint`, `npx tsc --noEmit --incremental false`, `npm test`, and `npm run build -- --webpack`; use narrower checks when the task is documentation-only. The Node suite is part of CI and must run for changes to route behavior or test fixtures.
 
 ## Read only when relevant
 

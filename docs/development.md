@@ -60,10 +60,11 @@ Choose checks proportional to the change:
 
 ```bash
 npm run lint
-npx tsc --noEmit
-npm run build
+npx tsc --noEmit --incremental false
+npm test
+npm run build -- --webpack
 ```
 
-There is no general `npm test` script. Database changes have focused checks documented in `database/README.md`. For documentation-only work, validate links/paths, formatting, and the Git diff; an application build is normally unnecessary.
+`npm test` runs the Node verification suite used by the application CI job. Database changes also have focused PostgreSQL checks documented in `database/README.md`. For documentation-only work, validate links/paths, formatting, and the Git diff; an application build is normally unnecessary.
 
 Repository configuration shows intended behavior, not deployed truth. When a task depends on current environment variables, migrations, flags, logs, quotas, or provider state, inspect the authorized live source instead of updating docs from an assumption.
