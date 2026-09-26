@@ -73,10 +73,10 @@ export async function readAscensoVisibility(): Promise<AscensoVisibility> {
 }
 
 /**
- * Is the public Ascenso funnel discoverable? Governs the homepage panel,
- * /ascenso, /ascenso/apply, and the two sitemap entries — the four surfaces
- * that must agree, since a visible link into a redirecting route is worse than
- * either state on its own.
+ * Is the public Ascenso funnel available? Governs the homepage panel,
+ * /ascenso, /ascenso/apply, the two sitemap entries, and the application POST.
+ * All of these surfaces must agree, since hiding the form while accepting
+ * direct submissions would leave the partner's intake open.
  *
  * Not gated by this, deliberately: /ascenso/dashboard and /ascenso/auth
  * (existing members keep their accounts either way), /login and /admin (the

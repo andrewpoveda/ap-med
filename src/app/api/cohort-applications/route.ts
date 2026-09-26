@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { cap, isValidEmail, LIMITS } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
 import { getAscensoCohortId } from '@/lib/site'
+import { isAscensoVisible } from '@/lib/app-settings'
 import { normalizeEmail } from '@/lib/email-identity'
 import { ASCENSO_V1 } from '@/lib/program-definition'
 import { SPECIALTIES } from '@/data/specialties'
@@ -68,6 +69,15 @@ function pickOne(value: unknown, allowed: readonly string[]): string {
 }
 
 export async function POST(request: Request) {
+  // Hiding the public pages must also close the server-side intake. A direct
+  // request can reach this route without ever visiting /ascenso/apply.
+  if (!(await isAscensoVisible())) {
+    return NextResponse.json(
+      { error: 'Applications are not available', code: 'applications_unavailable' },
+      { status: 503 },
+    )
+  }
+
   let data: Record<string, unknown>
   try {
     const parsed: unknown = await request.json()

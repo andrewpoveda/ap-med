@@ -6,7 +6,7 @@ Read this document for work on `/ascenso`, cohort applications, cohort matching,
 
 Ascenso is a cohort-scoped program on the AP MED platform. Its mentors and mentees have authenticated accounts and never join the general public matching pool. All cohort records and member actions must retain `cohort_id` scoping.
 
-Public discoverability is controlled by the singleton `app_settings.ascenso_visible` value through `src/lib/app-settings.ts`. The read fails closed and coordinates four public surfaces: the homepage panel, `/ascenso`, `/ascenso/apply`, and the two sitemap entries. It does not disable existing-member dashboards, authentication routes, or admin access. This visibility flag is distinct from a cohort's workflow `status`.
+Public availability is controlled by the singleton `app_settings.ascenso_visible` value through `src/lib/app-settings.ts`. The read fails closed and coordinates the homepage panel, `/ascenso`, `/ascenso/apply`, the two sitemap entries, and the public application POST. It does not disable existing-member dashboards, authentication routes, or admin access. This visibility flag is distinct from a cohort's workflow `status`.
 
 The public application flow is bound to the exact UUID in
 `ASCENSO_COHORT_ID`; neither the cohort name nor a client-submitted identifier
