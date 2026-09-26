@@ -1,14 +1,14 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { resolveAdminSession, canAccessCohort, type AdminUser } from '@/lib/admin'
+import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Survey lifecycle actions (ascenso-prm.md §5.12). PATCH `open` publishes a
 // survey to the cohort's dashboards (status → open, opens_at stamped); PATCH
 // `close` ends it (status → closed, closes_at stamped). A survey can be reopened
-// (closed → open) if the board wants more time. DELETE removes a survey ONLY
+// (closed → open) while its cohort is active. DELETE removes a survey ONLY
 // while it has zero responses — a survey with responses is the record and must
 // not be destroyable — which also lets a mis-created draft be cleared so the
 // unique(cohort_id, wave) slot frees up. Same posture as the other admin routes:
@@ -24,16 +24,16 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   try {
     const gate = await requireSurvey(ctx)
     if ('response' in gate) return gate.response
-    const { admin, survey } = gate
+    const { admin, adminUser, survey } = gate
 
     const body = await request.json().catch(() => ({}))
     const action = String(body.action ?? '')
 
     if (action === 'open') {
-      return setStatus(admin, survey, 'open', { opens_at: new Date().toISOString() })
+      return mutateSurvey(admin, survey, adminUser.id, 'open')
     }
     if (action === 'close') {
-      return setStatus(admin, survey, 'closed', { closes_at: new Date().toISOString() })
+      return mutateSurvey(admin, survey, adminUser.id, 'close')
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (err) {
@@ -46,34 +46,9 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
   try {
     const gate = await requireSurvey(ctx)
     if ('response' in gate) return gate.response
-    const { admin, survey } = gate
+    const { admin, adminUser, survey } = gate
 
-    // A survey with responses is the record — never deletable. Only a survey
-    // nobody has answered yet can be removed (e.g. a mis-typed draft).
-    const { count, error: countError } = await admin
-      .from('survey_responses')
-      .select('id', { count: 'exact', head: true })
-      .eq('survey_id', survey.id)
-    if (countError) {
-      console.error('Survey response count failed:', countError.message)
-      return NextResponse.json({ error: 'Could not delete the survey' }, { status: 500 })
-    }
-    if ((count ?? 0) > 0) {
-      return NextResponse.json(
-        { error: 'This survey has responses and cannot be deleted' },
-        { status: 409 },
-      )
-    }
-
-    const { error } = await admin.from('surveys').delete().eq('id', survey.id)
-    if (error) {
-      console.error('Survey delete failed:', error.message)
-      if (error.code === '23514') {
-        return NextResponse.json({ error: 'Closed cohorts cannot delete surveys' }, { status: 409 })
-      }
-      return NextResponse.json({ error: 'Could not delete the survey' }, { status: 500 })
-    }
-    return NextResponse.json({ success: true })
+    return mutateSurvey(admin, survey, adminUser.id, 'delete')
   } catch (err) {
     console.error('Survey delete crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -83,7 +58,7 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
 /** Shared gate: admin session → survey row → cohort access. Non-probeable 404s. */
 async function requireSurvey(ctx: { params: Promise<{ id: string }> }): Promise<
   | { response: NextResponse }
-  | { admin: SupabaseClient; adminUser: AdminUser; survey: SurveyRow }
+  | { admin: SupabaseClient; adminUser: { id: string }; survey: SurveyRow }
 > {
   const session = await resolveAdminSession()
   if (session.status === 'unauthenticated') {
@@ -112,41 +87,52 @@ async function requireSurvey(ctx: { params: Promise<{ id: string }> }): Promise<
   return { admin, adminUser: session.adminUser, survey }
 }
 
-async function setStatus(
+async function mutateSurvey(
   admin: SupabaseClient,
   survey: SurveyRow,
-  status: 'open' | 'closed',
-  extra: Record<string, unknown>,
+  actorId: string,
+  action: 'open' | 'close' | 'delete',
 ) {
-  if (survey.status === status) {
+  const nextStatus = action === 'delete' ? null : action === 'close' ? 'closed' : 'open'
+  if (nextStatus && survey.status === nextStatus) {
     return NextResponse.json(
-      { error: status === 'open' ? 'This survey is already open' : 'This survey is already closed' },
+      { error: nextStatus === 'open' ? 'This survey is already open' : 'This survey is already closed' },
       { status: 409 },
     )
   }
-  if (status === 'open') {
-    const { data: cohort, error: cohortError } = await admin.from('cohorts')
-      .select('status').eq('id', survey.cohort_id).single()
-    if (cohortError || !cohort) {
-      console.error('Survey cohort lookup failed:', cohortError?.message)
-      return NextResponse.json({ error: 'Could not update the survey' }, { status: 500 })
-    }
-    if (cohort.status === 'closed') {
-      return NextResponse.json({ error: 'Closed cohorts cannot reopen surveys' }, { status: 409 })
-    }
-  }
-  const { data: updated, error } = await admin
-    .from('surveys')
-    .update({ status, ...extra })
-    .eq('id', survey.id)
-    .eq('status', survey.status)
-    .select('id')
+  // The RPC acquires the cohort lock before the survey lock. Direct UPDATE or
+  // DELETE would reverse closeout's lock order and can deadlock with it.
+  const { data, error } = await admin.rpc('ascenso_mutate_survey', {
+    p_id: survey.id,
+    p_cohort: survey.cohort_id,
+    p_actor: actorId,
+    p_action: action,
+    p_expected_status: survey.status,
+  })
   if (error) {
-    console.error('Survey status update failed:', error.message)
-    return NextResponse.json({ error: error.code === '23514' ? 'Closed cohorts cannot reopen surveys' : 'Could not update the survey' }, { status: error.code === '23514' ? 409 : 500 })
+    if (error.code === 'P0002' || error.code === '42501') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (error.code === '23514' || error.code === '23503') {
+      let message = 'Survey changed; refresh before updating'
+      if (error.message === 'Closed cohorts cannot change surveys') {
+        message = action === 'open' ? 'Closed cohorts cannot reopen surveys' : 'Closed cohorts cannot change surveys'
+      } else if (error.message === 'Discarded cohorts cannot change surveys' ||
+          error.message === 'This survey has responses and cannot be deleted' ||
+          error.message === 'This survey is already open' ||
+          error.message === 'This survey is already closed') {
+        message = error.message
+      } else if (error.code === '23503') {
+        message = 'This survey has responses and cannot be deleted'
+      }
+      return NextResponse.json({ error: message }, { status: 409 })
+    }
+    console.error('Survey mutation failed:', error.message)
+    return NextResponse.json({ error: action === 'delete' ? 'Could not delete the survey' : 'Could not update the survey' }, { status: 500 })
   }
-  if (!updated?.length) {
-    return NextResponse.json({ error: 'Survey changed; refresh before updating' }, { status: 409 })
+  if (data !== (nextStatus ?? 'deleted')) {
+    console.error('Survey mutation returned an unexpected result:', data)
+    return NextResponse.json({ error: action === 'delete' ? 'Could not delete the survey' : 'Could not update the survey' }, { status: 500 })
   }
-  return NextResponse.json({ success: true, status })
+  return NextResponse.json(nextStatus ? { success: true, status: nextStatus } : { success: true })
 }
