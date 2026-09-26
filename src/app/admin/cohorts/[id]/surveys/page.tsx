@@ -68,6 +68,9 @@ export default async function CohortSurveysPage({
     .eq('id', cohortId)
     .maybeSingle()
   if (!cohort) notFound()
+  const { data: smsConfig } = process.env.SMS_FEATURE_ENABLED === 'true'
+    ? await admin.from('cohorts').select('sms_enabled').eq('id', cohortId).maybeSingle()
+    : { data: null }
 
   const surveys = await getCohortSurveys(admin, cohort.id)
   const usedWaves = surveys.map((s) => s.wave)
@@ -115,6 +118,14 @@ export default async function CohortSurveysPage({
           ? 'This cohort is closed. Its surveys and responses are preserved for reporting.'
           : 'Create a survey per wave, then open it — members answer from their own dashboards, and the open-survey reminder rides the daily digest. Who has responded is tracked automatically; a survey can be deleted only before it has any responses.'}
       </p>
+
+      {smsConfig?.sms_enabled === true && (
+        <p className="mt-3 text-sm">
+          <Link href={`/admin/cohorts/${cohort.id}/checkins`} style={{ color: '#8a6a2f' }}>
+            View named meeting check-ins →
+          </Link>
+        </p>
+      )}
 
       {cohort.status !== 'closed' && (
         <div className="mt-6" style={cardStyle}>

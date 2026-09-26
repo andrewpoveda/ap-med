@@ -29,6 +29,8 @@ import {
 import { getGoalsForMatches, type GoalView } from '@/lib/goals'
 import { getBookingInfoForMember, type MatchBookingInfo } from '@/lib/cohort-sessions'
 import { getMemberSurveys, type MemberSurveyView } from '@/lib/surveys'
+import { getMemberMeetingCheckins, type MemberMeetingCheckin } from '@/lib/meeting-checkins'
+import { getMemberSmsPreference, isCohortSmsEnabled, type MemberSmsPreference } from '@/lib/cohort-sms'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
@@ -51,6 +53,8 @@ import MeetingLogSection from './MeetingLogSection'
 import GoalSection from './GoalSection'
 import CohortBookingSection, { type BookingMatch } from './CohortBookingSection'
 import SurveySection from './SurveySection'
+import MeetingCheckinSection from './MeetingCheckinSection'
+import SmsPreferenceSection from './SmsPreferenceSection'
 import {
   CohortRelationshipTools,
   CohortRelationshipWorkspace,
@@ -179,6 +183,9 @@ export default async function DashboardPage({
   let goals: GoalView[] = []
   let bookingInfo: Record<string, MatchBookingInfo> = {}
   let openSurveys: MemberSurveyView[] = []
+  let smsEnabled = false
+  let smsPreference: MemberSmsPreference | null = null
+  let meetingCheckins: MemberMeetingCheckin[] = []
 
   let memberRef: CohortMemberRef | null = null
   if (mentor?.cohort_id) {
@@ -221,6 +228,13 @@ export default async function DashboardPage({
       // one-upcoming-session cap.
       getBookingInfoForMember(admin, ref),
     ])
+    smsEnabled = await isCohortSmsEnabled(admin, ref.cohortId)
+    if (smsEnabled) {
+      ;[smsPreference, meetingCheckins] = await Promise.all([
+        getMemberSmsPreference(admin, ref),
+        getMemberMeetingCheckins(admin, ref),
+      ])
+    }
   }
 
   const meetingLogMatches = cohortMatches.map((m) => ({
@@ -307,6 +321,8 @@ export default async function DashboardPage({
                 milestones={cohortMilestones}
               />
               {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
+              {smsEnabled && <SmsPreferenceSection preference={smsPreference} />}
+              {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
               {meetingLogMatches.length > 0 && (
                 <CohortRelationshipTools>
                   {bookingMatches.length > 0 && (
@@ -407,6 +423,8 @@ export default async function DashboardPage({
             milestones={cohortMilestones}
           />
           {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
+          {smsEnabled && <SmsPreferenceSection preference={smsPreference} />}
+          {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
           {bookingMatches.length > 0 && (
             <CohortBookingSection role="mentee" matches={bookingMatches} />
           )}
