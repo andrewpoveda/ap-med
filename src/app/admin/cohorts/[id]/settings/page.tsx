@@ -12,7 +12,7 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
   const { id } = await params
   if (!canAccessCohort(adminUser, id)) notFound()
   const admin = getSupabaseAdmin()
-  const { data: cohort, error } = await admin.from('cohorts').select('id,name,org,status,config').eq('id', id).maybeSingle()
+  const { data: cohort, error } = await admin.from('cohorts').select('id,name,org,status,config,config_version').eq('id', id).maybeSingle()
   if (error || !cohort) notFound()
   const grants: { email: string; revoked: boolean }[] = []
   if (adminUser.role === 'super') {
@@ -29,7 +29,7 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
   }
   return <div className="space-y-8">
     <Link href="/admin">← Cohorts</Link>
-    <CohortConfiguration key={`${cohort.id}:${cohort.status}`} cohort={{ ...cohort, orientation: typeof cohort.config?.orientation_date === 'string' ? cohort.config.orientation_date : '' }} />
+    <CohortConfiguration key={`${cohort.id}:${cohort.config_version}`} cohort={{ ...cohort, orientation: typeof cohort.config?.orientation_date === 'string' ? cohort.config.orientation_date : '' }} />
     <Link href={`/admin/cohorts/${id}/members`}>Member management and support inbox</Link>
     {adminUser.role === 'super' && <GrantEditor cohortId={id} grants={grants} />}
   </div>
