@@ -11,7 +11,14 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    // Next's opaque server-render digest distinguishes failures even when the
+    // browser receives only a redacted Error and no useful stack frames.
+    const digest = error.digest;
+    Sentry.captureException(error, {
+      fingerprint: digest && /^[0-9a-f]{6,32}$/i.test(digest)
+        ? ['next-server-render', digest]
+        : undefined,
+    });
   }, [error]);
 
   return (
