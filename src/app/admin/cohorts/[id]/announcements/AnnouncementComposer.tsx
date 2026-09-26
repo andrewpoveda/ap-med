@@ -75,9 +75,9 @@ export default function AnnouncementComposer({
         setError(data.error ?? 'Could not send the announcement.')
       } else {
         setSuccess(
-          `Queued for ${data.recipientCount ?? recipientCount} ${
+          `Announcement recorded for ${data.recipientCount ?? recipientCount} ${
             (data.recipientCount ?? recipientCount) === 1 ? 'recipient' : 'recipients'
-          }. Check email status for provider acceptance or recovery.`,
+          }. Check email status for provider acceptance, deferred delivery, or superseded messages.`,
         )
         setSubject('')
         setBody('')

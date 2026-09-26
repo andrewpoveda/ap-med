@@ -1,9 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function CohortConfiguration({ cohort, organizations = [] }: { cohort?: { id: string; name: string; org: string; status: string; orientation: string }; organizations?: { id: string; name: string }[] }) {
+const createRequestStorageKey = 'ascenso-cohort-create-request-id'
+const changedCreateRequestMessage = 'Creation request changed; check the cohort list before starting a new one'
+
+export default function CohortConfiguration({ cohort, organizations = [] }: { cohort?: { id: string; name: string; org: string; status: string; orientation: string; config_version: number }; organizations?: { id: string; name: string }[] }) {
   const router = useRouter()
+  const createRequestIdRef = useRef<string | null>(null)
   const [name, setName] = useState(cohort?.name ?? '')
   const [org, setOrg] = useState(cohort?.org ?? '')
   const [organizationId, setOrganizationId] = useState('')
@@ -12,14 +16,45 @@ export default function CohortConfiguration({ cohort, organizations = [] }: { co
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [showNewRequestAction, setShowNewRequestAction] = useState(false)
   const transitions: Record<string, string[]> = { setup: ['setup', 'applications_open'], applications_open: ['applications_open', 'matching'], matching: ['matching', 'applications_open', 'active'], active: ['active', 'closed'], closed: ['closed'] }
+  function startNewCreateRequest() {
+    const nextRequestId = crypto.randomUUID()
+    createRequestIdRef.current = nextRequestId
+    try { sessionStorage.setItem(createRequestStorageKey, nextRequestId) }
+    catch { /* This open form still uses the fresh key. */ }
+    setShowNewRequestAction(false)
+    setMessage('New create request ready. Review the form, then save.')
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMessage('')
     try {
-      const res = await fetch('/api/admin/cohorts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cohort?.id, name, org, organizationId: organizationId || null, status, orientation, reason, expected: cohort?.status }) })
+      let createRequestId: string | null = null
+      if (!cohort) {
+        if (!createRequestIdRef.current) {
+          try { createRequestIdRef.current = sessionStorage.getItem(createRequestStorageKey) }
+          catch { /* A stable key still survives retries while this page is open. */ }
+        }
+        createRequestIdRef.current ??= crypto.randomUUID()
+        createRequestId = createRequestIdRef.current
+        try { sessionStorage.setItem(createRequestStorageKey, createRequestId) }
+        catch { /* Storage can be unavailable in some browser modes. */ }
+      }
+      const res = await fetch('/api/admin/cohorts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cohort?.id, name, org, organizationId: organizationId || null, status, orientation, reason, expected: cohort?.status, expectedVersion: cohort?.config_version, createRequestId }) })
       const result = await res.json()
-      if (!res.ok) setMessage(result.error ?? 'Could not save')
-      else { setMessage('Saved.'); router.push(`/admin/cohorts/${result.id}/settings`); router.refresh() }
+      if (!res.ok) {
+        setMessage(result.error ?? 'Could not save')
+        setShowNewRequestAction(!cohort && result.error === changedCreateRequestMessage)
+      }
+      else {
+        setShowNewRequestAction(false)
+        if (createRequestId) {
+          createRequestIdRef.current = null
+          try { if (sessionStorage.getItem(createRequestStorageKey) === createRequestId) sessionStorage.removeItem(createRequestStorageKey) }
+          catch { /* The save succeeded even if storage cleanup fails. */ }
+        }
+        setMessage('Saved.'); router.push(`/admin/cohorts/${result.id}/settings`); router.refresh()
+      }
     } catch { setMessage('Could not reach the server. Check the cohort list before creating again.') }
     finally { setBusy(false) }
   }
@@ -39,5 +74,9 @@ export default function CohortConfiguration({ cohort, organizations = [] }: { co
     <label className="block">Reason<input className="block border rounded p-2 w-full" required minLength={3} maxLength={2000} value={reason} onChange={e => setReason(e.target.value)} /></label>
     <button className="border rounded px-4 py-2" disabled={busy}>{busy ? 'Saving…' : 'Save cohort'}</button>
     <p role="status">{message}</p>
+    {showNewRequestAction && !cohort && <div className="space-y-2 text-sm">
+      <p>Check the cohort list for a cohort already created. If you intend a separate cohort, start a new create request.</p>
+      <button type="button" className="border rounded px-3 py-2" disabled={busy} onClick={startNewCreateRequest}>Start a new create request</button>
+    </div>}
   </form>
 }

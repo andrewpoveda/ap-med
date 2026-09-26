@@ -48,11 +48,14 @@ export async function POST(request: Request) {
     // Malformed uuid → lookup error → same 404 as a miss.
     const { data: cohort, error: cohortError } = await admin
       .from('cohorts')
-      .select('id, name')
+      .select('id, name, status')
       .eq('id', cohortId)
       .maybeSingle()
     if (cohortError || !cohort) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (cohort.status === 'closed') {
+      return NextResponse.json({ error: 'This cohort is closed; announcements cannot be queued.' }, { status: 409 })
     }
 
     // Recipients come from the cohort's own member rows — never the request
@@ -121,10 +124,14 @@ export async function POST(request: Request) {
       p_body: messageBody, p_audience: audience,
       p_messages: recipients.map(email => buildAnnouncementMessage(email, cohort.name, subject, messageBody)),
     })
+    if (queueError?.message === 'Closed cohorts cannot queue announcements') {
+      return NextResponse.json({ error: 'This cohort is closed; announcements cannot be queued.' }, { status: 409 })
+    }
     if (queueError) return NextResponse.json({ error: 'Could not queue: a full-cohort announcement may already be queued today, or this request ID was used for different content. Refresh to check history.' }, { status: 409 })
     // The durable queue remains recoverable if this request times out.
     await sendCohortDeliveries(admin, announcementId, cohortId).catch(() => false)
-    return NextResponse.json({ success: true, announcementId, recipientCount: recipients.length, queued: true })
+    return NextResponse.json({ success: true, announcementId, recipientCount: recipients.length, queued: true,
+      note: 'Announcement recorded. Check email status for provider acceptance or superseded messages.' })
 
   } catch (err) {
     console.error('Announcement send crashed:', err)

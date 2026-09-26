@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { readAscensoVisibility } from '@/lib/app-settings'
 import AscensoVisibilityToggle from './AscensoVisibilityToggle'
 import CohortConfiguration from './CohortConfiguration'
+import CohortDiscardControl from './CohortDiscardControl'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,7 @@ type CohortRow = {
   name: string
   org: string
   status: string
+  config_version: number
 }
 
 type ApplicationCounts = {
@@ -67,8 +69,6 @@ export default async function AdminCohortsPage() {
   // the service-role client never crosses the boundary.
   const isSuper = adminUser.role === 'super'
   const ascensoVisibility = isSuper ? await readAscensoVisibility() : null
-  const organizations = isSuper ? await completeQuery(admin.from('organizations').select('id,name').order('name')) : { data: [], error: null }
-  if (organizations.error) throw new Error('Could not load organization owners')
 
   // Cohort admins see only their cohort; a scoped admin with no cohort assigned
   // sees nothing (fail closed on a misconfigured row). Supers see everything.
@@ -77,7 +77,7 @@ export default async function AdminCohortsPage() {
   if (adminUser.role === 'super' || scopedCohortIds.length) {
     const query = () => admin
       .from('cohorts')
-      .select('id, created_at, name, org, status')
+      .select('id, created_at, name, org, status, config_version')
       .order('created_at', { ascending: false })
     const { data, error } = adminUser.role === 'super'
       ? await completeQuery(query())
@@ -85,12 +85,16 @@ export default async function AdminCohortsPage() {
     if (error) throw new Error('Could not load the complete cohort list')
     cohorts = (data as CohortRow[]) ?? []
   }
+  const activeCohorts = cohorts.filter(cohort => cohort.status !== 'discarded')
+  const discardedCohorts = isSuper ? cohorts.filter(cohort => cohort.status === 'discarded') : []
+  const organizations = isSuper ? await completeQuery(admin.from('organizations').select('id,name').order('name')) : { data: [], error: null }
+  if (organizations.error) throw new Error('Could not load organization owners')
 
   // Tiny scale (one cohort, tens of applications) — aggregate in JS rather
   // than N+1 count queries.
   const counts = new Map<string, ApplicationCounts>()
-  if (cohorts.length > 0) {
-    const { data: apps, error } = await completeInQuery(cohorts.map(c => c.id), batch => admin
+  if (activeCohorts.length > 0) {
+    const { data: apps, error } = await completeInQuery(activeCohorts.map(c => c.id), batch => admin
       .from('cohort_applications')
       .select('cohort_id, role, status')
       .in(
@@ -133,13 +137,13 @@ export default async function AdminCohortsPage() {
       )}
       {isSuper && <div className="mt-8" style={cardStyle}><CohortConfiguration organizations={organizations.data ?? []} /></div>}
 
-      {cohorts.length === 0 ? (
+      {activeCohorts.length === 0 ? (
         <p className="mt-6 text-[#6b6b6b]" style={{ fontSize: '0.95rem' }}>
           No cohorts to show for this account.
         </p>
       ) : (
         <div className="mt-8 space-y-6">
-          {cohorts.map((cohort) => {
+          {activeCohorts.map((cohort) => {
             const c = counts.get(cohort.id)
             return (
               <div key={cohort.id} style={cardStyle}>
@@ -227,6 +231,14 @@ export default async function AdminCohortsPage() {
           })}
         </div>
       )}
+      {discardedCohorts.length > 0 && <section className="mt-10 space-y-4">
+        <h2 className="text-[#1a1a2e]" style={{ fontSize: '1.35rem', fontWeight: 400 }}>Discarded setup cohorts</h2>
+        <p className="text-sm text-[#6b6b6b]">These cohorts and their audit history remain in the database. Restoring one returns it to setup.</p>
+        {discardedCohorts.map(cohort => <div key={cohort.id} style={cardStyle}>
+          <p className="font-semibold">{cohort.name} · {cohort.org}</p>
+          <CohortDiscardControl cohortId={cohort.id} cohortName={cohort.name} discarded expectedVersion={cohort.config_version} />
+        </div>)}
+      </section>}
     </>
   )
 }

@@ -62,7 +62,7 @@ export default async function CohortAnnouncementsPage({
   // Malformed uuid → lookup error → same 404 as a miss.
   const { data: cohort } = await admin
     .from('cohorts')
-    .select('id, name, org')
+    .select('id, name, org, status')
     .eq('id', cohortId)
     .maybeSingle()
   if (!cohort) notFound()
@@ -148,7 +148,11 @@ export default async function CohortAnnouncementsPage({
 
       <div className="mt-6" style={cardStyle}>
         <Link href={`/admin/cohorts/${cohortId}/delivery`}>View email status and recover unresolved sends →</Link>
-        {allCount === 0 ? (
+        {cohort.status === 'closed' ? (
+          <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.95rem' }}>
+            This cohort is closed. Announcement history and email status remain available, but new announcements cannot be queued.
+          </p>
+        ) : allCount === 0 ? (
           <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.95rem' }}>
             No cohort members with an email yet — approve applications to build
             the roster before sending an announcement.

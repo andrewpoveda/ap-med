@@ -95,16 +95,17 @@ function firstNameOf(mentee: RawEmbeddedMentee): string {
   return full ? full.split(' ')[0] : 'Mentee'
 }
 
-/** Upcoming, still-scheduled sessions for this mentor, soonest first. */
+/** Upcoming sessions, including older future rows misclassified as resolved. */
 export async function getUpcomingSessions(
   admin: SupabaseClient,
   mentorId: string,
 ): Promise<UpcomingSession[]> {
+  const now = new Date().toISOString()
   const { data, error } = await admin
     .from('sessions')
     .select('id, scheduled_at, meet_link, status, calendar_cleanup_pending, mentee:mentees(full_name)')
     .eq('mentor_id', mentorId)
-    .or(`and(status.eq.scheduled,scheduled_at.gte.${new Date().toISOString()}),calendar_cleanup_pending.eq.true`)
+    .or(`and(status.eq.scheduled,scheduled_at.gte.${now}),and(status.eq.completed,scheduled_at.gte.${now}),and(status.eq.no_show,scheduled_at.gte.${now}),calendar_cleanup_pending.eq.true`)
     .order('scheduled_at', { ascending: true })
   if (error) {
     console.error('getUpcomingSessions failed:', error.message)

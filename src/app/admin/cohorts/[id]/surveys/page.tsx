@@ -64,7 +64,7 @@ export default async function CohortSurveysPage({
   // Malformed uuid → lookup error → same 404 as a miss.
   const { data: cohort } = await admin
     .from('cohorts')
-    .select('id, name, org')
+    .select('id, name, org, status')
     .eq('id', cohortId)
     .maybeSingle()
   if (!cohort) notFound()
@@ -111,21 +111,22 @@ export default async function CohortSurveysPage({
         className="text-[#6b6b6b]"
         style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', maxWidth: '46rem' }}
       >
-        Create a survey per wave, then open it — members answer from their own
-        dashboards, and the open-survey reminder rides the daily digest. Who has
-        responded is tracked automatically; a survey can be deleted only before it
-        has any responses.
+        {cohort.status === 'closed'
+          ? 'This cohort is closed. Its surveys and responses are preserved for reporting.'
+          : 'Create a survey per wave, then open it — members answer from their own dashboards, and the open-survey reminder rides the daily digest. Who has responded is tracked automatically; a survey can be deleted only before it has any responses.'}
       </p>
 
-      <div className="mt-6" style={cardStyle}>
-        <h2
-          className="text-[#1a1a2e]"
-          style={{ fontSize: '1.25rem', fontWeight: 400, margin: '0 0 1rem' }}
-        >
-          New survey
-        </h2>
-        <SurveyComposer cohortId={cohort.id} usedWaves={usedWaves} />
-      </div>
+      {cohort.status !== 'closed' && (
+        <div className="mt-6" style={cardStyle}>
+          <h2
+            className="text-[#1a1a2e]"
+            style={{ fontSize: '1.25rem', fontWeight: 400, margin: '0 0 1rem' }}
+          >
+            New survey
+          </h2>
+          <SurveyComposer cohortId={cohort.id} usedWaves={usedWaves} />
+        </div>
+      )}
 
       <div className="mt-6" style={cardStyle}>
         <h2
@@ -136,7 +137,7 @@ export default async function CohortSurveysPage({
         </h2>
         {surveys.length === 0 ? (
           <p className="text-[#6b6b6b]" style={{ margin: 0, fontSize: '0.85rem' }}>
-            No surveys yet. Create one above.
+            {cohort.status === 'closed' ? 'No surveys were created for this cohort.' : 'No surveys yet. Create one above.'}
           </p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -149,11 +150,13 @@ export default async function CohortSurveysPage({
                     </span>
                     <StatusChip status={s.status} />
                   </span>
-                  <SurveyActions
-                    surveyId={s.id}
-                    status={s.status}
-                    responseCount={s.responseCount}
-                  />
+                  {cohort.status !== 'closed' && (
+                    <SurveyActions
+                      surveyId={s.id}
+                      status={s.status}
+                      responseCount={s.responseCount}
+                    />
+                  )}
                 </div>
                 <p className="text-[#6b6b6b]" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
                   {waveLabel(s.wave)} · {s.questionCount}{' '}
