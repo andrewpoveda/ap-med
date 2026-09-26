@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
 
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG ?? "ap-med",
-  project: process.env.SENTRY_PROJECT ?? "javascript-nextjs",
+  project: process.env.SENTRY_PROJECT ?? "ap-med",
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !process.env.CI,
   widenClientFileUpload: true,
