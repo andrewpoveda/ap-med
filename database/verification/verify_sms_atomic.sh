@@ -36,16 +36,16 @@ values
     '33333333-3333-4333-8333-333333333333',now()-interval '1 day',
     '11111111-1111-4111-8111-111111111111','44444444-4444-4444-8444-444444444444'),
   ('66666666-6666-4666-8666-666666666666','22222222-2222-4222-8222-222222222222',
-    '33333333-3333-4333-8333-333333333333',now()+interval '1 day',
+    '33333333-3333-4333-8333-333333333333',now()+interval '19 hours',
     '11111111-1111-4111-8111-111111111111','44444444-4444-4444-8444-444444444444'),
   ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','22222222-2222-4222-8222-222222222222',
-    '33333333-3333-4333-8333-333333333333',now()+interval '2 days',
+    '33333333-3333-4333-8333-333333333333',now()+interval '21 hours',
     '11111111-1111-4111-8111-111111111111','44444444-4444-4444-8444-444444444444'),
   ('ffffffff-ffff-4fff-8fff-ffffffffffff','22222222-2222-4222-8222-222222222222',
-    '33333333-3333-4333-8333-333333333333',now()+interval '3 days',
+    '33333333-3333-4333-8333-333333333333',now()+interval '27 hours',
     '11111111-1111-4111-8111-111111111111','44444444-4444-4444-8444-444444444444'),
   ('abababab-abab-4aba-8aba-abababababab','22222222-2222-4222-8222-222222222222',
-    '33333333-3333-4333-8333-333333333333',now()+interval '4 days',
+    '33333333-3333-4333-8333-333333333333',now()+interval '1 day',
     '11111111-1111-4111-8111-111111111111','44444444-4444-4444-8444-444444444444');
 insert into public.cohort_sms_contacts(id,cohort_id,person_id,phone_e164,consented_at,consent_source,consent_notice_version,consent_notice)
 select '77777777-7777-4777-8777-777777777777','11111111-1111-4111-8111-111111111111',
@@ -91,6 +91,8 @@ begin
   assert has_function_privilege('service_role','public.sms_claim_outbox(uuid,text)','EXECUTE');
   assert not has_function_privilege('anon','public.sms_check_claim_eligible(uuid)','EXECUTE');
   assert has_function_privilege('service_role','public.sms_check_claim_eligible(uuid)','EXECUTE');
+  assert not has_function_privilege('anon','public.sms_reminder_window_guard()','EXECUTE');
+  assert has_function_privilege('service_role','public.sms_reminder_window_guard()','EXECUTE');
   assert not has_function_privilege('anon','public.sms_finish_outbox(uuid,text,text,text,text)','EXECUTE');
   assert has_function_privilege('service_role','public.sms_finish_outbox(uuid,text,text,text,text)','EXECUTE');
   assert not has_function_privilege('anon','public.sms_reconcile_stale_outbox(timestamptz)','EXECUTE');
@@ -136,8 +138,19 @@ begin
   assert (select state from public.sms_outbox where id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')='needs_review';
   assert public.sms_claim_outbox('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','+15555559999') is null;
 
+  update public.sessions set scheduled_at=now()+interval '2 days'
+    where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  assert public.sms_claim_outbox('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','+15555559999') is null;
+  assert (select state from public.sms_outbox where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')='pending';
+  update public.sessions set scheduled_at=now()+interval '21 hours'
+    where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   result := public.sms_claim_outbox('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','+15555559999');
   assert result->>'id' = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  update public.sessions set scheduled_at=now()+interval '2 days'
+    where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  assert not public.sms_check_claim_eligible('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+  update public.sessions set scheduled_at=now()+interval '21 hours'
+    where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   result := public.sms_claim_outbox('f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1','+15555559999');
   assert result->>'id' = 'f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1';
   assert public.sms_check_claim_eligible('f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1');
@@ -147,7 +160,32 @@ begin
   assert not public.sms_check_claim_eligible('f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1');
   assert public.sms_finish_outbox('f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1',
     'skipped','twilio',null,'STOP before provider call')->>'state' = 'superseded';
+
+  insert into public.sms_outbox(id,cohort_id,contact_id,session_id,kind,phone_e164,body)
+  values ('51515151-5151-4515-8515-515151515151','11111111-1111-4111-8111-111111111111',
+    '77777777-7777-4777-8777-777777777777','ffffffff-ffff-4fff-8fff-ffffffffffff',
+    'reminder','+15555550111','Reminder');
+  update public.sessions set scheduled_at=now()+interval '2 hours'
+    where id='ffffffff-ffff-4fff-8fff-ffffffffffff';
+  assert public.sms_claim_outbox('51515151-5151-4515-8515-515151515151','+15555559999') is null;
+  assert (select state from public.sms_outbox where id='51515151-5151-4515-8515-515151515151')='superseded';
+
+  insert into public.meeting_checkins(id,cohort_id,match_id,session_id,member_type,member_id)
+  values ('52525252-5252-4525-8525-525252525252','11111111-1111-4111-8111-111111111111',
+    '44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555',
+    'mentor','22222222-2222-4222-8222-222222222222');
+  insert into public.sms_outbox(id,cohort_id,contact_id,session_id,checkin_id,kind,phone_e164,body,reply_code,reply_expires_at)
+  values ('53535353-5353-4535-8535-535353535353','11111111-1111-4111-8111-111111111111',
+    '77777777-7777-4777-8777-777777777777','55555555-5555-4555-8555-555555555555',
+    '52525252-5252-4525-8525-525252525252','checkin','+15555550111',
+    'How did it go? Reply BBBBBBBBBBBB','BBBBBBBBBBBB',now()+interval '2 days');
+  assert public.sms_claim_outbox('53535353-5353-4535-8535-535353535353','+15555559999') is not null;
+  assert public.sms_finish_outbox('53535353-5353-4535-8535-535353535353',
+    'accepted','twilio','SM-OUT-002',null)->>'state'='accepted';
   update public.cohorts set sms_enabled=false where id='11111111-1111-4111-8111-111111111111';
+  assert public.sms_process_inbound('twilio','SM-IN-PAUSED','+15555550111','+15555559999',
+    'BBBBBBBBBBBB Helpful meeting',null)->>'resolution'='responded';
+  assert (select response_text from public.meeting_checkins where id='52525252-5252-4525-8525-525252525252')='Helpful meeting';
   assert not public.sms_check_claim_eligible('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
   assert public.sms_finish_outbox('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
     'skipped','twilio',null,'Disabled before provider call')->>'state' = 'superseded';
@@ -157,6 +195,29 @@ begin
   assert (select c.consented_at < stop.opted_out_at from public.cohort_sms_contacts c
     join public.sms_phone_suppressions stop on stop.phone_e164=c.phone_e164
     where c.id='88888888-8888-4888-8888-888888888888');
+  update public.cohorts set sms_enabled=true where id='11111111-1111-4111-8111-111111111111';
+  insert into public.sessions(id,mentor_id,mentee_id,scheduled_at,cohort_id,match_id)
+  values ('54545454-5454-4545-8545-545454545454','22222222-2222-4222-8222-222222222222',
+    '33333333-3333-4333-8333-333333333333',now()-interval '2 days',
+    '11111111-1111-4111-8111-111111111111','44444444-4444-4444-8444-444444444444');
+  insert into public.meeting_checkins(id,cohort_id,match_id,session_id,member_type,member_id)
+  values ('55555555-aaaa-4555-8555-555555555555','11111111-1111-4111-8111-111111111111',
+    '44444444-4444-4444-8444-444444444444','54545454-5454-4545-8545-545454545454',
+    'mentor','22222222-2222-4222-8222-222222222222');
+  insert into public.sms_outbox(id,cohort_id,contact_id,session_id,checkin_id,kind,phone_e164,body,reply_code,reply_expires_at)
+  values ('56565656-5656-4565-8565-565656565656','11111111-1111-4111-8111-111111111111',
+    '77777777-7777-4777-8777-777777777777','54545454-5454-4545-8545-545454545454',
+    '55555555-aaaa-4555-8555-555555555555','checkin','+15555550111',
+    'How did it go? Reply CCCCCCCCCCCC','CCCCCCCCCCCC',now()+interval '2 days');
+  assert public.sms_process_inbound('twilio','SM-IN-PENDING','+15555550111','+15555559999',
+    'CCCCCCCCCCCC Premature reply',null)->>'resolution'='unmatched';
+  assert public.sms_claim_outbox('56565656-5656-4565-8565-565656565656','+15555559999') is not null;
+  assert public.sms_finish_outbox('56565656-5656-4565-8565-565656565656',
+    'unknown','twilio',null,'Provider response unavailable')->>'state'='needs_review';
+  assert public.sms_process_inbound('twilio','SM-IN-UNCERTAIN','+15555550111','+15555559999',
+    'CCCCCCCCCCCC We talked about goals',null)->>'resolution'='responded';
+  assert (select response_text from public.meeting_checkins where id='55555555-aaaa-4555-8555-555555555555')='We talked about goals';
+  assert (select state from public.sms_outbox where id='56565656-5656-4565-8565-565656565656')='needs_review';
   assert not exists(select 1 from information_schema.columns
     where table_schema='public' and table_name='sms_inbound_receipts' and column_name='body');
 end $$;
