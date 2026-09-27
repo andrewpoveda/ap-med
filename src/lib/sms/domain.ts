@@ -43,6 +43,8 @@ export type SmsInboundEvent = {
   fromPhoneE164: string
   toPhoneE164: string
   body: string
+  /** Verified provider keyword signal, when its opt-out service recognized one. */
+  optOutType?: 'STOP' | 'START' | 'HELP'
 }
 
 export type SmsInboundDecision =
@@ -96,6 +98,12 @@ export function resolveInboundSms(
     return { kind: 'unmatched', reason: 'duplicate_message' }
   }
 
+  if (event.optOutType) {
+    if (event.optOutType === 'STOP') return { kind: 'opt_out' }
+    if (event.optOutType === 'START') return { kind: 'opt_in' }
+    if (event.optOutType === 'HELP') return { kind: 'help' }
+    return { kind: 'unmatched', reason: 'invalid_message' }
+  }
   const keyword = classifySmsKeyword(event.body)
   if (keyword) return { kind: keyword }
 
