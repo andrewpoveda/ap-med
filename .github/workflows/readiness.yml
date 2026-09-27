@@ -37,3 +37,4 @@ jobs:
           for phase in 1 2 3 4 5 6 7 8 9 11 15; do
             runuser -u postgres -- env PG17_BIN=/usr/lib/postgresql/17/bin sh "database/verification/verify_phase${phase}.sh"
           done
+          runuser -u postgres -- env PG17_BIN=/usr/lib/postgresql/17/bin sh "database/verification/verify_sms_atomic.sh"
