@@ -4,7 +4,7 @@
 
 The repository contains the cohort-generic SMS data model, optional Ascenso onboarding phone/consent fields, web meeting check-ins, a Twilio adapter, an inbound webhook, and a protected sender endpoint. This work has not deployed those changes, applied either SMS migration to a hosted database, configured Twilio credentials, or enabled a cohort. It has not inspected those hosted settings. No SMS schedule has been added to `vercel.json`.
 
-`SMS_FEATURE_ENABLED` is absent or false by default. Every `cohorts.sms_enabled` value defaults to false. Both switches must be on for the member SMS preferences, check-ins, and sender to operate. Ascenso can collect an optional phone and separate unchecked consent during application intake while the switches remain off. The current web surveys, email digest, and meeting-log behavior remain separate and unchanged.
+`SMS_FEATURE_ENABLED` is absent or false by default. Every `cohorts.sms_enabled` value defaults to false. Both switches must be on for new member SMS enrollment, meeting check-ins, and the sender to operate. A member with a stored SMS number can still revoke consent or remove that number from the dashboard while sending is paused; a member without stored SMS data sees no SMS controls while it is off. Ascenso can collect an optional phone and separate unchecked consent during application intake while the switches remain off. The current web surveys, email digest, and meeting-log behavior remain separate and unchanged.
 
 ## Data path
 

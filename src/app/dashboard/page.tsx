@@ -228,13 +228,11 @@ export default async function DashboardPage({
       // one-upcoming-session cap.
       getBookingInfoForMember(admin, ref),
     ])
-    smsEnabled = await isCohortSmsEnabled(admin, ref.cohortId)
-    if (smsEnabled) {
-      ;[smsPreference, meetingCheckins] = await Promise.all([
-        getMemberSmsPreference(admin, ref),
-        getMemberMeetingCheckins(admin, ref),
-      ])
-    }
+    ;[smsEnabled, smsPreference] = await Promise.all([
+      isCohortSmsEnabled(admin, ref.cohortId),
+      getMemberSmsPreference(admin, ref),
+    ])
+    if (smsEnabled) meetingCheckins = await getMemberMeetingCheckins(admin, ref)
   }
 
   const meetingLogMatches = cohortMatches.map((m) => ({
@@ -321,7 +319,8 @@ export default async function DashboardPage({
                 milestones={cohortMilestones}
               />
               {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
-              {smsEnabled && <SmsPreferenceSection preference={smsPreference} />}
+              {(smsEnabled || smsPreference?.phoneE164) &&
+                <SmsPreferenceSection preference={smsPreference} sendingEnabled={smsEnabled} />}
               {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
               {meetingLogMatches.length > 0 && (
                 <CohortRelationshipTools>
@@ -423,7 +422,8 @@ export default async function DashboardPage({
             milestones={cohortMilestones}
           />
           {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
-          {smsEnabled && <SmsPreferenceSection preference={smsPreference} />}
+          {(smsEnabled || smsPreference?.phoneE164) &&
+            <SmsPreferenceSection preference={smsPreference} sendingEnabled={smsEnabled} />}
           {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
           {bookingMatches.length > 0 && (
             <CohortBookingSection role="mentee" matches={bookingMatches} />

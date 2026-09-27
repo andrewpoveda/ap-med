@@ -71,3 +71,81 @@ test('phone preference requires active membership and respects global STOP', asy
   assert.equal(response.status, 409)
   assert.equal(db.tables.cohort_sms_contacts?.length ?? 0, 0)
 })
+
+test('an existing member can revoke consent and remove a saved phone while SMS is paused', async () => {
+  const path = 'src/app/api/cohort-sms-preferences/route.ts'
+  const seed = {
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+    cohort_sms_contacts: [{ id: 'contact-1', cohort_id: 'cohort-1', person_id: 'person-1',
+      phone_e164: '+12015550123', consented_at: '2026-09-20T12:00:00Z',
+      consent_source: 'cohort_application', consent_notice: 'Original notice',
+      consent_notice_version: 'v1', opted_out_at: null }],
+  }
+  const db = database(seed)
+  const originalFrom = db.from.bind(db)
+  db.from = table => {
+    const query = originalFrom(table)
+    if (table === 'cohort_sms_contacts') query.upsert = value => query.update(value)
+    return query
+  }
+  const revoke = await route(path, db, { enabled: false }).PUT(request(
+    '/api/cohort-sms-preferences', 'PUT', { phoneNumber: '+12015550123', smsConsent: false },
+  ))
+  assert.equal(revoke.status, 200)
+  assert.equal(db.tables.cohort_sms_contacts[0].phone_e164, '+12015550123')
+  assert.ok(db.tables.cohort_sms_contacts[0].opted_out_at)
+
+  const remove = await route(path, db, { enabled: false }).PUT(request(
+    '/api/cohort-sms-preferences', 'PUT', { phoneNumber: '', smsConsent: false },
+  ))
+  assert.equal(remove.status, 200)
+  assert.equal(db.tables.cohort_sms_contacts[0].phone_e164, null)
+  assert.equal(db.tables.cohort_sms_contacts[0].consented_at, null)
+})
+
+test('a paused cohort cannot gain consent or change the stored phone', async () => {
+  const path = 'src/app/api/cohort-sms-preferences/route.ts'
+  const db = database({
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+    cohort_sms_contacts: [{ id: 'contact-1', cohort_id: 'cohort-1', person_id: 'person-1',
+      phone_e164: '+12015550123', consented_at: null, consent_source: null,
+      consent_notice: null, consent_notice_version: null, opted_out_at: '2026-09-20T12:00:00Z' }],
+  })
+  for (const body of [
+    { phoneNumber: '+12015550123', smsConsent: true },
+    { phoneNumber: '+12015550124', smsConsent: false },
+  ]) {
+    const response = await route(path, db, { enabled: false }).PUT(request(
+      '/api/cohort-sms-preferences', 'PUT', body,
+    ))
+    assert.equal(response.status, 404)
+  }
+  assert.equal(db.tables.cohort_sms_contacts[0].phone_e164, '+12015550123')
+  assert.equal(db.tables.cohort_sms_contacts[0].consented_at, null)
+
+  const noContact = database({
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+  })
+  const response = await route(path, noContact, { enabled: false }).PUT(request(
+    '/api/cohort-sms-preferences', 'PUT', { phoneNumber: '', smsConsent: false },
+  ))
+  assert.equal(response.status, 404)
+  assert.equal(noContact.tables.cohort_sms_contacts.length, 0)
+})
+
+test('a suppression read outage still shows the stored phone for removal', async () => {
+  const db = database({
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+    cohort_sms_contacts: [{ id: 'contact-1', cohort_id: 'cohort-1', person_id: 'person-1',
+      phone_e164: '+12015550123', consented_at: '2026-09-20T12:00:00Z', opted_out_at: null }],
+  })
+  const originalFrom = db.from.bind(db)
+  db.from = table => table === 'sms_phone_suppressions'
+    ? { select() { return this }, eq() { return this },
+        maybeSingle: async () => ({ data: null, error: { code: '08006' } }) }
+    : originalFrom(table)
+  const { getMemberSmsPreference } = loadTs('src/lib/cohort-sms.ts')
+  assert.deepEqual(await getMemberSmsPreference(db, {
+    type: 'mentor', memberId: 'mentor-1', cohortId: 'cohort-1',
+  }), { phoneE164: '+12015550123', consented: true })
+})

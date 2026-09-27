@@ -222,13 +222,13 @@ export default async function AscensoDashboardPage({
     partnerName: m.partnerName,
   }))
   const loggableSessions = await getLoggableSessionsForMember(admin, ref)
-  const smsEnabled = await isCohortSmsEnabled(admin, ref.cohortId)
-  const [smsPreference, meetingCheckins]: [MemberSmsPreference | null, MemberMeetingCheckin[]] = smsEnabled
-    ? await Promise.all([
-        getMemberSmsPreference(admin, ref),
-        getMemberMeetingCheckins(admin, ref),
-      ])
-    : [null, []]
+  const [smsEnabled, smsPreference]: [boolean, MemberSmsPreference | null] = await Promise.all([
+    isCohortSmsEnabled(admin, ref.cohortId),
+    getMemberSmsPreference(admin, ref),
+  ])
+  const meetingCheckins: MemberMeetingCheckin[] = smsEnabled
+    ? await getMemberMeetingCheckins(admin, ref)
+    : []
 
   const bookingMatches: BookingMatch[] = matches
     .map((m) => {
@@ -258,7 +258,8 @@ export default async function AscensoDashboardPage({
           />
 
           {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
-          {smsEnabled && <SmsPreferenceSection preference={smsPreference} />}
+          {(smsEnabled || smsPreference?.phoneE164) &&
+            <SmsPreferenceSection preference={smsPreference} sendingEnabled={smsEnabled} />}
           {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
 
           {matchOptions.length > 0 && (

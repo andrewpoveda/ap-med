@@ -18,9 +18,7 @@ export async function PUT(request: Request) {
     const admin = getSupabaseAdmin()
     const actor = await resolveActingMember(admin, user.id)
     if (!actor) return NextResponse.json({ error: 'No linked cohort member profile' }, { status: 403 })
-    if (!await isCohortSmsEnabled(admin, actor.cohortId)) {
-      return NextResponse.json({ error: 'SMS is not enabled for this cohort' }, { status: 404 })
-    }
+    const smsEnabled = await isCohortSmsEnabled(admin, actor.cohortId)
 
     const body = await request.json().catch(() => null)
     const contact = validateSmsContactInput(body?.phoneNumber, body?.smsConsent)
@@ -40,6 +38,12 @@ export async function PUT(request: Request) {
     if (previousError) return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
 
     const phone = contact.value.phoneE164
+    if (!smsEnabled && (!previous || contact.value.consent ||
+        (phone !== null && phone !== previous.phone_e164))) {
+      // Pausing outbound SMS must never trap a stored phone or consent. Only
+      // revocation/removal of an existing preference is allowed while paused.
+      return NextResponse.json({ error: 'SMS enrollment is paused for this cohort' }, { status: 404 })
+    }
     if (!phone) {
       if (previous) {
         const { error } = await admin.from('cohort_sms_contacts').update({
@@ -97,12 +101,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'This number is already assigned to another member in this cohort' }, { status: 409 })
     }
     if (error) {
-      console.error('SMS preference save failed:', error.message)
+      console.error('SMS preference save failed')
       return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
     }
     return NextResponse.json({ success: true, phoneE164: phone })
-  } catch (error) {
-    console.error('SMS preference route failed:', error)
+  } catch {
+    console.error('SMS preference route failed')
     return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
   }
 }

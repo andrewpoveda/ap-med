@@ -36,7 +36,13 @@ export async function getMemberSmsPreference(
     ? await admin.from('sms_phone_suppressions')
         .select('opted_out_at,resumed_at').eq('phone_e164', data.phone_e164).maybeSingle()
     : { data: null, error: null }
-  if (suppressionError) return null
+  if (suppressionError) {
+    // A suppression-read failure must not hide the member's saved number and
+    // remove their web route to revoke it. Show the stored consent state; the
+    // sender itself fails closed until the suppression table is readable.
+    return { phoneE164: (data.phone_e164 as string) ?? null,
+      consented: Boolean(data.consented_at && !data.opted_out_at) }
+  }
   const stopped = Boolean(suppression && data.consented_at &&
     (suppression.resumed_at === null || suppression.resumed_at <= suppression.opted_out_at ||
       data.consented_at <= suppression.opted_out_at))
