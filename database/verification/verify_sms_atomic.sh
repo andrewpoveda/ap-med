@@ -21,6 +21,7 @@ psql_local -f "$repo_root/database/baseline/supabase_compatibility_roles.sql"
 for migration in "$repo_root"/supabase/migrations/*.sql; do psql_local -f "$migration"; done
 psql_local -f "$repo_root/database/baseline/supabase_compatibility_grants.sql"
 psql_local -f "$repo_root/database/verification/cohort_sms_collection_settings.sql"
+psql_local -f "$repo_root/database/verification/cohort_sms_application_collection_guard.sql"
 psql_local <<'SQL'
 insert into public.cohorts(id,name,org,status,sms_enabled)
 values ('11111111-1111-4111-8111-111111111111','SMS synthetic','Test','active',true);
@@ -244,4 +245,5 @@ begin
     where table_schema='public' and table_name='sms_inbound_receipts' and column_name='body');
 end $$;
 SQL
+psql_local -f "$repo_root/database/verification/sms_stop_consent_order.sql"
 echo 'SMS atomic RPC checks passed.'
