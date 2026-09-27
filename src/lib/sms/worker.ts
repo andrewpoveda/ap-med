@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { completeInQuery } from '@/lib/complete-query'
 
 // These windows deliberately exclude historical meetings when SMS is first
-// enabled. A scheduler must run at least every 12 hours to cover reminders.
+// enabled. Run the scheduler more often than every 12 hours so a delayed run
+// cannot skip the entire reminder window.
 const HOUR_MS = 60 * 60 * 1000
 export const SMS_REMINDER_MIN_HOURS_BEFORE = 18
 export const SMS_REMINDER_MAX_HOURS_BEFORE = 30
