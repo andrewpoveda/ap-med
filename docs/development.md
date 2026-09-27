@@ -22,6 +22,11 @@ Environment-variable families used by the application include:
 - Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, plus optional hostname/action allowlists
 - Google Calendar: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `GOOGLE_OAUTH_REDIRECT_URI`, and `GOOGLE_TOKEN_ENC_KEY`
 - scheduled digest: `CRON_SECRET` and optional `DIGEST_COOLDOWN_DAYS`
+- optional cohort SMS (disabled by default): `SMS_FEATURE_ENABLED`, `CRON_SECRET`,
+  `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET`,
+  `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`,
+  `TWILIO_FROM_PHONE_E164`, and `TWILIO_INBOUND_WEBHOOK_URL`. See
+  [the SMS rollout checkpoint](architecture/cohort-sms-v1.md) before enabling it.
 - optional telemetry/build integration: PostHog and Sentry variables referenced by current source
 
 `ASCENSO_SITE_URL` must be an origin only (for example,
