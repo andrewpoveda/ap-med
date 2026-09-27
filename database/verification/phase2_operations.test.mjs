@@ -171,6 +171,45 @@ test('a second approved participation preserves the saved SMS preference and rep
   }
 })
 
+test('approval warns when saved contact or STOP status cannot be verified', async () => {
+  const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
+  const phone = '+12015550123'
+  for (const failingTable of ['cohort_sms_contacts', 'sms_phone_suppressions']) {
+    const answers = smsConsentAnswers({ phoneE164: phone, consent: true }, new Date('2026-09-27T15:00:00.000Z'))
+    const db = database({
+      cohort_applications: [{ id: 'target', cohort_id: 'cohort', role: 'mentee', member_id: 'member', email: 'member@example.org', answers }],
+      mentees: [{ id: 'member', cohort_id: 'cohort', person_id: 'person' }],
+      cohort_sms_contacts: [{
+        id: 'existing', cohort_id: 'cohort', person_id: 'person', phone_e164: phone,
+        consented_at: '2026-09-27T15:00:00.000Z', opted_out_at: null,
+        consent_source: 'cohort_application', consent_notice: answers.sms_consent_notice,
+        consent_notice_version: answers.sms_consent_notice_version,
+      }],
+    })
+    db.rpc = async () => ({ data: 'approved' })
+    const originalFrom = db.from.bind(db)
+    const failingRead = () => {
+      const query = {
+        eq: () => query,
+        maybeSingle: async () => ({ data: null, error: { message: 'offline' } }),
+      }
+      return query
+    }
+    db.from = table => table === 'cohort_sms_contacts'
+      ? {
+          ...originalFrom(table),
+          upsert: async () => ({ error: null }),
+          ...(failingTable === table ? { select: failingRead } : {}),
+        }
+      : table === failingTable ? { select: failingRead } : originalFrom(table)
+    const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db)
+      .PATCH(request({ action: 'approve' }), ctx)
+    assert.equal(res.status, 200, failingTable)
+    assert.match((await res.json()).warning, /SMS phone preference could not be copied/, failingTable)
+    assert.equal(db.tables.cohort_sms_contacts[0].phone_e164, phone, failingTable)
+  }
+})
+
 test('invalid SMS evidence or contact insert failure warns after approval and still attempts email', async () => {
   const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
   const valid = smsConsentAnswers({ phoneE164: '+12015550123', consent: true })

@@ -1,5 +1,4 @@
 import { normalizeUsPhoneNumber } from '@/lib/sms-consent'
-import { getMemberSmsPreference } from '@/lib/cohort-sms'
 import type { CohortApplication } from '@/types/cohort'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -98,13 +97,25 @@ export async function handoffApplicationSmsContact(
   // A second participation can share this person and cohort. DO NOTHING keeps
   // any later dashboard edit or revocation authoritative, but a conflicting
   // application must not appear to the administrator as if it were enrolled.
-  const saved = await getMemberSmsPreference(admin, {
-    type: linked.role,
-    memberId: linked.member_id,
-    cohortId: linked.cohort_id,
-  })
-  if (!saved) return SMS_HANDOFF_WARNING
-  if (saved.phoneE164 !== phone || (consent && !saved.consented)) {
+  const { data: saved, error: savedError } = await admin.from('cohort_sms_contacts')
+    .select('phone_e164,consented_at,opted_out_at')
+    .eq('cohort_id', linked.cohort_id).eq('person_id', member.person_id).maybeSingle()
+  if (savedError || !saved) return SMS_HANDOFF_WARNING
+  if (saved.phone_e164 !== phone) return SMS_HANDOFF_CONFLICT_WARNING
+
+  // The dashboard deliberately keeps its revoke action available when this
+  // lookup fails. Approval needs stricter verification before claiming that
+  // application consent actually took effect.
+  const { data: suppression, error: suppressionError } = await admin.from('sms_phone_suppressions')
+    .select('opted_out_at,resumed_at').eq('phone_e164', phone).maybeSingle()
+  if (suppressionError) return SMS_HANDOFF_WARNING
+  const consentTime = saved.consented_at ? Date.parse(saved.consented_at) : NaN
+  const stopTime = suppression ? Date.parse(suppression.opted_out_at) : NaN
+  const resumeTime = suppression?.resumed_at ? Date.parse(suppression.resumed_at) : NaN
+  const effectiveConsent = Number.isFinite(consentTime) && !saved.opted_out_at &&
+    (!suppression || (Number.isFinite(stopTime) && Number.isFinite(resumeTime) &&
+      resumeTime > stopTime && consentTime > stopTime))
+  if (consent && !effectiveConsent) {
     return SMS_HANDOFF_CONFLICT_WARNING
   }
   return null
