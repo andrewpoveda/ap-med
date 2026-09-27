@@ -14,6 +14,17 @@ selects the destination. The configured row must also have
 `status = 'applications_open'`. Missing, malformed, closed, or nonexistent
 configuration fails closed.
 
+Application phone collection uses the shared cohort SMS onboarding capability.
+`cohorts.config.sms_phone_collection` controls it independently of the SMS
+sending flags: `off`, `optional`, or `required`, with missing or invalid values
+treated as `off`. The applicant must explicitly check a separate SMS consent
+box to authorize texts; a required phone never means required consent. The
+public route reads the trusted cohort's setting again when saving, and does
+not store phone or SMS answer keys when collection is off. Ascenso's setting
+must be explicitly changed to `optional` for its application to collect phone
+numbers after this change. Other cohorts can reuse the same field and
+validation components when their public application flows are connected.
+
 When `ASCENSO_SITE_URL` is set, its exact hostname is the customer-facing
 Ascenso surface on the shared deployment. That hostname's root redirects to
 `/ascenso`, the global shell uses Ascenso/LMSA Northeast co-branding, and its

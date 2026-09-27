@@ -186,6 +186,10 @@ The active chain adds the SMS foundation in
 `../supabase/migrations/20260926201229_sms_foundation.sql`, transactional send
 and inbound RPCs in `20260927023120_sms_atomic_processing.sql`, then reply and
 reminder safety guards in `20260927140504_sms_reply_and_reminder_safety.sql`.
+`20260927192336_cohort_sms_phone_collection_setting.sql` follows with a
+service-role-only, version-guarded RPC for the existing `cohorts.config`
+setting `sms_phone_collection`. It creates no new table or column and does not
+set a collection mode for any cohort.
 Apply them in that order only after reviewing the hosted migration ledger and
 before deploying dependent application code. The cohort SMS flag defaults off;
 none of these migrations enables sending or configures a provider. No hosted
@@ -195,6 +199,7 @@ The tables use RLS with no `anon` or `authenticated` access. The server uses
 explicit `service_role` grants and `SECURITY INVOKER` RPCs. A reply is saved
 in the same `meeting_checkins` row that the authenticated web form uses.
 `sh database/verification/verify_sms_atomic.sh` verifies the full migration
-chain and synthetic send, reply, STOP, START, and reschedule cases in a
+chain, guarded phone-collection setting, and synthetic send, reply, STOP,
+START, and reschedule cases in a
 disposable PostgreSQL 17 cluster. The complete provider setup and rollout
 sequence are in `../docs/architecture/cohort-sms-v1.md`.
