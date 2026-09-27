@@ -3,6 +3,7 @@
 import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import { onboardingInputStyle, onboardingLabelStyle } from '@/components/styles'
 import { SMS_CONSENT_NOTICE } from '@/lib/sms-consent'
+import type { CohortSmsCollectionMode } from '@/lib/cohort-sms-collection'
 import {
   type CohortSmsContactFormValue,
   withSmsConsentChange,
@@ -13,21 +14,27 @@ type Props<T extends CohortSmsContactFormValue> = {
   value: T
   setValue: Dispatch<SetStateAction<T>>
   idPrefix: string
+  mode: CohortSmsCollectionMode
 }
 
-/** Reusable, optional phone collection and explicit SMS permission for cohort applications. */
+/** Reusable cohort phone collection and separate, optional SMS permission. */
 export function CohortSmsContactFields<T extends CohortSmsContactFormValue>({
   value,
   setValue,
   idPrefix,
+  mode,
 }: Props<T>) {
   const phoneId = `${idPrefix}-sms-phone`
   const helpId = `${phoneId}-help`
 
+  if (mode === 'off') return null
+
   return (
     <div>
-      <h3>Text reminders and check-ins (optional)</h3>
-      <label style={onboardingLabelStyle} htmlFor={phoneId}>US mobile phone number</label>
+      <h3>Phone and optional text reminders</h3>
+      <label style={onboardingLabelStyle} htmlFor={phoneId}>
+        US mobile phone number{mode === 'required' ? ' *' : ' (optional)'}
+      </label>
       <input
         id={phoneId}
         type="tel"
@@ -41,9 +48,12 @@ export function CohortSmsContactFields<T extends CohortSmsContactFormValue>({
         }}
         style={onboardingInputStyle}
         aria-describedby={helpId}
+        required={mode === 'required'}
       />
       <p id={helpId} style={{ margin: '0 0 1rem', color: '#6b6b6b', fontSize: '0.875rem', lineHeight: 1.55 }}>
-        Providing a number does not sign you up for texts. You can take part in the cohort without SMS.
+        {mode === 'required'
+          ? 'This cohort requires a phone number, but text reminders and check-ins are optional. Adding a number does not sign you up for texts.'
+          : 'Providing a number does not sign you up for texts. You can take part in the cohort without SMS.'}
       </p>
       <label style={consentCardStyle(value.sms_consent)}>
         <input

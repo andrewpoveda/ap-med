@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isAscensoVisible } from '@/lib/app-settings'
+import { getCohortSmsCollectionMode } from '@/lib/cohort-sms-collection'
 import {
   ascensoAbsoluteUrl,
   getAscensoCohortId,
@@ -39,7 +40,7 @@ export default async function Page() {
     redirect(customerHost ? '/ascenso' : '/')
   }
 
-  let cohort: { id: string; name: string; org: string } | null = null
+  let cohort: { id: string; name: string; org: string; config: unknown } | null = null
   const cohortId = getAscensoCohortId()
 
   if (!cohortId) {
@@ -48,7 +49,7 @@ export default async function Page() {
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('cohorts')
-      .select('id, name, org')
+      .select('id, name, org, config')
       .eq('id', cohortId)
       .eq('status', 'applications_open')
       .maybeSingle()
@@ -107,5 +108,12 @@ export default async function Page() {
     )
   }
 
-  return <AscensoApplyForm cohortId={cohort.id} cohortName={cohort.name} organizationName={cohort.org} />
+  return (
+    <AscensoApplyForm
+      cohortId={cohort.id}
+      cohortName={cohort.name}
+      organizationName={cohort.org}
+      smsCollectionMode={getCohortSmsCollectionMode(cohort.config)}
+    />
+  )
 }

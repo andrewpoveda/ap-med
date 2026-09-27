@@ -8,7 +8,11 @@ import { isHttpUrl } from '@/lib/url'
 import { getAscensoCohortId } from '@/lib/site'
 import { isAscensoVisible } from '@/lib/app-settings'
 import { normalizeEmail } from '@/lib/email-identity'
-import { smsConsentAnswers, validateSmsContactInput } from '@/lib/sms-consent'
+import {
+  cohortSmsCollectionAnswers,
+  getCohortSmsCollectionMode,
+  validateCohortSmsCollectionInput,
+} from '@/lib/cohort-sms-collection'
 import { ASCENSO_V1 } from '@/lib/program-definition'
 import { SPECIALTIES } from '@/data/specialties'
 import {
@@ -147,14 +151,6 @@ export async function POST(request: Request) {
     )
   }
 
-  const smsContact = validateSmsContactInput(data.phone_number, data.sms_consent)
-  if (!smsContact.ok) {
-    return NextResponse.json(
-      { error: smsContact.error, code: 'invalid_submission' },
-      { status: 400 },
-    )
-  }
-
   const identity = pickTags(data.identity, IDENTITY_OPTIONS)
   if (identity.length === 0) {
     return NextResponse.json(
@@ -255,7 +251,7 @@ export async function POST(request: Request) {
   // The configured cohort must still exist and be accepting applications.
   const { data: cohort, error: cohortError } = await supabaseAdmin
     .from('cohorts')
-    .select('id, status')
+    .select('id, status, config')
     .eq('id', cohortId)
     .single()
 
@@ -269,6 +265,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: 'Applications are closed for this cohort', code: 'applications_closed' },
       { status: 403 }
+    )
+  }
+
+  // Never trust the form's mode: admins can change cohort policy while an
+  // applicant has the page open, and crafted clients can send hidden fields.
+  const smsContact = validateCohortSmsCollectionInput(
+    getCohortSmsCollectionMode(cohort.config),
+    data.phone_number,
+    data.sms_consent,
+  )
+  if (!smsContact.ok) {
+    return NextResponse.json(
+      { error: smsContact.error, code: 'invalid_submission' },
+      { status: 400 },
     )
   }
 
@@ -288,7 +298,7 @@ export async function POST(request: Request) {
     motivation,
     experience_goals: experienceGoals,
     linkedin_url: linkedinUrl,
-    ...smsConsentAnswers(smsContact.value),
+    ...cohortSmsCollectionAnswers(smsContact.value),
     can_commit: data.can_commit === true,
     identity,
     help_with_other: helpWithOther,

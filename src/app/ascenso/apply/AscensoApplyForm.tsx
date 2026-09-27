@@ -19,7 +19,10 @@ import {
 import { isValidEmail } from '@/lib/validate'
 import { isHttpUrl } from '@/lib/url'
 import { fetchWithTimeout, isRequestTimeout } from '@/lib/fetch-with-timeout'
-import { validateSmsContactInput } from '@/lib/sms-consent'
+import {
+  type CohortSmsCollectionMode,
+  validateCohortSmsCollectionInput,
+} from '@/lib/cohort-sms-collection'
 import { CohortSmsContactFields } from '@/components/CohortSmsContactFields'
 
 type Role = 'mentor' | 'mentee'
@@ -97,10 +100,12 @@ export default function AscensoApplyForm({
   cohortId,
   cohortName,
   organizationName,
+  smsCollectionMode,
 }: {
   cohortId: string
   cohortName: string
   organizationName: string
+  smsCollectionMode: CohortSmsCollectionMode
 }) {
   const posthog = usePostHog()
   const [form, setForm] = useState<ApplicationFormData>({
@@ -207,7 +212,11 @@ export default function AscensoApplyForm({
       }
     }
     if (step === 6) {
-      const smsContact = validateSmsContactInput(form.phone_number, form.sms_consent)
+      const smsContact = validateCohortSmsCollectionInput(
+        smsCollectionMode,
+        form.phone_number,
+        form.sms_consent,
+      )
       if (!smsContact.ok) return smsContact.error
       if (!form.can_commit) {
         return 'Confirm that you can commit to regular meetings for the program year.'
@@ -309,12 +318,13 @@ export default function AscensoApplyForm({
       // the matcher reads: a mentor's own specialties are `specialty` and what
       // they offer is `can_help_with`; a mentee's wanted specialties are
       // `preferred_specialty` and what they need is `help_with`.
-      const { specialty, help_with, ...rest } = form
+      const { specialty, help_with, phone_number, sms_consent, ...rest } = form
       const res = await fetchWithTimeout('/api/cohort-applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...rest,
+          ...(smsCollectionMode === 'off' ? {} : { phone_number, sms_consent }),
           ...(isMentor
             ? { specialty, can_help_with: help_with }
             : { preferred_specialty: specialty, help_with }),
@@ -807,7 +817,12 @@ export default function AscensoApplyForm({
                 edit earlier answers.
               </p>
 
-              <CohortSmsContactFields value={form} setValue={setForm} idPrefix="ascenso" />
+              <CohortSmsContactFields
+                value={form}
+                setValue={setForm}
+                idPrefix="ascenso"
+                mode={smsCollectionMode}
+              />
 
               <div className="ascenso-acknowledgments">
                 <label style={checkCardStyle(form.can_commit)}>
