@@ -148,10 +148,16 @@ begin
     update public.sms_inbound_receipts set resolution = 'stop' where id = receipt_id;
     return jsonb_build_object('resolution', 'stop');
   elsif command_word = 'START' then
-    -- The original cohort consent remains revoked by its old timestamp until
-    -- this person gives fresh AP MED consent through an authenticated flow.
-    update public.sms_phone_suppressions set resumed_at = now_at
-      where phone_e164 = p_from_phone_e164;
+    -- If Twilio handled a STOP during a webhook outage, this may be the first
+    -- command AP MED sees. Preserve a conservative opt-out boundary so old
+    -- cohort consent cannot become active when Twilio unblocks the number.
+    -- The microsecond offset represents the order STOP-before-START when the
+    -- missing STOP timestamp is unknown. A later authenticated consent wins.
+    insert into public.sms_phone_suppressions(
+      phone_e164, opted_out_at, resumed_at, source
+    ) values (p_from_phone_e164, now_at - interval '1 microsecond',
+      now_at, 'start_without_recorded_stop')
+    on conflict (phone_e164) do update set resumed_at = excluded.resumed_at;
     update public.sms_inbound_receipts set resolution = 'start' where id = receipt_id;
     return jsonb_build_object('resolution', 'start');
   elsif command_word = 'HELP' then

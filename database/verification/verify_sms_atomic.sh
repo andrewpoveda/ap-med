@@ -218,6 +218,14 @@ begin
     'CCCCCCCCCCCC We talked about goals',null)->>'resolution'='responded';
   assert (select response_text from public.meeting_checkins where id='55555555-aaaa-4555-8555-555555555555')='We talked about goals';
   assert (select state from public.sms_outbox where id='56565656-5656-4565-8565-565656565656')='needs_review';
+  assert public.sms_process_inbound('twilio','SM-IN-START-WITHOUT-STOP','+15555550111','+15555559999',
+    'START',null)->>'resolution'='start';
+  assert (select resumed_at > opted_out_at from public.sms_phone_suppressions
+    where phone_e164='+15555550111');
+  assert (select contact.consented_at < stop.opted_out_at
+    from public.cohort_sms_contacts contact
+    join public.sms_phone_suppressions stop on stop.phone_e164=contact.phone_e164
+    where contact.id='77777777-7777-4777-8777-777777777777');
   assert not exists(select 1 from information_schema.columns
     where table_schema='public' and table_name='sms_inbound_receipts' and column_name='body');
 end $$;
