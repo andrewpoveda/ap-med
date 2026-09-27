@@ -190,6 +190,10 @@ reminder safety guards in `20260927140504_sms_reply_and_reminder_safety.sql`.
 service-role-only, version-guarded RPC for the existing `cohorts.config`
 setting `sms_phone_collection`. It creates no new table or column and does not
 set a collection mode for any cohort.
+`20260927193648_cohort_sms_application_collection_guard.sql` enforces that
+setting when an application is inserted, including during a concurrent setting
+change. `20260927193855_sms_stop_consent_order_guard.sql` serializes dashboard
+opt-ins with STOP/START and rejects stale consent requests.
 Apply them in that order only after reviewing the hosted migration ledger and
 before deploying dependent application code. The cohort SMS flag defaults off;
 none of these migrations enables sending or configures a provider. No hosted
@@ -199,7 +203,8 @@ The tables use RLS with no `anon` or `authenticated` access. The server uses
 explicit `service_role` grants and `SECURITY INVOKER` RPCs. A reply is saved
 in the same `meeting_checkins` row that the authenticated web form uses.
 `sh database/verification/verify_sms_atomic.sh` verifies the full migration
-chain, guarded phone-collection setting, and synthetic send, reply, STOP,
+chain, guarded phone collection and opt-in, and synthetic send, reply, STOP,
 START, and reschedule cases in a
-disposable PostgreSQL 17 cluster. The complete provider setup and rollout
+disposable PostgreSQL 17 cluster. CI runs this suite after the existing phase
+checks. The complete provider setup and rollout
 sequence are in `../docs/architecture/cohort-sms-v1.md`.
