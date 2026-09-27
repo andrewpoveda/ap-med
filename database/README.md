@@ -179,3 +179,22 @@ will block migration and must be reviewed without silently deleting history.
 `sh database/verification/verify_phase3.sh` validates this chain in a disposable
 PostgreSQL 17 database, including the Phase 2 SQL regression suite. It neither
 reads credentials nor connects to a configured hosted project.
+
+## Cohort SMS V1 migrations
+
+The active chain adds the SMS foundation in
+`../supabase/migrations/20260926201229_sms_foundation.sql`, transactional send
+and inbound RPCs in `20260927023120_sms_atomic_processing.sql`, then reply and
+reminder safety guards in `20260927140504_sms_reply_and_reminder_safety.sql`.
+Apply them in that order only after reviewing the hosted migration ledger and
+before deploying dependent application code. The cohort SMS flag defaults off;
+none of these migrations enables sending or configures a provider. No hosted
+database was changed while preparing them.
+
+The tables use RLS with no `anon` or `authenticated` access. The server uses
+explicit `service_role` grants and `SECURITY INVOKER` RPCs. A reply is saved
+in the same `meeting_checkins` row that the authenticated web form uses.
+`sh database/verification/verify_sms_atomic.sh` verifies the full migration
+chain and synthetic send, reply, STOP, START, and reschedule cases in a
+disposable PostgreSQL 17 cluster. The complete provider setup and rollout
+sequence are in `../docs/architecture/cohort-sms-v1.md`.
