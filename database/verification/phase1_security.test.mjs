@@ -217,7 +217,9 @@ test('required cohort phone collection requires a valid phone but never SMS cons
   for (const phone_number of [undefined, '', 'not a phone']) {
     const response = await route.POST(request({ ...applicationBody('mentee'), phone_number, sms_consent: false }))
     assert.equal(response.status, 400)
-    assert.equal((await response.json()).code, 'invalid_submission')
+    const body = await response.json()
+    assert.equal(body.code, 'invalid_submission')
+    if (!phone_number) assert.match(body.error, /reload this page/)
   }
   assert.deepEqual(db.tables.cohort_applications ?? [], [])
 

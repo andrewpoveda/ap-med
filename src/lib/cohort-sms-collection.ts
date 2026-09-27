@@ -25,7 +25,7 @@ export function validateCohortSmsCollectionInput(
   const result = validateSmsContactInput(rawPhone, rawConsent)
   if (!result.ok) return result
   if (mode === 'required' && !result.value.phoneE164) {
-    return { ok: false, error: 'Add your mobile phone number to continue' }
+    return { ok: false, error: 'Add your mobile phone number to continue. If the phone field is missing, reload this page.' }
   }
   return result
 }

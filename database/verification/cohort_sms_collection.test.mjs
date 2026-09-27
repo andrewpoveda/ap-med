@@ -7,6 +7,7 @@ const {
   getCohortSmsCollectionMode,
   validateCohortSmsCollectionInput,
 } = loadTs('src/lib/cohort-sms-collection.ts')
+const { withSmsPhoneChange } = loadTs('src/lib/cohort-sms-contact-form.ts')
 
 test('collection mode defaults off for missing or malformed cohort configuration', () => {
   for (const config of [undefined, null, '', [], {}, { sms_phone_collection: true }, { sms_phone_collection: 'OTHER' }]) {
@@ -32,4 +33,13 @@ test('optional and required collection validate phone while keeping consent opti
     ok: true, value: { phoneE164: '+12015550123', consent: false },
   })
   assert.equal(validateCohortSmsCollectionInput('required', '2015550123', 'true').ok, false)
+})
+
+test('editing a cohort application phone clears the prior SMS consent choice', () => {
+  const previous = { phone_number: '2015550123', sms_consent: true, full_name: 'Applicant' }
+  assert.deepEqual(withSmsPhoneChange(previous, '2015550123'), previous)
+  assert.deepEqual(withSmsPhoneChange(previous, '2015550199'), {
+    phone_number: '2015550199', sms_consent: false, full_name: 'Applicant',
+  })
+  assert.equal(previous.sms_consent, true)
 })

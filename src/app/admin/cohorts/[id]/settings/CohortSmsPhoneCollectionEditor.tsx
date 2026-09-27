@@ -47,7 +47,7 @@ export default function CohortSmsPhoneCollectionEditor({ cohortId, initialMode, 
 
   return <form onSubmit={save} className="border rounded p-4 space-y-3">
     <h2 className="text-xl">Phone collection during applications</h2>
-    <p className="text-sm">This setting controls whether the cohort application asks for a phone number and separate SMS consent. It does not enable SMS sending.</p>
+    <p className="text-sm">This setting controls phone collection in application forms that use AP MED&apos;s shared cohort onboarding fields. It does not create a public application page or enable SMS sending.</p>
     <label className="block">Collection mode
       <select className="block border rounded p-2 w-full" value={mode} onChange={event => setMode(event.target.value as CohortSmsCollectionMode)}>
         <option value="off">Off — do not ask for phone or SMS consent</option>
