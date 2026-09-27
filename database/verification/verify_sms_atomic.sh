@@ -83,8 +83,21 @@ values
     'reminder','+15555550111','Reminder');
 
 do $$
-declare result jsonb;
+declare result jsonb; sms_table text;
 begin
+  foreach sms_table in array array[
+    'cohort_sms_contacts', 'sms_phone_suppressions', 'meeting_checkins',
+    'sms_outbox', 'sms_inbound_receipts'
+  ] loop
+    assert (select relrowsecurity from pg_class
+      where oid=('public.' || sms_table)::regclass);
+    assert not has_table_privilege('anon', 'public.' || sms_table, 'SELECT');
+    assert not has_table_privilege('anon', 'public.' || sms_table, 'INSERT');
+    assert not has_table_privilege('authenticated', 'public.' || sms_table, 'SELECT');
+    assert not has_table_privilege('authenticated', 'public.' || sms_table, 'INSERT');
+    assert has_table_privilege('service_role', 'public.' || sms_table, 'SELECT');
+    assert has_table_privilege('service_role', 'public.' || sms_table, 'INSERT');
+  end loop;
   assert not has_function_privilege('anon','public.sms_process_inbound(text,text,text,text,text,text)','EXECUTE');
   assert has_function_privilege('service_role','public.sms_process_inbound(text,text,text,text,text,text)','EXECUTE');
   assert not has_function_privilege('anon','public.sms_claim_outbox(uuid,text)','EXECUTE');
