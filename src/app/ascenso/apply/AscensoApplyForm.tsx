@@ -816,7 +816,14 @@ export default function AscensoApplyForm({
                   autoComplete="tel"
                   placeholder="(201) 555-0123"
                   value={form.phone_number}
-                  onChange={e => setForm(prev => ({ ...prev, phone_number: e.target.value }))}
+                  onChange={e => {
+                    const nextPhone = e.target.value
+                    setForm(prev => ({
+                      ...prev,
+                      phone_number: nextPhone,
+                      sms_consent: nextPhone === prev.phone_number ? prev.sms_consent : false,
+                    }))
+                  }}
                   style={inputStyle}
                   aria-describedby="ascenso-sms-phone-help"
                 />
