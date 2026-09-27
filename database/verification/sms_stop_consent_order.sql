@@ -16,6 +16,60 @@ begin
   );
 end $$;
 
+-- An initial dashboard opt-in has neither a contact nor a suppression row.
+-- A later STOP/START must make a request using that observed NULL revision stale.
+do $$
+declare cohort uuid := '11111111-1111-4111-8111-111111111111';
+        member_person uuid; first_consent timestamptz; stopped_at timestamptz;
+begin
+  insert into public.mentees(id, full_name, email, cohort_id)
+    values ('7e7e7e7e-7e7e-47e7-87e7-7e7e7e7e7e7e', 'First SMS contact',
+      'first-sms-contact@example.com', cohort);
+  select person_id into strict member_person from public.mentees
+    where id = '7e7e7e7e-7e7e-47e7-87e7-7e7e7e7e7e7e';
+  assert not exists(select 1 from public.cohort_sms_contacts
+    where cohort_id = cohort and person_id = member_person);
+  assert not exists(select 1 from public.sms_phone_suppressions
+    where phone_e164 = '+15555550114');
+
+  assert pg_temp.sms_try_consent(cohort, member_person, '+15555550114',
+    null, 'First dashboard notice', 'first-v1') = 'saved';
+  select consented_at into strict first_consent from public.cohort_sms_contacts
+    where cohort_id = cohort and person_id = member_person;
+  assert first_consent is not null;
+  assert (select phone_e164 = '+15555550114' and
+      consent_source = 'member_dashboard' and
+      consent_notice = 'First dashboard notice' and
+      consent_notice_version = 'first-v1' and opted_out_at is null
+    from public.cohort_sms_contacts
+    where cohort_id = cohort and person_id = member_person);
+
+  assert public.sms_process_inbound('twilio', 'SM-FIRST-STOP',
+    '+15555550114', '+15555559999', 'STOP', null)->>'resolution' = 'stop';
+  select opted_out_at into strict stopped_at from public.sms_phone_suppressions
+    where phone_e164 = '+15555550114';
+  assert public.sms_process_inbound('twilio', 'SM-FIRST-START',
+    '+15555550114', '+15555559999', 'START', null)->>'resolution' = 'start';
+  assert (select revision = 2 and resumed_at > opted_out_at
+    from public.sms_phone_suppressions where phone_e164 = '+15555550114');
+  assert pg_temp.sms_try_consent(cohort, member_person, '+15555550114',
+    null, 'Stale dashboard notice', 'first-v2') = 'changed';
+  assert (select consented_at = first_consent and
+      consent_notice = 'First dashboard notice'
+    from public.cohort_sms_contacts
+    where cohort_id = cohort and person_id = member_person);
+  assert first_consent < stopped_at;
+
+  assert pg_temp.sms_try_consent(cohort, member_person, '+15555550114',
+    2, 'Renewed dashboard notice', 'first-v2') = 'saved';
+  assert (select consented_at > stopped_at and
+      consent_source = 'member_dashboard' and
+      consent_notice = 'Renewed dashboard notice' and
+      consent_notice_version = 'first-v2' and opted_out_at is null
+    from public.cohort_sms_contacts
+    where cohort_id = cohort and person_id = member_person);
+end $$;
+
 do $$
 declare cohort uuid := '11111111-1111-4111-8111-111111111111';
         mentor_person uuid; before_revision bigint; after_stop bigint;
