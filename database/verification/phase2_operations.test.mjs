@@ -56,7 +56,7 @@ test('application decision remains saved when notifications are incomplete', asy
   assert.match((await res.json()).warning, /Decision saved/)
 })
 
-test('approval copies validated SMS consent without replacing an existing preference', async () => {
+test('approval copies validated SMS consent and keeps the original disclosure', async () => {
   const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
   const answers = {
     ...smsConsentAnswers({ phoneE164: '+12015550123', consent: true }, new Date('2026-09-26T14:00:00.000Z')),
@@ -71,7 +71,11 @@ test('approval copies validated SMS consent without replacing an existing prefer
   const originalFrom = db.from.bind(db)
   let inserted = null
   db.from = table => table === 'cohort_sms_contacts'
-    ? { upsert: async (value, options) => { inserted = { value, options }; return { error: null } } }
+    ? { ...originalFrom(table), upsert: async (value, options) => {
+      inserted = { value, options }
+      db.tables.cohort_sms_contacts.push({ id: 'contact', opted_out_at: null, ...value })
+      return { error: null }
+    } }
     : originalFrom(table)
   let deliveryAttempts = 0
   const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db, session, {
@@ -90,6 +94,81 @@ test('approval copies validated SMS consent without replacing an existing prefer
     },
     options: { onConflict: 'cohort_id,person_id', ignoreDuplicates: true },
   })
+})
+
+test('a second approved participation preserves the saved SMS preference and reports mismatches', async () => {
+  const { smsConsentAnswers } = loadTs('src/lib/sms-consent.ts')
+  const applicationPhone = '+12015550123'
+  const otherPhone = '+12015550199'
+  const consentedAt = '2026-09-26T14:00:00.000Z'
+  for (const scenario of [
+    {
+      name: 'same phone without saved consent',
+      existing: { phone_e164: applicationPhone, consented_at: null, opted_out_at: null },
+      wantsConsent: true,
+      warning: true,
+    },
+    {
+      name: 'different phone with a later dashboard preference',
+      existing: { phone_e164: otherPhone, consented_at: consentedAt, opted_out_at: null },
+      wantsConsent: true,
+      warning: true,
+    },
+    {
+      name: 'same phone stopped at the provider',
+      existing: { phone_e164: applicationPhone, consented_at: consentedAt, opted_out_at: null },
+      wantsConsent: true,
+      suppression: { phone_e164: applicationPhone, opted_out_at: '2026-09-27T14:00:00.000Z', resumed_at: null },
+      warning: true,
+    },
+    {
+      name: 'unchecked second application does not revoke earlier consent',
+      existing: { phone_e164: applicationPhone, consented_at: consentedAt, opted_out_at: null },
+      wantsConsent: false,
+      warning: false,
+    },
+  ]) {
+    const answers = smsConsentAnswers(
+      { phoneE164: applicationPhone, consent: scenario.wantsConsent },
+      new Date('2026-09-27T15:00:00.000Z'),
+    )
+    const db = database({
+      cohort_applications: [{ id: 'target', cohort_id: 'cohort', role: 'mentee', member_id: 'member', email: 'member@example.org', answers }],
+      mentees: [{ id: 'member', cohort_id: 'cohort', person_id: 'person' }],
+      cohort_sms_contacts: [{
+        id: 'existing', cohort_id: 'cohort', person_id: 'person',
+        ...(scenario.existing.consented_at ? {
+          consent_source: 'member_dashboard',
+          consent_notice: 'Earlier dashboard SMS notice',
+          consent_notice_version: 'v1',
+        } : {}),
+        ...scenario.existing,
+      }],
+      sms_phone_suppressions: scenario.suppression ? [scenario.suppression] : [],
+    })
+    db.rpc = async () => ({ data: 'approved' })
+    const originalFrom = db.from.bind(db)
+    let handoffAttempts = 0
+    db.from = table => table === 'cohort_sms_contacts'
+      ? { ...originalFrom(table), upsert: async (_value, options) => {
+        handoffAttempts++
+        assert.deepEqual(options, { onConflict: 'cohort_id,person_id', ignoreDuplicates: true })
+        return { error: null }
+      } }
+      : originalFrom(table)
+    const prior = structuredClone(db.tables.cohort_sms_contacts[0])
+    const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db)
+      .PATCH(request({ action: 'approve' }), ctx)
+    const body = await res.json()
+    assert.equal(res.status, 200, scenario.name)
+    assert.equal(handoffAttempts, 1, scenario.name)
+    assert.deepEqual(db.tables.cohort_sms_contacts[0], prior, scenario.name)
+    if (scenario.warning) {
+      assert.match(body.warning, /SMS phone or consent differs/, scenario.name)
+    } else {
+      assert.equal(body.warning, undefined, scenario.name)
+    }
+  }
 })
 
 test('invalid SMS evidence or contact insert failure warns after approval and still attempts email', async () => {

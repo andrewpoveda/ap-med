@@ -1,9 +1,12 @@
 import { normalizeUsPhoneNumber } from '@/lib/sms-consent'
+import { getMemberSmsPreference } from '@/lib/cohort-sms'
 import type { CohortApplication } from '@/types/cohort'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const SMS_HANDOFF_WARNING =
   'Decision saved, but the SMS phone preference could not be copied. The member can add it from their dashboard once SMS is enabled.'
+export const SMS_HANDOFF_CONFLICT_WARNING =
+  'Decision saved, but this application\'s SMS phone or consent differs from the member\'s saved preference or phone opt-out. Ask the member to review SMS settings once enabled; an opted-out number must text START first.'
 
 /**
  * Approval and its email intent have already committed in the review RPC. This
@@ -91,6 +94,18 @@ export async function handoffApplicationSmsContact(
     // Provider/database details can contain the phone; keep it out of logs.
     console.error('SMS contact handoff failed', { code: insertError.code ?? 'unknown' })
     return SMS_HANDOFF_WARNING
+  }
+  // A second participation can share this person and cohort. DO NOTHING keeps
+  // any later dashboard edit or revocation authoritative, but a conflicting
+  // application must not appear to the administrator as if it were enrolled.
+  const saved = await getMemberSmsPreference(admin, {
+    type: linked.role,
+    memberId: linked.member_id,
+    cohortId: linked.cohort_id,
+  })
+  if (!saved) return SMS_HANDOFF_WARNING
+  if (saved.phoneE164 !== phone || (consent && !saved.consented)) {
+    return SMS_HANDOFF_CONFLICT_WARNING
   }
   return null
 }
