@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { completeInQuery } from '@/lib/complete-query'
 
 // These windows deliberately exclude historical meetings when SMS is first
 // enabled. A scheduler must run at least every 12 hours to cover reminders.
@@ -120,7 +121,7 @@ async function dueSessions(admin: SupabaseClient, cohortIds: string[], now: Date
       .gte('scheduled_at', windows.reminderFrom).lte('scheduled_at', windows.reminderThrough)
       .order('scheduled_at').limit(MAX_DUE_SESSIONS_PER_KIND + 1),
     admin.from('sessions').select('id,cohort_id,match_id,mentor_id,mentee_id,scheduled_at,status')
-      .in('cohort_id', cohortIds).in('status', ['scheduled', 'completed']).not('match_id', 'is', null)
+      .in('cohort_id', cohortIds).in('status', ['scheduled', 'completed', 'no_show']).not('match_id', 'is', null)
       .gte('scheduled_at', windows.checkinFrom).lte('scheduled_at', windows.checkinThrough)
       .order('scheduled_at', { ascending: false }).limit(MAX_DUE_SESSIONS_PER_KIND + 1),
   ])
@@ -148,11 +149,18 @@ async function eligibleContacts(admin: SupabaseClient, cohortIds: string[]): Pro
   if (!data?.length) return []
 
   const contacts = data as Contact[]
-  const { data: suppressions, error: suppressionError } = await admin.from('sms_phone_suppressions')
-    .select('phone_e164,opted_out_at,resumed_at')
-    .in('phone_e164', unique(contacts.map(contact => contact.phone_e164)))
-  if (suppressionError) throw new Error('Could not load SMS opt-outs')
-  const byPhone = new Map((suppressions ?? []).map(row => [row.phone_e164 as string, row]))
+  // phone_e164 is the suppression table's primary key, so each 50-phone
+  // request returns at most 50 rows and cannot be truncated by the usual cap.
+  const phones = unique(contacts.map(contact => contact.phone_e164))
+  const suppressions: Array<{ phone_e164: string; opted_out_at: string; resumed_at: string | null }> = []
+  for (let offset = 0; offset < phones.length; offset += 50) {
+    const { data, error } = await admin.from('sms_phone_suppressions')
+      .select('phone_e164,opted_out_at,resumed_at')
+      .in('phone_e164', phones.slice(offset, offset + 50))
+    if (error || !data) throw new Error('Could not load SMS opt-outs')
+    suppressions.push(...data)
+  }
+  const byPhone = new Map(suppressions.map(row => [row.phone_e164, row]))
   return contacts.filter(contact => !isSmsPhoneSuppressed(
     byPhone.get(contact.phone_e164) ?? null, contact.consented_at,
   ))
@@ -164,19 +172,22 @@ async function loadContext(admin: SupabaseClient, sessions: Session[]) {
   const matchIds = unique(sessions.map(session => session.match_id))
   const sessionIds = unique(sessions.map(session => session.id))
   const [mentors, mentees, matches, checkins, outbox] = await Promise.all([
-    admin.from('mentor').select('id,person_id,membership_status').in('id', mentorIds),
-    admin.from('mentees').select('id,person_id,membership_status').in('id', menteeIds),
-    admin.from('cohort_matches').select('id,cohort_id,mentor_id,mentee_id,status').in('id', matchIds),
-    admin.from('meeting_checkins').select('id,session_id,member_type,member_id,responded_at')
-      .in('session_id', sessionIds).limit(1001),
-    admin.from('sms_outbox').select('id,session_id,contact_id,kind,state')
-      .in('session_id', sessionIds).limit(1001),
+    completeInQuery(mentorIds, batch => admin.from('mentor')
+      .select('id,person_id,membership_status').in('id', batch)),
+    completeInQuery(menteeIds, batch => admin.from('mentees')
+      .select('id,person_id,membership_status').in('id', batch)),
+    completeInQuery(matchIds, batch => admin.from('cohort_matches')
+      .select('id,cohort_id,mentor_id,mentee_id,status').in('id', batch)),
+    completeInQuery(sessionIds, batch => admin.from('meeting_checkins')
+      .select('id,session_id,member_type,member_id,responded_at').in('session_id', batch)),
+    completeInQuery(sessionIds, batch => admin.from('sms_outbox')
+      .select('id,session_id,contact_id,kind,state').in('session_id', batch)),
   ])
   if (mentors.error || mentees.error || matches.error || checkins.error || outbox.error) {
     throw new Error('Could not load SMS meeting context')
   }
-  // Supabase projects commonly cap one response at 1,000 rows. Refuse to
-  // enqueue from a possibly partial context rather than missing prior intents.
+  // Refuse to enqueue when the accumulated context exceeds the worker's
+  // capacity. completeInQuery pages every 50-ID batch across hosted caps.
   if ((checkins.data?.length ?? 0) >= 1000 || (outbox.data?.length ?? 0) >= 1000) {
     throw new Error('SMS meeting context exceeds worker capacity')
   }

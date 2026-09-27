@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict'
+import { randomBytes } from 'node:crypto'
 import test from 'node:test'
+import { loadTs } from './test-support.mjs'
 
-import {
+const {
   buildCheckinSms,
   buildReminderSms,
   isSmsPhoneSuppressed,
   runSmsWorker,
   sendPendingSmsIntents,
   smsDueWindows,
-} from '../../src/lib/sms/worker.ts'
+} = loadTs('src/lib/sms/worker.ts', { 'node:crypto': { randomBytes } })
 
 const senderPhoneE164 = '+12025550999'
 const claim = {
@@ -197,14 +199,14 @@ test('stale sending attempts become needs_review before reading active cohorts',
   }
 })
 
-function fakeSmsDatabase(scheduledAt, answered = false) {
+function fakeSmsDatabase(scheduledAt, answered = false, status = 'scheduled') {
   const rows = {
     cohorts: [{ id: 'cohort-1', sms_enabled: true, status: 'active' }],
     cohort_sms_contacts: [{ id: 'contact-1', cohort_id: 'cohort-1', person_id: 'person-1',
       phone_e164: '+12025550101', consented_at: '2026-09-20T12:00:00Z', opted_out_at: null }],
     sms_phone_suppressions: [],
     sessions: [{ id: 'session-1', cohort_id: 'cohort-1', match_id: 'match-1',
-      mentor_id: 'mentor-1', mentee_id: 'mentee-1', scheduled_at: scheduledAt, status: 'scheduled' }],
+      mentor_id: 'mentor-1', mentee_id: 'mentee-1', scheduled_at: scheduledAt, status }],
     mentor: [{ id: 'mentor-1', person_id: 'person-1', membership_status: 'active' }],
     mentees: [{ id: 'mentee-1', person_id: 'person-2', membership_status: 'active' }],
     cohort_matches: [{ id: 'match-1', cohort_id: 'cohort-1', mentor_id: 'mentor-1',
@@ -214,15 +216,21 @@ function fakeSmsDatabase(scheduledAt, answered = false) {
     sms_outbox: [],
   }
   const rpcCalls = []
+  const inCalls = []
   const admin = {
     from(table) {
       assert.ok(table in rows, `Unexpected SMS table: ${table}`)
       const filters = []
       let take = Infinity
+      let start = 0
+      let end = Infinity
       const query = {
         select() { return this },
         eq(field, value) { filters.push(row => row[field] === value); return this },
-        in(field, values) { filters.push(row => values.includes(row[field])); return this },
+        in(field, values) {
+          inCalls.push({ table, field, size: values.length })
+          filters.push(row => values.includes(row[field])); return this
+        },
         not(field, operator, value) {
           assert.equal(operator, 'is'); assert.equal(value, null)
           filters.push(row => row[field] !== null); return this
@@ -232,12 +240,14 @@ function fakeSmsDatabase(scheduledAt, answered = false) {
         lte(field, value) { filters.push(row => row[field] <= value); return this },
         order() { return this },
         limit(value) { take = value; return this },
+        range(from, to) { start = from; end = to + 1; return this },
         then(resolve, reject) {
           return Promise.resolve({ data: rows[table].filter(row => filters.every(test => test(row)))
-            .slice(0, take), error: null }).then(resolve, reject)
+            .slice(start, Math.min(end, take)), error: null }).then(resolve, reject)
         },
         insert(value) {
-          const created = { id: table === 'sms_outbox' ? 'intent-1' : 'checkin-1',
+          const created = { id: table === 'sms_outbox' ? `intent-${rows[table].length + 1}` :
+            `checkin-${rows[table].length + 1}`,
             state: table === 'sms_outbox' ? 'pending' : undefined, ...value }
           rows[table].push(created)
           return { select() { return { maybeSingle: async () => ({ data: created, error: null }) } } }
@@ -259,7 +269,7 @@ function fakeSmsDatabase(scheduledAt, answered = false) {
       throw new Error(`Unexpected SMS RPC: ${name}`)
     },
   }
-  return { admin, rows, rpcCalls }
+  return { admin, rows, rpcCalls, inCalls }
 }
 
 test('one consented member gets one due reminder with an atomic claim', async () => {
@@ -304,6 +314,59 @@ test('a web check-in response prevents a post-meeting text', async () => {
     assert.equal(result.queued, 0)
     assert.equal(sendCount, 0)
     assert.equal(rows.sms_outbox.length, 0)
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('a no-show meeting can receive the neutral shared check-in prompt', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows } = fakeSmsDatabase('2026-09-26T10:00:00.000Z', false, 'no_show')
+  const sent = []
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async input => {
+        sent.push(input)
+        return { kind: 'accepted', externalMessageId: 'SM123', fromPhoneE164: senderPhoneE164 }
+      },
+    }, new Date('2026-09-26T12:00:00Z'))
+    assert.equal(result.queued, 1)
+    assert.equal(rows.meeting_checkins.length, 1)
+    assert.equal(rows.sms_outbox[0].kind, 'checkin')
+    assert.match(sent[0].body, /How did your meeting go\?/)
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('large due sets partition meeting IDs and phone filters into bounded requests', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows, inCalls } = fakeSmsDatabase('2026-09-27T12:00:00.000Z')
+  rows.sessions = Array.from({ length: 126 }, (_, index) => ({
+    ...rows.sessions[0], id: `session-${index + 1}`,
+  }))
+  rows.cohort_sms_contacts.push(...Array.from({ length: 125 }, (_, index) => ({
+    ...rows.cohort_sms_contacts[0], id: `other-contact-${index + 1}`,
+    person_id: `other-person-${index + 1}`,
+    phone_e164: `+1202555${String(index + 1000)}`,
+  })))
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => ({ kind: 'accepted', externalMessageId: 'SM123', fromPhoneE164: senderPhoneE164 }),
+    }, new Date('2026-09-26T12:00:00Z'))
+    assert.equal(result.dueSessions, 126)
+    assert.equal(result.queued, 126)
+    assert.equal(rows.sms_outbox.length, 126)
+    assert.ok(inCalls.filter(call => call.table === 'sms_phone_suppressions').length >= 3)
+    assert.ok(inCalls.filter(call => call.field === 'session_id').length >= 6)
+    assert.ok(inCalls.filter(call => call.table === 'sms_phone_suppressions' ||
+      call.field === 'session_id').every(call => call.size <= 50))
   } finally {
     if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
     else process.env.SMS_FEATURE_ENABLED = prior
