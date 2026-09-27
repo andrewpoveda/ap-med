@@ -231,6 +231,29 @@ test('required cohort phone collection requires a valid phone but never SMS cons
   assert.equal(answers.sms_consented_at, null)
 })
 
+test('intake explains a required-phone setting change during insert', async () => {
+  for (const [message, status, code] of [
+    ['Phone collection settings changed; reload and enter a valid phone number', 400, 'invalid_submission'],
+    ['Applications closed', 403, 'applications_closed'],
+  ]) {
+    const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] })
+    const originalFrom = db.from.bind(db)
+    db.from = (table) => {
+      const query = originalFrom(table)
+      if (table === 'cohort_applications') {
+        query.insert = () => Promise.resolve({ data: null, error: { code: '23514', message } })
+      }
+      return query
+    }
+    const response = await intakeRoute(db).POST(request(applicationBody('mentee')))
+    assert.equal(response.status, status)
+    const body = await response.json()
+    assert.equal(body.code, code)
+    if (code === 'invalid_submission') assert.match(body.error, /Reload this page/)
+    assert.deepEqual(db.tables.cohort_applications ?? [], [])
+  }
+})
+
 test('cohort configuration read errors never accept an application or SMS contact', async () => {
   const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] }, { failRead: true })
   const response = await intakeRoute(db).POST(request({
