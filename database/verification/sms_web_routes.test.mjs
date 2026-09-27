@@ -91,6 +91,74 @@ test('phone preference requires active membership and respects global STOP', asy
   assert.equal(db.tables.cohort_sms_contacts?.length ?? 0, 0)
 })
 
+test('dashboard opt-in saves through the revision-checked SMS transaction', async () => {
+  const db = database({
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+    sms_phone_suppressions: [{ phone_e164: '+12015550123', revision: 4,
+      opted_out_at: '2026-09-20T12:00:00Z', resumed_at: '2026-09-20T12:01:00Z' }],
+  })
+  let call
+  db.rpc = async (name, args) => {
+    call = { name, args }
+    return { data: 'saved', error: null }
+  }
+  const response = await route('src/app/api/cohort-sms-preferences/route.ts', db).PUT(request(
+    '/api/cohort-sms-preferences', 'PUT', { phoneNumber: '2015550123', smsConsent: true },
+  ))
+  assert.equal(response.status, 200)
+  assert.equal(call.name, 'sms_save_contact_consent')
+  assert.equal(call.args.p_cohort_id, 'cohort-1')
+  assert.equal(call.args.p_person_id, 'person-1')
+  assert.equal(call.args.p_phone_e164, '+12015550123')
+  assert.equal(call.args.p_expected_revision, 4)
+  assert.equal(call.args.p_expected_contact_id, null)
+  assert.equal(call.args.p_expected_phone_e164, null)
+  assert.equal(call.args.p_expected_consented_at, null)
+  assert.equal(call.args.p_expected_opted_out_at, null)
+  assert.match(call.args.p_consent_notice, /Reply STOP/)
+  assert.equal(db.tables.cohort_sms_contacts.length, 0)
+})
+
+test('a STOP and START after the dashboard read rejects the stale opt-in', async () => {
+  const db = database({
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+  })
+  db.rpc = async (name, args) => {
+    assert.equal(name, 'sms_save_contact_consent')
+    assert.equal(args.p_expected_revision, null)
+    return { data: 'changed', error: null }
+  }
+  const response = await route('src/app/api/cohort-sms-preferences/route.ts', db).PUT(request(
+    '/api/cohort-sms-preferences', 'PUT', { phoneNumber: '2015550123', smsConsent: true },
+  ))
+  assert.equal(response.status, 409)
+  assert.equal(db.tables.cohort_sms_contacts.length, 0)
+})
+
+test('dashboard opt-in sends the prior contact snapshot so newer revocation wins', async () => {
+  const previous = { id: 'contact-1', cohort_id: 'cohort-1', person_id: 'person-1',
+    phone_e164: '+12015550123', consented_at: '2026-09-20T12:00:00Z',
+    opted_out_at: null, consent_source: 'cohort_application',
+    consent_notice: 'Original notice', consent_notice_version: 'v1' }
+  const db = database({
+    mentor: [{ id: 'mentor-1', cohort_id: 'cohort-1', person_id: 'person-1', membership_status: 'active' }],
+    cohort_sms_contacts: [previous],
+  })
+  db.rpc = async (name, args) => {
+    assert.equal(name, 'sms_save_contact_consent')
+    assert.equal(args.p_expected_contact_id, previous.id)
+    assert.equal(args.p_expected_phone_e164, previous.phone_e164)
+    assert.equal(args.p_expected_consented_at, previous.consented_at)
+    assert.equal(args.p_expected_opted_out_at, previous.opted_out_at)
+    return { data: 'changed', error: null }
+  }
+  const response = await route('src/app/api/cohort-sms-preferences/route.ts', db).PUT(request(
+    '/api/cohort-sms-preferences', 'PUT', { phoneNumber: '2015550123', smsConsent: true },
+  ))
+  assert.equal(response.status, 409)
+  assert.deepEqual(db.tables.cohort_sms_contacts[0], previous)
+})
+
 test('an existing member can revoke consent and remove a saved phone while SMS is paused', async () => {
   const path = 'src/app/api/cohort-sms-preferences/route.ts'
   const seed = {

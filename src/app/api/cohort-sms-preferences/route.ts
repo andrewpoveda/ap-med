@@ -63,38 +63,63 @@ export async function PUT(request: Request) {
 
     // STOP is phone-wide. START may lift provider blocking, but only this signed-in
     // action can establish fresh AP MED consent for a particular cohort.
-    let stoppedAt: string | null = null
     if (contact.value.consent) {
       const { data: suppression, error } = await admin.from('sms_phone_suppressions')
-        .select('opted_out_at,resumed_at').eq('phone_e164', phone).maybeSingle()
+        .select('revision,opted_out_at,resumed_at').eq('phone_e164', phone).maybeSingle()
       if (error) return NextResponse.json({ error: 'Could not verify SMS opt-out status' }, { status: 500 })
       if (suppression && (!suppression.resumed_at || suppression.resumed_at <= suppression.opted_out_at)) {
         return NextResponse.json({ error: 'This number opted out. Text START to the AP MED number before opting in here again.' }, { status: 409 })
       }
-      stoppedAt = suppression?.opted_out_at ?? null
+
+      // The read above may race with STOP followed by START. The RPC checks
+      // that exact phone revision and saves consent in one locked transaction.
+      const { data: outcome, error: saveError } = await admin.rpc('sms_save_contact_consent', {
+        p_cohort_id: actor.cohortId,
+        p_person_id: member.person_id,
+        p_phone_e164: phone,
+        p_expected_revision: suppression?.revision ?? null,
+        p_expected_contact_id: previous?.id ?? null,
+        p_expected_phone_e164: previous?.phone_e164 ?? null,
+        p_expected_consented_at: previous?.consented_at ?? null,
+        p_expected_opted_out_at: previous?.opted_out_at ?? null,
+        p_consent_notice: SMS_CONSENT_NOTICE,
+        p_consent_notice_version: SMS_CONSENT_NOTICE_VERSION,
+      })
+      if (saveError?.code === '23505') {
+        return NextResponse.json({ error: 'This number is already assigned to another member in this cohort' }, { status: 409 })
+      }
+      if (saveError) {
+        console.error('SMS preference save failed')
+        return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
+      }
+      if (outcome === 'changed') {
+        return NextResponse.json({ error: 'SMS preference changed. Please reload and try again.' }, { status: 409 })
+      }
+      if (outcome === 'opted_out') {
+        return NextResponse.json({ error: 'This number opted out. Text START to the AP MED number before opting in here again.' }, { status: 409 })
+      }
+      if (outcome === 'disabled') {
+        return NextResponse.json({ error: 'SMS enrollment is paused for this cohort' }, { status: 404 })
+      }
+      if (outcome === 'inactive') {
+        return NextResponse.json({ error: 'No active cohort membership' }, { status: 403 })
+      }
+      if (outcome !== 'saved') {
+        return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
+      }
+      return NextResponse.json({ success: true, phoneE164: phone })
     }
 
     const now = new Date().toISOString()
-    const unchangedActiveConsent = previous?.phone_e164 === phone &&
-      previous.consented_at && !previous.opted_out_at && contact.value.consent &&
-      (!stoppedAt || previous.consented_at > stoppedAt)
-    const consentedAt = contact.value.consent ? (unchangedActiveConsent ? previous.consented_at : now) :
-      previous?.phone_e164 === phone ? previous.consented_at : null
     const { error } = await admin.from('cohort_sms_contacts').upsert({
       cohort_id: actor.cohortId,
       person_id: member.person_id,
       phone_e164: phone,
-      consented_at: consentedAt,
-      consent_source: contact.value.consent
-        ? (unchangedActiveConsent ? previous.consent_source : 'member_dashboard')
-        : previous?.phone_e164 === phone ? previous.consent_source : null,
-      consent_notice: contact.value.consent
-        ? (unchangedActiveConsent ? previous.consent_notice : SMS_CONSENT_NOTICE)
-        : previous?.phone_e164 === phone ? previous.consent_notice : null,
-      consent_notice_version: contact.value.consent
-        ? (unchangedActiveConsent ? previous.consent_notice_version : SMS_CONSENT_NOTICE_VERSION)
-        : previous?.phone_e164 === phone ? previous.consent_notice_version : null,
-      opted_out_at: contact.value.consent ? null : now,
+      consented_at: previous?.phone_e164 === phone ? previous.consented_at : null,
+      consent_source: previous?.phone_e164 === phone ? previous.consent_source : null,
+      consent_notice: previous?.phone_e164 === phone ? previous.consent_notice : null,
+      consent_notice_version: previous?.phone_e164 === phone ? previous.consent_notice_version : null,
+      opted_out_at: now,
       updated_at: now,
     }, { onConflict: 'cohort_id,person_id' })
     if (error?.code === '23505') {
