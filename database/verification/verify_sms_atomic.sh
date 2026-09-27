@@ -20,6 +20,7 @@ psql_local() { "$pg_bin/psql" -X -q -v ON_ERROR_STOP=1 -h "$work_dir/socket" -p 
 psql_local -f "$repo_root/database/baseline/supabase_compatibility_roles.sql"
 for migration in "$repo_root"/supabase/migrations/*.sql; do psql_local -f "$migration"; done
 psql_local -f "$repo_root/database/baseline/supabase_compatibility_grants.sql"
+psql_local -f "$repo_root/database/verification/cohort_sms_collection_settings.sql"
 psql_local <<'SQL'
 insert into public.cohorts(id,name,org,status,sms_enabled)
 values ('11111111-1111-4111-8111-111111111111','SMS synthetic','Test','active',true);

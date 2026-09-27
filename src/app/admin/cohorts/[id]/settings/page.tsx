@@ -6,7 +6,9 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getAscensoCohortId } from '@/lib/site'
 import CohortConfiguration from '../../../CohortConfiguration'
 import CohortDiscardControl from '../../../CohortDiscardControl'
+import { getCohortSmsCollectionMode } from '@/lib/cohort-sms-collection'
 import GrantEditor from './GrantEditor'
+import CohortSmsPhoneCollectionEditor from './CohortSmsPhoneCollectionEditor'
 export const dynamic = 'force-dynamic'
 
 export default async function Settings({ params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +38,7 @@ export default async function Settings({ params }: { params: Promise<{ id: strin
       <CohortDiscardControl cohortId={id} cohortName={cohort.name} discarded expectedVersion={cohort.config_version} />
     ) : <>
       <CohortConfiguration key={`${cohort.id}:${cohort.config_version}`} cohort={{ ...cohort, orientation: typeof cohort.config?.orientation_date === 'string' ? cohort.config.orientation_date : '' }} />
+      <CohortSmsPhoneCollectionEditor key={`${cohort.id}:sms:${cohort.config_version}`} cohortId={id} initialMode={getCohortSmsCollectionMode(cohort.config)} expectedVersion={cohort.config_version} />
       <Link href={`/admin/cohorts/${id}/members`}>Member management and support inbox</Link>
       {adminUser.role === 'super' && <GrantEditor cohortId={id} grants={grants} />}
       {adminUser.role === 'super' && cohort.status === 'setup' && (
