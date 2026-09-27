@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveActingMember } from '@/lib/goals'
-import { isCohortSmsEnabled } from '@/lib/cohort-sms'
+import { isCohortMeetingCheckinsEnabled } from '@/lib/cohort-sms'
 
 /** Submit the same meeting check-in record that an SMS reply will fill. */
 export async function POST(request: Request) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Choose a meeting and enter a response of up to 2,000 characters' }, { status: 400 })
     }
 
-    if (!await isCohortSmsEnabled(admin, actor.cohortId)) {
+    if (!await isCohortMeetingCheckinsEnabled(admin, actor.cohortId)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

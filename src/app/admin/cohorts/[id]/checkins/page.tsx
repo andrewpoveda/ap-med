@@ -12,22 +12,26 @@ export default async function MeetingCheckinsPage({ params }: { params: Promise<
   const { adminUser } = await requireAdminSession()
   const { id: cohortId } = await params
   if (!canAccessCohort(adminUser, cohortId)) notFound()
-  if (process.env.SMS_FEATURE_ENABLED !== 'true') notFound()
 
   const admin = getSupabaseAdmin()
   const { data: cohort, error: cohortError } = await admin.from('cohorts')
     .select('id,name,sms_enabled').eq('id', cohortId).maybeSingle()
-  if (cohortError || !cohort || !cohort.sms_enabled) notFound()
+  if (cohortError || !cohort) notFound()
 
-  const [checkinsResult, mentorsResult, menteesResult] = await Promise.all([
-    completeQuery(admin.from('meeting_checkins')
-      .select('id,session_id,match_id,member_type,member_id,response_text,response_channel,responded_at')
-      .eq('cohort_id', cohortId).not('responded_at', 'is', null)
-      .order('responded_at', { ascending: false })),
+  const checkinsResult = await completeQuery(admin.from('meeting_checkins')
+    .select('id,session_id,match_id,member_type,member_id,response_text,response_channel,responded_at')
+    .eq('cohort_id', cohortId).not('responded_at', 'is', null)
+    .order('responded_at', { ascending: false }))
+  if (checkinsResult.error) throw new Error('Could not load complete meeting check-in data')
+  // A cohort that never opted in has no new admin surface. Submitted answers
+  // remain reviewable after the cohort or global SMS switch is turned off.
+  if (!cohort.sms_enabled && !checkinsResult.data?.length) notFound()
+
+  const [mentorsResult, menteesResult] = await Promise.all([
     completeQuery(admin.from('mentor').select('id,first_name,last_name').eq('cohort_id', cohortId)),
     completeQuery(admin.from('mentees').select('id,full_name').eq('cohort_id', cohortId)),
   ])
-  if (checkinsResult.error || mentorsResult.error || menteesResult.error) {
+  if (mentorsResult.error || menteesResult.error) {
     throw new Error('Could not load complete meeting check-in data')
   }
 

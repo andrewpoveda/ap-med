@@ -6,16 +6,22 @@ export type MemberSmsPreference = {
   consented: boolean
 }
 
-/** A missing migration or read failure is an off switch for existing cohorts. */
-export async function isCohortSmsEnabled(admin: SupabaseClient, cohortId: string): Promise<boolean> {
-  if (process.env.SMS_FEATURE_ENABLED !== 'true') return false
+/** Cohort opt-in also gates the authenticated web meeting check-in. A global
+ * sending pause must leave that form available once a cohort has opted in. */
+export async function isCohortMeetingCheckinsEnabled(admin: SupabaseClient, cohortId: string): Promise<boolean> {
   const { data, error } = await admin.from('cohorts').select('sms_enabled,status')
     .eq('id', cohortId).maybeSingle()
   if (error) {
-    console.error('Could not read cohort SMS setting:', error.message)
+    console.error('Could not read cohort meeting check-in setting:', error.message)
     return false
   }
   return data?.sms_enabled === true && data.status === 'active'
+}
+
+/** A missing migration or read failure is an off switch for SMS sending. */
+export async function isCohortSmsEnabled(admin: SupabaseClient, cohortId: string): Promise<boolean> {
+  if (process.env.SMS_FEATURE_ENABLED !== 'true') return false
+  return isCohortMeetingCheckinsEnabled(admin, cohortId)
 }
 
 /** The member may read only their own cohort contact, resolved through a

@@ -16,7 +16,10 @@ function route(path, db, options = {}) {
     '@/lib/supabase-server': { createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }) },
     '@/lib/supabase-admin': { getSupabaseAdmin: () => db },
     '@/lib/goals': { resolveActingMember: async () => options.actor === undefined ? actor : options.actor },
-    '@/lib/cohort-sms': { isCohortSmsEnabled: async () => options.enabled ?? true },
+    '@/lib/cohort-sms': {
+      isCohortSmsEnabled: async () => options.enabled ?? true,
+      isCohortMeetingCheckinsEnabled: async () => options.checkinsEnabled ?? options.enabled ?? true,
+    },
   })
 }
 
@@ -42,6 +45,22 @@ test('meeting check-in requires the cohort switch and the member side of a past 
   assert.equal(db.calls.length, 0)
   assert.equal((await route(path, db).POST(request('/api/meeting-checkins', 'POST', body))).status, 404)
   assert.equal(db.tables.meeting_checkins?.length ?? 0, 0)
+})
+
+test('a global SMS pause leaves opted-in web check-ins available', async () => {
+  const { isCohortSmsEnabled, isCohortMeetingCheckinsEnabled } = loadTs('src/lib/cohort-sms.ts')
+  const original = process.env.SMS_FEATURE_ENABLED
+  try {
+    delete process.env.SMS_FEATURE_ENABLED
+    const db = database({ cohorts: [{ id: 'cohort-1', sms_enabled: true, status: 'active' }] })
+    assert.equal(await isCohortSmsEnabled(db, 'cohort-1'), false)
+    assert.equal(await isCohortMeetingCheckinsEnabled(db, 'cohort-1'), true)
+    db.tables.cohorts[0].sms_enabled = false
+    assert.equal(await isCohortMeetingCheckinsEnabled(db, 'cohort-1'), false)
+  } finally {
+    if (original === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = original
+  }
 })
 
 test('web check-in writes the channel-neutral response without logging attendance', async () => {

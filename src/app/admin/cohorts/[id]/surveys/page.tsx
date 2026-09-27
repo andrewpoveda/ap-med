@@ -68,8 +68,13 @@ export default async function CohortSurveysPage({
     .eq('id', cohortId)
     .maybeSingle()
   if (!cohort) notFound()
-  const { data: smsConfig } = process.env.SMS_FEATURE_ENABLED === 'true'
-    ? await admin.from('cohorts').select('sms_enabled').eq('id', cohortId).maybeSingle()
+  // Keep this separate from the primary cohort read: a deployment without the
+  // SMS migration must still render the existing survey administration page.
+  const { data: smsConfig, error: smsConfigError } = await admin.from('cohorts')
+    .select('sms_enabled').eq('id', cohortId).maybeSingle()
+  const { data: priorCheckin } = !smsConfigError && smsConfig?.sms_enabled !== true
+    ? await admin.from('meeting_checkins').select('id').eq('cohort_id', cohortId)
+        .not('responded_at', 'is', null).range(0, 0).maybeSingle()
     : { data: null }
 
   const surveys = await getCohortSurveys(admin, cohort.id)
@@ -119,7 +124,7 @@ export default async function CohortSurveysPage({
           : 'Create a survey per wave, then open it — members answer from their own dashboards, and the open-survey reminder rides the daily digest. Who has responded is tracked automatically; a survey can be deleted only before it has any responses.'}
       </p>
 
-      {smsConfig?.sms_enabled === true && (
+      {(smsConfig?.sms_enabled === true || priorCheckin) && (
         <p className="mt-3 text-sm">
           <Link href={`/admin/cohorts/${cohort.id}/checkins`} style={{ color: '#8a6a2f' }}>
             View named meeting check-ins →

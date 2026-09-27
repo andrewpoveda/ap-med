@@ -30,7 +30,7 @@ import { getGoalsForMatches, type GoalView } from '@/lib/goals'
 import { getBookingInfoForMember, type MatchBookingInfo } from '@/lib/cohort-sessions'
 import { getMemberSurveys, type MemberSurveyView } from '@/lib/surveys'
 import { getMemberMeetingCheckins, type MemberMeetingCheckin } from '@/lib/meeting-checkins'
-import { getMemberSmsPreference, isCohortSmsEnabled, type MemberSmsPreference } from '@/lib/cohort-sms'
+import { getMemberSmsPreference, isCohortMeetingCheckinsEnabled, type MemberSmsPreference } from '@/lib/cohort-sms'
 import { getAdminUserByEmail } from '@/lib/admin'
 import {
   getAvailability,
@@ -184,6 +184,7 @@ export default async function DashboardPage({
   let bookingInfo: Record<string, MatchBookingInfo> = {}
   let openSurveys: MemberSurveyView[] = []
   let smsEnabled = false
+  let meetingCheckinsEnabled = false
   let smsPreference: MemberSmsPreference | null = null
   let meetingCheckins: MemberMeetingCheckin[] = []
 
@@ -228,11 +229,12 @@ export default async function DashboardPage({
       // one-upcoming-session cap.
       getBookingInfoForMember(admin, ref),
     ])
-    ;[smsEnabled, smsPreference] = await Promise.all([
-      isCohortSmsEnabled(admin, ref.cohortId),
+    ;[meetingCheckinsEnabled, smsPreference] = await Promise.all([
+      isCohortMeetingCheckinsEnabled(admin, ref.cohortId),
       getMemberSmsPreference(admin, ref),
     ])
-    if (smsEnabled) meetingCheckins = await getMemberMeetingCheckins(admin, ref)
+    smsEnabled = process.env.SMS_FEATURE_ENABLED === 'true' && meetingCheckinsEnabled
+    if (meetingCheckinsEnabled) meetingCheckins = await getMemberMeetingCheckins(admin, ref)
   }
 
   const meetingLogMatches = cohortMatches.map((m) => ({
@@ -321,7 +323,7 @@ export default async function DashboardPage({
               {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
               {(smsEnabled || smsPreference?.phoneE164) &&
                 <SmsPreferenceSection preference={smsPreference} sendingEnabled={smsEnabled} />}
-              {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
+              {meetingCheckinsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
               {meetingLogMatches.length > 0 && (
                 <CohortRelationshipTools>
                   {bookingMatches.length > 0 && (
@@ -424,7 +426,7 @@ export default async function DashboardPage({
           {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
           {(smsEnabled || smsPreference?.phoneE164) &&
             <SmsPreferenceSection preference={smsPreference} sendingEnabled={smsEnabled} />}
-          {smsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
+          {meetingCheckinsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
           {bookingMatches.length > 0 && (
             <CohortBookingSection role="mentee" matches={bookingMatches} />
           )}
