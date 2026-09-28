@@ -23,6 +23,17 @@ export async function PUT(request: Request) {
     const body = await request.json().catch(() => null)
     const contact = validateSmsContactInput(body?.phoneNumber, body?.smsConsent)
     if (!contact.ok) return NextResponse.json({ error: contact.error }, { status: 400 })
+    const expectedContactId = body?.expectedContactId
+    const expectedContactRevision = body?.expectedContactRevision
+    if (!body || !Object.hasOwn(body, 'expectedContactId') ||
+        !Object.hasOwn(body, 'expectedContactRevision') ||
+        (expectedContactId !== null &&
+          (typeof expectedContactId !== 'string' || expectedContactId.length > 100)) ||
+        (expectedContactRevision !== null &&
+          (!Number.isSafeInteger(expectedContactRevision) || expectedContactRevision < 1)) ||
+        (expectedContactId === null) !== (expectedContactRevision === null)) {
+      return NextResponse.json({ error: 'Invalid SMS preference version' }, { status: 400 })
+    }
 
     const memberTable = actor.type === 'mentor' ? 'mentor' : 'mentees'
     const { data: member, error: memberError } = await admin.from(memberTable)
@@ -33,9 +44,13 @@ export async function PUT(request: Request) {
     }
 
     const { data: previous, error: previousError } = await admin.from('cohort_sms_contacts')
-      .select('id,phone_e164,consented_at,consent_source,consent_notice,consent_notice_version,opted_out_at')
+      .select('id,revision,phone_e164,consented_at,consent_source,consent_notice,consent_notice_version,opted_out_at')
       .eq('cohort_id', actor.cohortId).eq('person_id', member.person_id).maybeSingle()
     if (previousError) return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
+    if ((previous?.id ?? null) !== expectedContactId ||
+        (previous?.revision ?? null) !== expectedContactRevision) {
+      return NextResponse.json({ error: 'SMS preference changed. Please reload and try again.' }, { status: 409 })
+    }
 
     const phone = contact.value.phoneE164
     if (!smsEnabled && (!previous || contact.value.consent ||
@@ -44,23 +59,6 @@ export async function PUT(request: Request) {
       // revocation/removal of an existing preference is allowed while paused.
       return NextResponse.json({ error: 'SMS enrollment is paused for this cohort' }, { status: 404 })
     }
-    if (!phone) {
-      if (previous) {
-        const { error } = await admin.from('cohort_sms_contacts').update({
-          phone_e164: null,
-          consented_at: null,
-          consent_source: null,
-          consent_notice: null,
-          consent_notice_version: null,
-          opted_out_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-          .eq('id', previous.id).eq('cohort_id', actor.cohortId).eq('person_id', member.person_id)
-        if (error) return NextResponse.json({ error: 'Could not remove SMS preference' }, { status: 500 })
-      }
-      return NextResponse.json({ success: true })
-    }
-
     // STOP is phone-wide. START may lift provider blocking, but only this signed-in
     // action can establish fresh AP MED consent for a particular cohort.
     if (contact.value.consent) {
@@ -110,23 +108,31 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: true, phoneE164: phone })
     }
 
-    const now = new Date().toISOString()
-    const { error } = await admin.from('cohort_sms_contacts').upsert({
-      cohort_id: actor.cohortId,
-      person_id: member.person_id,
-      phone_e164: phone,
-      consented_at: previous?.phone_e164 === phone ? previous.consented_at : null,
-      consent_source: previous?.phone_e164 === phone ? previous.consent_source : null,
-      consent_notice: previous?.phone_e164 === phone ? previous.consent_notice : null,
-      consent_notice_version: previous?.phone_e164 === phone ? previous.consent_notice_version : null,
-      opted_out_at: now,
-      updated_at: now,
-    }, { onConflict: 'cohort_id,person_id' })
-    if (error?.code === '23505') {
+    const { data: outcome, error: saveError } = await admin.rpc('sms_save_contact_without_consent', {
+      p_cohort_id: actor.cohortId,
+      p_person_id: member.person_id,
+      p_phone_e164: phone,
+      p_expected_contact_id: expectedContactId,
+      p_expected_contact_revision: expectedContactRevision,
+      p_allow_new_phone: smsEnabled,
+    })
+    if (saveError?.code === '23505') {
       return NextResponse.json({ error: 'This number is already assigned to another member in this cohort' }, { status: 409 })
     }
-    if (error) {
+    if (saveError) {
       console.error('SMS preference save failed')
+      return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
+    }
+    if (outcome === 'changed') {
+      return NextResponse.json({ error: 'SMS preference changed. Please reload and try again.' }, { status: 409 })
+    }
+    if (outcome === 'disabled') {
+      return NextResponse.json({ error: 'SMS enrollment is paused for this cohort' }, { status: 404 })
+    }
+    if (outcome === 'inactive') {
+      return NextResponse.json({ error: 'No active cohort membership' }, { status: 403 })
+    }
+    if (outcome !== 'saved') {
       return NextResponse.json({ error: 'Could not save SMS preference' }, { status: 500 })
     }
     return NextResponse.json({ success: true, phoneE164: phone })

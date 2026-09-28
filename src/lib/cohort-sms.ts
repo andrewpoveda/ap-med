@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CohortMemberRef } from '@/lib/cohort-dashboard'
 
 export type MemberSmsPreference = {
+  contactId: string
+  revision: number
   phoneE164: string | null
   consented: boolean
 }
@@ -35,7 +37,7 @@ export async function getMemberSmsPreference(
     .select('person_id').eq('id', ref.memberId).eq('cohort_id', ref.cohortId).maybeSingle()
   if (memberError || !member?.person_id) return null
   const { data, error } = await admin.from('cohort_sms_contacts')
-    .select('phone_e164,consented_at,opted_out_at')
+    .select('id,revision,phone_e164,consented_at,opted_out_at')
     .eq('cohort_id', ref.cohortId).eq('person_id', member.person_id).maybeSingle()
   if (error || !data) return null
   const { data: suppression, error: suppressionError } = data.phone_e164
@@ -46,13 +48,16 @@ export async function getMemberSmsPreference(
     // A suppression-read failure must not hide the member's saved number and
     // remove their web route to revoke it. Show the stored consent state; the
     // sender itself fails closed until the suppression table is readable.
-    return { phoneE164: (data.phone_e164 as string) ?? null,
+    return { contactId: data.id, revision: data.revision,
+      phoneE164: (data.phone_e164 as string) ?? null,
       consented: Boolean(data.consented_at && !data.opted_out_at) }
   }
   const stopped = Boolean(suppression && data.consented_at &&
     (suppression.resumed_at === null || suppression.resumed_at <= suppression.opted_out_at ||
       data.consented_at <= suppression.opted_out_at))
   return {
+    contactId: data.id,
+    revision: data.revision,
     phoneE164: (data.phone_e164 as string) ?? null,
     consented: Boolean(data.consented_at && !data.opted_out_at && !stopped),
   }

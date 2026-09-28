@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cardStyle, eyebrowStyle, goldButton, inputStyle } from '@/components/styles'
 import type { MemberSmsPreference } from '@/lib/cohort-sms'
@@ -19,6 +19,16 @@ export default function SmsPreferenceSection({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [observedContact, setObservedContact] = useState({
+    id: preference?.contactId ?? null,
+    revision: preference?.revision ?? null,
+  })
+
+  useEffect(() => {
+    setObservedContact({ id: preference?.contactId ?? null, revision: preference?.revision ?? null })
+    setPhoneNumber(preference?.phoneE164 ?? '')
+    setSmsConsent(preference?.consented ?? false)
+  }, [preference?.contactId, preference?.revision, preference?.phoneE164, preference?.consented])
 
   async function savePreference(nextPhone: string, nextConsent: boolean) {
     setSaving(true)
@@ -28,11 +38,13 @@ export default function SmsPreferenceSection({
       const result = await fetch('/api/cohort-sms-preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: nextPhone, smsConsent: nextConsent }),
+        body: JSON.stringify({ phoneNumber: nextPhone, smsConsent: nextConsent,
+          expectedContactId: observedContact.id, expectedContactRevision: observedContact.revision }),
       })
       const body = await result.json().catch(() => null) as { error?: string; phoneE164?: string } | null
       if (!result.ok) {
         setError(body?.error ?? 'Could not save your text preference. Please try again.')
+        if (result.status === 409) router.refresh()
         return
       }
       setPhoneNumber(body?.phoneE164 ?? nextPhone)
