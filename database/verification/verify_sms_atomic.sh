@@ -246,4 +246,8 @@ begin
 end $$;
 SQL
 psql_local -f "$repo_root/database/verification/sms_stop_consent_order.sql"
+psql_local -f "$repo_root/database/verification/sms_application_handoff_status.sql"
+psql_local -f "$repo_root/database/verification/sms_preference_compare_and_save.sql"
+psql_local -f "$repo_root/database/verification/sms_unsent_claim_release.sql"
+psql_local -f "$repo_root/database/verification/sms_intent_replacement.sql"
 echo 'SMS atomic RPC checks passed.'
