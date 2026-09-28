@@ -17,6 +17,24 @@ function route(path, db, auth = session, extra = {}) {
   })
 }
 
+function smsApprovalRpc(db) {
+  db.rpc = async (fn, args) => {
+    const application = db.tables.cohort_applications[0]
+    if (fn === 'ascenso_review_application') {
+      application.status = 'approved'
+      application.sms_handoff_state = 'pending'
+      return { data: 'approved', error: null }
+    }
+    assert.equal(fn, 'sms_record_application_handoff')
+    assert.equal(args.p_application, application.id)
+    assert.equal(args.p_cohort, application.cohort_id)
+    assert.equal(args.p_actor, adminUser.id)
+    assert.equal(application.sms_handoff_state, 'pending')
+    application.sms_handoff_state = args.p_state
+    return { data: args.p_state, error: null }
+  }
+}
+
 for (const [path, method] of [
   ['src/app/api/admin/cohort-members/[id]/route.ts', 'PATCH'],
   ['src/app/api/admin/cohort-delivery/[id]/route.ts', 'POST'],
@@ -67,7 +85,7 @@ test('approval copies validated SMS consent and keeps the original disclosure', 
     cohort_applications: [{ id: 'target', cohort_id: 'cohort', role: 'mentor', member_id: 'member', email: 'member@example.org', answers }],
     mentor: [{ id: 'member', cohort_id: 'cohort', person_id: 'person' }],
   })
-  db.rpc = async () => ({ data: 'approved' })
+  smsApprovalRpc(db)
   const originalFrom = db.from.bind(db)
   let inserted = null
   db.from = table => table === 'cohort_sms_contacts'
@@ -84,6 +102,7 @@ test('approval copies validated SMS consent and keeps the original disclosure', 
 
   assert.equal(res.status, 200)
   assert.deepEqual(await res.json(), { success: true, status: 'approved' })
+  assert.equal(db.tables.cohort_applications[0].sms_handoff_state, 'complete')
   assert.equal(deliveryAttempts, 1)
   assert.deepEqual(inserted, {
     value: {
@@ -146,7 +165,7 @@ test('a second approved participation preserves the saved SMS preference and rep
       }],
       sms_phone_suppressions: scenario.suppression ? [scenario.suppression] : [],
     })
-    db.rpc = async () => ({ data: 'approved' })
+    smsApprovalRpc(db)
     const originalFrom = db.from.bind(db)
     let handoffAttempts = 0
     db.from = table => table === 'cohort_sms_contacts'
@@ -165,8 +184,10 @@ test('a second approved participation preserves the saved SMS preference and rep
     assert.deepEqual(db.tables.cohort_sms_contacts[0], prior, scenario.name)
     if (scenario.warning) {
       assert.match(body.warning, /SMS phone or consent differs/, scenario.name)
+      assert.equal(db.tables.cohort_applications[0].sms_handoff_state, 'conflict', scenario.name)
     } else {
       assert.equal(body.warning, undefined, scenario.name)
+      assert.equal(db.tables.cohort_applications[0].sms_handoff_state, 'complete', scenario.name)
     }
   }
 })
@@ -186,7 +207,7 @@ test('approval warns when saved contact or STOP status cannot be verified', asyn
         consent_notice_version: answers.sms_consent_notice_version,
       }],
     })
-    db.rpc = async () => ({ data: 'approved' })
+    smsApprovalRpc(db)
     const originalFrom = db.from.bind(db)
     const failingRead = () => {
       const query = {
@@ -205,7 +226,8 @@ test('approval warns when saved contact or STOP status cannot be verified', asyn
     const res = await route('src/app/api/admin/cohort-applications/[id]/route.ts', db)
       .PATCH(request({ action: 'approve' }), ctx)
     assert.equal(res.status, 200, failingTable)
-    assert.match((await res.json()).warning, /SMS phone preference could not be copied/, failingTable)
+    assert.match((await res.json()).warning, /SMS phone enrollment could not be confirmed/, failingTable)
+    assert.equal(db.tables.cohort_applications[0].sms_handoff_state, 'needs_review', failingTable)
     assert.equal(db.tables.cohort_sms_contacts[0].phone_e164, phone, failingTable)
   }
 })
@@ -224,7 +246,7 @@ test('invalid SMS evidence or contact insert failure warns after approval and st
       cohort_applications: [{ id: 'target', cohort_id: 'cohort', role: 'mentee', member_id: 'member', email: 'member@example.org', answers }],
       mentees: [{ id: 'member', cohort_id: 'cohort', person_id: 'person' }],
     })
-    db.rpc = async () => ({ data: 'approved' })
+    smsApprovalRpc(db)
     const originalFrom = db.from.bind(db)
     let insertAttempted = false
     db.from = table => table === 'cohort_sms_contacts'
@@ -236,7 +258,8 @@ test('invalid SMS evidence or contact insert failure warns after approval and st
     }).PATCH(request({ action: 'approve' }), ctx)
 
     assert.equal(res.status, 200)
-    assert.match((await res.json()).warning, /SMS phone preference could not be copied/)
+    assert.match((await res.json()).warning, /SMS phone enrollment could not be confirmed/)
+    assert.equal(db.tables.cohort_applications[0].sms_handoff_state, 'needs_review')
     assert.equal(insertAttempted, shouldInsert)
     assert.equal(deliveryAttempts, 1)
   }

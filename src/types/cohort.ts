@@ -90,6 +90,8 @@ export type CohortApplication = {
   reviewed_at: string | null
   review_notes: string | null
   member_id: string | null
+  /** Durable, admin-only status of the optional application phone handoff. */
+  sms_handoff_state: 'pending' | 'complete' | 'needs_review' | 'conflict' | null
   /** Legacy resubmission snapshot, retained for reviewers; public intake no longer overwrites. */
   previous_submission: PreviousSubmission | null
   /** Legacy resubmission timestamp; new intake does not update an existing row. */

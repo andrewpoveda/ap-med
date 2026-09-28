@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { hasApplicationSmsContact } from '@/lib/cohort-application-sms'
 import {
   TRACK_LABELS,
   asPreviousSubmission,
@@ -13,6 +14,7 @@ import {
 import { STATUS_CHIP_STYLES, NEUTRAL_CHIP } from '../chips'
 import DeliveryStatus from '../../DeliveryStatus'
 import ReviewActions from './ReviewActions'
+import SmsHandoffRecovery from './SmsHandoffRecovery'
 import SubmissionFields, { Field } from './SubmissionFields'
 import SubmissionTabs from './SubmissionTabs'
 
@@ -178,6 +180,13 @@ export default async function ApplicationDetailPage({
 
         <Link href={`/admin/cohorts/${cohortId}/members`}>Manage members →</Link>
         <DeliveryStatus deliveries={deliveries ?? []} />
+        {app.status === 'approved' && hasApplicationSmsContact(app.answers) && (
+          <div style={cardStyle}>
+            <Field label="SMS phone enrollment">
+              <SmsHandoffRecovery applicationId={app.id} state={app.sms_handoff_state} />
+            </Field>
+          </div>
+        )}
         {app.status === 'approved' ? (
           <div style={cardStyle}>
             <Field label="Member record">
