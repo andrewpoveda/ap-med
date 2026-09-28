@@ -94,6 +94,7 @@ test('outbound send pins both MessagingServiceSid and fixed From', async () => {
   assert.deepEqual(calls, [{
     to: '+12025550101', from: env.TWILIO_FROM_PHONE_E164,
     messagingServiceSid: env.TWILIO_MESSAGING_SERVICE_SID, body: 'AP MED reminder',
+    validityPeriod: 900,
   }])
 })
 

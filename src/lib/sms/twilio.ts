@@ -10,6 +10,8 @@ const ACCEPTED_MESSAGE_STATUSES = new Set(['accepted', 'queued', 'sending', 'sen
 const MAX_WEBHOOK_BODY_BYTES = 16_384
 const MAX_OUTBOUND_BODY_LENGTH = 1600
 const PROVIDER_REQUEST_TIMEOUT_MS = 8_000
+// A queued reminder should expire promptly if Twilio cannot dispatch it.
+const PROVIDER_QUEUE_VALIDITY_SECONDS = 15 * 60
 
 export type TwilioInboundSmsConfig = {
   accountSid: string
@@ -27,7 +29,8 @@ export type TwilioSmsConfig = TwilioInboundSmsConfig & {
 /** Narrow enough to inject in tests without a Twilio account. */
 export type TwilioMessageClient = {
   messages: {
-    create(input: { to: string; from: string; messagingServiceSid: string; body: string }): Promise<{
+    create(input: { to: string; from: string; messagingServiceSid: string; body: string;
+      validityPeriod: number }): Promise<{
       sid: string
       from: string | null
       status: string
@@ -248,6 +251,7 @@ export class TwilioSmsProvider implements SmsProvider {
         from: this.senderPhoneE164,
         messagingServiceSid: this.config.messagingServiceSid,
         body: request.body,
+        validityPeriod: PROVIDER_QUEUE_VALIDITY_SECONDS,
       })
       if (!MESSAGE_SID_PATTERN.test(message.sid)) return { kind: 'unknown' }
       if (message.from && message.from !== this.senderPhoneE164) {

@@ -37,7 +37,8 @@ type Contact = {
 type Member = { id: string; person_id: string | null; membership_status: string }
 type Match = { id: string; cohort_id: string; mentor_id: string; mentee_id: string; status: string }
 type Checkin = { id: string; session_id: string; member_type: MemberType; member_id: string; responded_at: string | null }
-type Outbox = { id: string; session_id: string; contact_id: string; kind: SmsKind; state: string }
+type Outbox = { id: string; session_id: string; contact_id: string;
+  kind: SmsKind; state: string; phone_e164: string; reply_expires_at: string | null }
 type Candidate = {
   kind: SmsKind
   session: Session
@@ -182,7 +183,8 @@ async function loadContext(admin: SupabaseClient, sessions: Session[]) {
     completeInQuery(sessionIds, batch => admin.from('meeting_checkins')
       .select('id,session_id,member_type,member_id,responded_at').in('session_id', batch)),
     completeInQuery(sessionIds, batch => admin.from('sms_outbox')
-      .select('id,session_id,contact_id,kind,state').in('session_id', batch)),
+      .select('id,session_id,contact_id,kind,state,phone_e164,reply_expires_at')
+      .in('session_id', batch).neq('state', 'superseded')),
   ])
   if (mentors.error || mentees.error || matches.error || checkins.error || outbox.error) {
     throw new Error('Could not load SMS meeting context')
@@ -250,13 +252,18 @@ async function ensureCheckin(
     existing.set(lookup, checkin)
     return checkin
   }
-  if (error?.code !== '23505') return null
+  if (error?.code !== '23505') {
+    throw new Error('Could not persist SMS meeting check-in')
+  }
   // A web reply or another worker may have won the insert race.
   const raced = await admin.from('meeting_checkins')
     .select('id,session_id,member_type,member_id,responded_at')
     .eq('session_id', candidate.session.id).eq('member_type', candidate.memberType)
     .eq('member_id', candidate.memberId).maybeSingle()
-  if (raced.error || !raced.data?.id || raced.data.responded_at) return null
+  if (raced.error || !raced.data?.id) {
+    throw new Error('Could not resolve SMS meeting check-in insert race')
+  }
+  if (raced.data.responded_at) return null
   const checkin = raced.data as Checkin
   existing.set(lookup, checkin)
   return checkin
@@ -280,18 +287,20 @@ async function insertIntent(
       body: candidate.kind === 'reminder' ? buildReminderSms() : buildCheckinSms(replyCode!),
       reply_code: replyCode,
       reply_expires_at: replyCode ? new Date(now.getTime() + 7 * 24 * HOUR_MS).toISOString() : null,
-    }).select('id,session_id,contact_id,kind,state').maybeSingle()
+    }).select('id,session_id,contact_id,kind,state,phone_e164,reply_expires_at').maybeSingle()
     if (!error && data) return { row: data as Outbox, created: true }
-    if (error?.code !== '23505') return null
+    if (error?.code !== '23505') {
+      throw new Error('Could not persist SMS send intent')
+    }
     // Either the durable one-per-session constraint won in another worker or
     // the random reply code collided. Only the latter needs a fresh code.
-    const raced = await admin.from('sms_outbox').select('id,session_id,contact_id,kind,state')
+    const raced = await admin.from('sms_outbox').select('id,session_id,contact_id,kind,state,phone_e164,reply_expires_at')
       .eq('kind', candidate.kind).eq('session_id', candidate.session.id)
-      .eq('contact_id', candidate.contact.id).maybeSingle()
-    if (raced.error) return null
+      .eq('contact_id', candidate.contact.id).neq('state', 'superseded').maybeSingle()
+    if (raced.error) throw new Error('Could not resolve SMS send intent insert race')
     if (raced.data) return { row: raced.data as Outbox, created: false }
   }
-  return null
+  throw new Error('Could not allocate a unique SMS reply code')
 }
 
 type SendCounts = Pick<SmsWorkerSummary, 'accepted' | 'rejected' | 'needsReview' | 'skippedChanged' | 'pending' | 'complete'>
@@ -332,8 +341,24 @@ export async function sendPendingSmsIntents(
       // If the final eligibility check is unavailable, never call the provider.
     }
     if (!eligibilityKnown) {
-      detail = 'Eligibility could not be confirmed before send; manual review required'
-    } else if (!eligible) {
+      // No provider request has occurred. Release this exact claim so the next
+      // scheduled run can safely retry it; do not classify it as an uncertain
+      // external send. A failed release leaves it for stale-claim review.
+      try {
+        const released = await admin.rpc('sms_release_unsent_claim', { p_id: id })
+        if (!released.error && released.data === true) {
+          counts.pending++
+          counts.complete = false
+          continue
+        }
+      } catch {
+        // The claim remains visible for stale-claim reconciliation.
+      }
+      counts.needsReview++
+      counts.complete = false
+      continue
+    }
+    if (!eligible) {
       outcome = 'skipped'
       detail = 'SMS eligibility changed before send'
     } else {
@@ -366,7 +391,7 @@ export async function sendPendingSmsIntents(
     else if (outcome === 'skipped') counts.skippedChanged++
     else counts.needsReview++
   }
-  counts.pending = Math.max(0, ids.length - attempted)
+  counts.pending += Math.max(0, ids.length - attempted)
   if (counts.pending) counts.complete = false
   return counts
 }
@@ -414,7 +439,22 @@ export async function runSmsWorker(
       break
     }
     const lookup = key(candidate.kind, candidate.session.id, candidate.contact.id)
-    if (context.outbox.has(lookup)) continue
+    const existing = context.outbox.get(lookup)
+    if (existing) {
+      const expiresSoon = existing.kind === 'checkin' && existing.reply_expires_at !== null &&
+        Date.parse(existing.reply_expires_at) <= now.getTime() + 60_000
+      if (existing.state !== 'pending' ||
+          (existing.phone_e164 === candidate.contact.phone_e164 && !expiresSoon)) continue
+      const { data: retired, error } = await admin.rpc('sms_supersede_stale_pending_outbox', {
+        p_id: existing.id,
+      })
+      if (error || typeof retired !== 'boolean') {
+        throw new Error('Could not resolve stale SMS phone snapshot')
+      }
+      if (!retired) continue
+      pendingIds.delete(existing.id)
+      context.outbox.delete(lookup)
+    }
     const checkin = candidate.kind === 'checkin'
       ? await ensureCheckin(admin, candidate, context.checkins)
       : null

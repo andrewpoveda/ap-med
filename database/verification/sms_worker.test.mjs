@@ -137,22 +137,44 @@ test('a STOP detected after claim supersedes the intent without a provider call'
   assert.equal(calls[2][1].p_outcome, 'skipped')
 })
 
-test('eligibility RPC failure never sends and records an uncertain state for review', async () => {
+test('eligibility RPC failure releases the unsent claim for retry and fails the run', async () => {
   let sendCount = 0
-  const finished = []
+  const calls = []
   const admin = { rpc: async (name, args) => {
+    calls.push([name, args])
     if (name === 'sms_claim_outbox') return { data: claim, error: null }
     if (name === 'sms_check_claim_eligible') return { data: null, error: { message: 'unavailable' } }
-    finished.push(args)
-    return { data: { id: claim.id }, error: null }
+    if (name === 'sms_release_unsent_claim') return { data: true, error: null }
+    throw new Error(`Unexpected RPC: ${name}`)
   } }
   const result = await sendPendingSmsIntents(admin, {
     name: 'twilio', senderPhoneE164,
     send: async () => { sendCount++; return { kind: 'accepted', externalMessageId: 'SM123', fromPhoneE164: senderPhoneE164 } },
   }, [claim.id])
   assert.equal(sendCount, 0)
+  assert.equal(result.needsReview, 0)
+  assert.equal(result.pending, 1)
+  assert.equal(result.complete, false)
+  assert.deepEqual(calls.map(([name]) => name), [
+    'sms_claim_outbox', 'sms_check_claim_eligible', 'sms_release_unsent_claim',
+  ])
+})
+
+test('failed release after eligibility outage is visible and never calls the provider', async () => {
+  let sendCount = 0
+  const admin = { rpc: async name => {
+    if (name === 'sms_claim_outbox') return { data: claim, error: null }
+    if (name === 'sms_check_claim_eligible') return { data: null, error: { message: 'unavailable' } }
+    if (name === 'sms_release_unsent_claim') return { data: false, error: null }
+    throw new Error(`Unexpected RPC: ${name}`)
+  } }
+  const result = await sendPendingSmsIntents(admin, {
+    name: 'twilio', senderPhoneE164,
+    send: async () => { sendCount++; return { kind: 'unknown' } },
+  }, [claim.id])
+  assert.equal(sendCount, 0)
   assert.equal(result.needsReview, 1)
-  assert.equal(finished[0].p_outcome, 'unknown')
+  assert.equal(result.complete, false)
 })
 
 test('global SMS flag defaults off before any database or provider access', async () => {
@@ -227,6 +249,7 @@ function fakeSmsDatabase(scheduledAt, answered = false, status = 'scheduled') {
       const query = {
         select() { return this },
         eq(field, value) { filters.push(row => row[field] === value); return this },
+        neq(field, value) { filters.push(row => row[field] !== value); return this },
         in(field, values) {
           inCalls.push({ table, field, size: values.length })
           filters.push(row => values.includes(row[field])); return this
@@ -265,12 +288,73 @@ function fakeSmsDatabase(scheduledAt, answered = false, status = 'scheduled') {
         return { data: { ...intent, sender_phone_e164: args.p_sender_phone_e164 }, error: null }
       }
       if (name === 'sms_check_claim_eligible') return { data: true, error: null }
+      if (name === 'sms_supersede_stale_pending_outbox') {
+        const intent = rows.sms_outbox.find(row => row.id === args.p_id)
+        const contact = rows.cohort_sms_contacts.find(row => row.id === intent?.contact_id)
+        const expiresSoon = intent?.kind === 'checkin' && intent.reply_expires_at &&
+          Date.parse(intent.reply_expires_at) <= Date.parse('2026-09-26T12:00:00Z') + 60_000
+        if (!intent || !contact || intent.state !== 'pending' ||
+            (intent.phone_e164 === contact.phone_e164 && !expiresSoon)) return { data: false, error: null }
+        intent.state = 'superseded'
+        return { data: true, error: null }
+      }
       if (name === 'sms_finish_outbox') return { data: { state: 'accepted' }, error: null }
       throw new Error(`Unexpected SMS RPC: ${name}`)
     },
   }
   return { admin, rows, rpcCalls, inCalls }
 }
+
+function failSmsInsert(admin, failedTable) {
+  const originalFrom = admin.from
+  admin.from = table => {
+    const query = originalFrom(table)
+    if (table === failedTable) {
+      query.insert = () => ({ select: () => ({
+        maybeSingle: async () => ({ data: null, error: { code: '08006', message: 'private failure detail' } }),
+      }) })
+    }
+    return query
+  }
+}
+
+test('check-in persistence failure fails the worker instead of silently skipping a due prompt', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows } = fakeSmsDatabase('2026-09-26T10:00:00.000Z')
+  failSmsInsert(admin, 'meeting_checkins')
+  let sendCount = 0
+  try {
+    await assert.rejects(runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => { sendCount++; return { kind: 'unknown' } },
+    }, new Date('2026-09-26T12:00:00Z')), /Could not persist SMS meeting check-in/)
+    assert.equal(sendCount, 0)
+    assert.equal(rows.sms_outbox.length, 0)
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('outbox persistence failure fails the worker instead of silently skipping a due reminder', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows } = fakeSmsDatabase('2026-09-27T12:00:00.000Z')
+  failSmsInsert(admin, 'sms_outbox')
+  let sendCount = 0
+  try {
+    await assert.rejects(runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => { sendCount++; return { kind: 'unknown' } },
+    }, new Date('2026-09-26T12:00:00Z')), /Could not persist SMS send intent/)
+    assert.equal(sendCount, 0)
+    assert.equal(rows.sms_outbox.length, 0)
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
 
 test('one consented member gets one due reminder with an atomic claim', async () => {
   const prior = process.env.SMS_FEATURE_ENABLED
@@ -295,6 +379,85 @@ test('one consented member gets one due reminder with an atomic claim', async ()
       'sms_reconcile_stale_outbox', 'sms_claim_outbox',
       'sms_check_claim_eligible', 'sms_finish_outbox',
     ])
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('a pending old-phone intent is retired before queueing the new phone', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows, rpcCalls } = fakeSmsDatabase('2026-09-27T12:00:00.000Z')
+  rows.sms_outbox.push({ id: 'old-intent', session_id: 'session-1',
+    contact_id: 'contact-1', kind: 'reminder', state: 'pending',
+    phone_e164: '+12025550102' })
+  const sent = []
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async input => {
+        sent.push(input)
+        return { kind: 'accepted', externalMessageId: 'SM123', fromPhoneE164: senderPhoneE164 }
+      },
+    }, new Date('2026-09-26T12:00:00Z'))
+    assert.equal(result.queued, 1)
+    assert.equal(result.accepted, 1)
+    assert.equal(rows.sms_outbox.find(row => row.id === 'old-intent').state, 'superseded')
+    assert.deepEqual(sent.map(message => message.toPhoneE164), ['+12025550101'])
+    assert.equal(rpcCalls.filter(([name]) => name === 'sms_supersede_stale_pending_outbox').length, 1)
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('a definitively unsent superseded check-in can get a fresh prompt', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows } = fakeSmsDatabase('2026-09-26T10:00:00.000Z')
+  rows.meeting_checkins.push({ id: 'checkin-1', session_id: 'session-1',
+    member_type: 'mentor', member_id: 'mentor-1', responded_at: null })
+  rows.sms_outbox.push({ id: 'old-prompt', session_id: 'session-1',
+    contact_id: 'contact-1', kind: 'checkin', state: 'superseded',
+    phone_e164: '+12025550101' })
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => ({ kind: 'accepted', externalMessageId: 'SM123',
+        fromPhoneE164: senderPhoneE164 }),
+    }, new Date('2026-09-26T12:00:00Z'))
+    assert.equal(result.queued, 1)
+    assert.equal(result.accepted, 1)
+    assert.equal(rows.sms_outbox.length, 2)
+    assert.equal(rows.sms_outbox[1].kind, 'checkin')
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('a pending check-in expiring after a same-row reschedule gets a fresh prompt', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows, rpcCalls } = fakeSmsDatabase('2026-09-26T10:00:00.000Z')
+  rows.meeting_checkins.push({ id: 'checkin-1', session_id: 'session-1',
+    member_type: 'mentor', member_id: 'mentor-1', responded_at: null })
+  rows.sms_outbox.push({ id: 'old-prompt', session_id: 'session-1',
+    contact_id: 'contact-1', kind: 'checkin', state: 'pending',
+    phone_e164: '+12025550101', reply_expires_at: '2026-09-26T12:00:30Z' })
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => ({ kind: 'accepted', externalMessageId: 'SM123',
+        fromPhoneE164: senderPhoneE164 }),
+    }, new Date('2026-09-26T12:00:00Z'))
+    assert.equal(result.queued, 1)
+    assert.equal(result.accepted, 1)
+    assert.equal(rows.sms_outbox[0].state, 'superseded')
+    assert.equal(rows.sms_outbox[1].kind, 'checkin')
+    assert.notEqual(rows.sms_outbox[1].reply_expires_at, rows.sms_outbox[0].reply_expires_at)
+    assert.equal(rpcCalls.filter(([name]) => name === 'sms_supersede_stale_pending_outbox').length, 1)
   } finally {
     if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
     else process.env.SMS_FEATURE_ENABLED = prior
