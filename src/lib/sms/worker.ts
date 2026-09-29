@@ -12,9 +12,11 @@ export const SMS_CHECKIN_MIN_HOURS_AFTER = 1
 export const SMS_CHECKIN_MAX_HOURS_AFTER = 25
 const MAX_DUE_SESSIONS_PER_KIND = 500
 const MAX_SMS_COHORT_CONTACTS = 500
+const MAX_DEFERRED_ELIGIBILITY_INTENTS = 500
 const MAX_SENDS_PER_RUN = 40
 const WORKER_TIME_BUDGET_MS = 45_000
 const STALE_ATTEMPT_MINUTES = 15
+const ELIGIBILITY_RETRY_DETAIL = 'Eligibility check unavailable before provider call; retry pending'
 
 type SmsKind = 'reminder' | 'checkin'
 type MemberType = 'mentor' | 'mentee'
@@ -166,6 +168,42 @@ async function eligibleContacts(admin: SupabaseClient, cohortIds: string[]): Pro
   return contacts.filter(contact => !isSmsPhoneSuppressed(
     byPhone.get(contact.phone_e164) ?? null, contact.consented_at,
   ))
+}
+
+/** Recover only claims released before a provider call. Future rescheduled
+ * reminders wait for their normal window; late ones go through the claim guard
+ * and are superseded without sending. The database rechecks all eligibility. */
+async function deferredEligibilityIntents(
+  admin: SupabaseClient, cohortIds: string[], now: Date,
+): Promise<string[]> {
+  const { data, error } = await admin.from('sms_outbox')
+    .select('id,kind,session_id').in('cohort_id', cohortIds)
+    .eq('state', 'pending').eq('detail', ELIGIBILITY_RETRY_DETAIL)
+    .is('first_attempt_at', null).is('provider', null)
+    .is('provider_message_id', null).is('sent_at', null)
+    .order('created_at').order('id').limit(MAX_DEFERRED_ELIGIBILITY_INTENTS + 1)
+  if (error) throw new Error('Could not load deferred SMS eligibility retries')
+  if ((data?.length ?? 0) > MAX_DEFERRED_ELIGIBILITY_INTENTS) {
+    throw new Error('Deferred SMS eligibility retry volume exceeds worker capacity')
+  }
+  const intents = (data ?? []) as Array<{ id: string; kind: SmsKind; session_id: string }>
+  const reminderSessionIds = unique(intents.filter(row => row.kind === 'reminder')
+    .map(row => row.session_id))
+  if (!reminderSessionIds.length) return intents.map(row => row.id)
+
+  const reminders = await completeInQuery(reminderSessionIds, batch => admin.from('sessions')
+    .select('id,scheduled_at').in('id', batch))
+  if (reminders.error || reminders.data?.length !== reminderSessionIds.length) {
+    throw new Error('Could not load deferred SMS reminder meetings')
+  }
+  const scheduledAt = new Map(reminders.data.map(row => [row.id as string, row.scheduled_at as string]))
+  const latestReminder = now.getTime() + SMS_REMINDER_MAX_HOURS_BEFORE * HOUR_MS
+  return intents.filter(row => {
+    if (row.kind !== 'reminder') return true
+    const timestamp = Date.parse(scheduledAt.get(row.session_id) ?? '')
+    if (!Number.isFinite(timestamp)) throw new Error('Invalid deferred SMS reminder meeting time')
+    return timestamp <= latestReminder
+  }).map(row => row.id)
 }
 
 async function loadContext(admin: SupabaseClient, sessions: Session[]) {
@@ -421,49 +459,52 @@ export async function runSmsWorker(
   if ((cohorts?.length ?? 0) > 100) throw new Error('SMS cohort volume exceeds worker capacity')
   if (!cohorts?.length) return summary
   const cohortIds = cohorts.map(cohort => cohort.id as string)
-  const [due, contacts] = await Promise.all([
+  const [due, contacts, deferredIds] = await Promise.all([
     dueSessions(admin, cohortIds, now),
     eligibleContacts(admin, cohortIds),
+    deferredEligibilityIntents(admin, cohortIds, now),
   ])
   const sessions = [...due.reminders, ...due.checkins]
   summary.dueSessions = sessions.length
-  if (!sessions.length) return summary
-  const context = await loadContext(admin, sessions)
-  const pendingIds = new Set<string>()
-  for (const existing of context.outbox.values()) {
-    if (existing.state === 'pending') pendingIds.add(existing.id)
-  }
-  for (const candidate of candidates(due.reminders, due.checkins, contacts, context)) {
-    if (Date.now() - startedAt >= WORKER_TIME_BUDGET_MS) {
-      summary.complete = false
-      break
+  if (!sessions.length && !deferredIds.length) return summary
+  const pendingIds = new Set(deferredIds)
+  if (sessions.length) {
+    const context = await loadContext(admin, sessions)
+    for (const existing of context.outbox.values()) {
+      if (existing.state === 'pending') pendingIds.add(existing.id)
     }
-    const lookup = key(candidate.kind, candidate.session.id, candidate.contact.id)
-    const existing = context.outbox.get(lookup)
-    if (existing) {
-      const expiresSoon = existing.kind === 'checkin' && existing.reply_expires_at !== null &&
-        Date.parse(existing.reply_expires_at) <= now.getTime() + 60_000
-      if (existing.state !== 'pending' ||
-          (existing.phone_e164 === candidate.contact.phone_e164 && !expiresSoon)) continue
-      const { data: retired, error } = await admin.rpc('sms_supersede_stale_pending_outbox', {
-        p_id: existing.id,
-      })
-      if (error || typeof retired !== 'boolean') {
-        throw new Error('Could not resolve stale SMS phone snapshot')
+    for (const candidate of candidates(due.reminders, due.checkins, contacts, context)) {
+      if (Date.now() - startedAt >= WORKER_TIME_BUDGET_MS) {
+        summary.complete = false
+        break
       }
-      if (!retired) continue
-      pendingIds.delete(existing.id)
-      context.outbox.delete(lookup)
+      const lookup = key(candidate.kind, candidate.session.id, candidate.contact.id)
+      const existing = context.outbox.get(lookup)
+      if (existing) {
+        const expiresSoon = existing.kind === 'checkin' && existing.reply_expires_at !== null &&
+          Date.parse(existing.reply_expires_at) <= now.getTime() + 60_000
+        if (existing.state !== 'pending' ||
+            (existing.phone_e164 === candidate.contact.phone_e164 && !expiresSoon)) continue
+        const { data: retired, error } = await admin.rpc('sms_supersede_stale_pending_outbox', {
+          p_id: existing.id,
+        })
+        if (error || typeof retired !== 'boolean') {
+          throw new Error('Could not resolve stale SMS phone snapshot')
+        }
+        if (!retired) continue
+        pendingIds.delete(existing.id)
+        context.outbox.delete(lookup)
+      }
+      const checkin = candidate.kind === 'checkin'
+        ? await ensureCheckin(admin, candidate, context.checkins)
+        : null
+      if (candidate.kind === 'checkin' && !checkin) { summary.skippedChanged++; continue }
+      const inserted = await insertIntent(admin, candidate, checkin?.id ?? null, now)
+      if (!inserted) { summary.skippedChanged++; continue }
+      context.outbox.set(lookup, inserted.row)
+      if (inserted.row.state === 'pending') pendingIds.add(inserted.row.id)
+      if (inserted.created) summary.queued++
     }
-    const checkin = candidate.kind === 'checkin'
-      ? await ensureCheckin(admin, candidate, context.checkins)
-      : null
-    if (candidate.kind === 'checkin' && !checkin) { summary.skippedChanged++; continue }
-    const inserted = await insertIntent(admin, candidate, checkin?.id ?? null, now)
-    if (!inserted) { summary.skippedChanged++; continue }
-    context.outbox.set(lookup, inserted.row)
-    if (inserted.row.state === 'pending') pendingIds.add(inserted.row.id)
-    if (inserted.created) summary.queued++
   }
   const sent = await sendPendingSmsIntents(admin, provider, [...pendingIds],
     startedAt + WORKER_TIME_BUDGET_MS)

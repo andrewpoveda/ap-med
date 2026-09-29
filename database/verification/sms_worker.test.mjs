@@ -271,7 +271,9 @@ function fakeSmsDatabase(scheduledAt, answered = false, status = 'scheduled') {
         insert(value) {
           const created = { id: table === 'sms_outbox' ? `intent-${rows[table].length + 1}` :
             `checkin-${rows[table].length + 1}`,
-            state: table === 'sms_outbox' ? 'pending' : undefined, ...value }
+            state: table === 'sms_outbox' ? 'pending' : undefined,
+            first_attempt_at: null, provider: null, provider_message_id: null,
+            sent_at: null, detail: null, ...value }
           rows[table].push(created)
           return { select() { return { maybeSingle: async () => ({ data: created, error: null }) } } }
         },
@@ -285,9 +287,20 @@ function fakeSmsDatabase(scheduledAt, answered = false, status = 'scheduled') {
         const intent = rows.sms_outbox.find(row => row.id === args.p_id)
         if (!intent || intent.state !== 'pending') return { data: null, error: null }
         intent.state = 'sending'
+        intent.first_attempt_at = new Date().toISOString()
         return { data: { ...intent, sender_phone_e164: args.p_sender_phone_e164 }, error: null }
       }
       if (name === 'sms_check_claim_eligible') return { data: true, error: null }
+      if (name === 'sms_release_unsent_claim') {
+        const intent = rows.sms_outbox.find(row => row.id === args.p_id)
+        if (!intent || intent.state !== 'sending' || !intent.first_attempt_at) {
+          return { data: false, error: null }
+        }
+        intent.state = 'pending'
+        intent.first_attempt_at = null
+        intent.detail = 'Eligibility check unavailable before provider call; retry pending'
+        return { data: true, error: null }
+      }
       if (name === 'sms_supersede_stale_pending_outbox') {
         const intent = rows.sms_outbox.find(row => row.id === args.p_id)
         const contact = rows.cohort_sms_contacts.find(row => row.id === intent?.contact_id)
@@ -298,7 +311,14 @@ function fakeSmsDatabase(scheduledAt, answered = false, status = 'scheduled') {
         intent.state = 'superseded'
         return { data: true, error: null }
       }
-      if (name === 'sms_finish_outbox') return { data: { state: 'accepted' }, error: null }
+      if (name === 'sms_finish_outbox') {
+        const intent = rows.sms_outbox.find(row => row.id === args.p_id)
+        assert.ok(intent)
+        intent.state = args.p_outcome === 'accepted' ? 'accepted' :
+          args.p_outcome === 'skipped' ? 'superseded' : 'needs_review'
+        intent.detail = args.p_detail
+        return { data: { state: intent.state }, error: null }
+      }
       throw new Error(`Unexpected SMS RPC: ${name}`)
     },
   }
@@ -379,6 +399,107 @@ test('one consented member gets one due reminder with an atomic claim', async ()
       'sms_reconcile_stale_outbox', 'sms_claim_outbox',
       'sms_check_claim_eligible', 'sms_finish_outbox',
     ])
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('a check-in released at the 25-hour edge retries after the due window without duplicating', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  // At noon this meeting was 24h59m ago; two minutes later it is outside the
+  // scheduler's 1–25h discovery window, but its prompt remains unanswered.
+  const { admin, rows, rpcCalls } = fakeSmsDatabase('2026-09-25T11:01:00.000Z')
+  const originalRpc = admin.rpc.bind(admin)
+  let eligibilityChecks = 0
+  admin.rpc = async (name, args) => {
+    if (name === 'sms_check_claim_eligible' && eligibilityChecks++ === 0) {
+      rpcCalls.push([name, args])
+      return { data: null, error: { message: 'eligibility database unavailable' } }
+    }
+    return originalRpc(name, args)
+  }
+  const sent = []
+  const provider = { name: 'twilio', senderPhoneE164,
+    send: async input => {
+      sent.push(input)
+      return { kind: 'accepted', externalMessageId: 'SM123', fromPhoneE164: senderPhoneE164 }
+    },
+  }
+  try {
+    const first = await runSmsWorker(admin, provider, new Date('2026-09-26T12:00:00Z'))
+    assert.equal(first.queued, 1)
+    assert.equal(first.pending, 1)
+    assert.equal(first.complete, false)
+    assert.equal(sent.length, 0)
+    assert.equal(rows.sms_outbox[0].state, 'pending')
+    assert.match(rows.sms_outbox[0].detail, /Eligibility check unavailable before provider call/)
+
+    const second = await runSmsWorker(admin, provider, new Date('2026-09-26T12:02:00Z'))
+    assert.equal(second.dueSessions, 0)
+    assert.equal(second.queued, 0)
+    assert.equal(second.accepted, 1)
+    assert.equal(eligibilityChecks, 2)
+    assert.equal(sent.length, 1)
+    assert.equal(rows.sms_outbox.length, 1)
+    assert.equal(rows.sms_outbox[0].state, 'accepted')
+
+    await runSmsWorker(admin, provider, new Date('2026-09-26T13:00:00Z'))
+    assert.equal(sent.length, 1)
+    assert.equal(rpcCalls.filter(([name]) => name === 'sms_claim_outbox').length, 2)
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('an out-of-window deferred check-in still requires confirmed eligibility', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows } = fakeSmsDatabase('2026-09-25T11:01:00.000Z')
+  rows.sms_outbox.push({ id: 'deferred-intent', cohort_id: 'cohort-1',
+    contact_id: 'contact-1', session_id: 'session-1', kind: 'checkin',
+    state: 'pending', phone_e164: '+12025550101', first_attempt_at: null,
+    provider: null, provider_message_id: null, sent_at: null,
+    detail: 'Eligibility check unavailable before provider call; retry pending' })
+  const originalRpc = admin.rpc.bind(admin)
+  admin.rpc = (name, args) => name === 'sms_check_claim_eligible'
+    ? Promise.resolve({ data: false, error: null }) : originalRpc(name, args)
+  let sendCount = 0
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => { sendCount++; return { kind: 'unknown' } },
+    }, new Date('2026-09-26T12:02:00Z'))
+    assert.equal(result.dueSessions, 0)
+    assert.equal(result.skippedChanged, 1)
+    assert.equal(sendCount, 0)
+    assert.equal(rows.sms_outbox[0].state, 'superseded')
+  } finally {
+    if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
+    else process.env.SMS_FEATURE_ENABLED = prior
+  }
+})
+
+test('ordinary pending intents outside the due window are not discovered as retries', async () => {
+  const prior = process.env.SMS_FEATURE_ENABLED
+  process.env.SMS_FEATURE_ENABLED = 'true'
+  const { admin, rows, rpcCalls } = fakeSmsDatabase('2026-09-25T11:01:00.000Z')
+  rows.sms_outbox.push({ id: 'ordinary-intent', cohort_id: 'cohort-1',
+    contact_id: 'contact-1', session_id: 'session-1', kind: 'checkin',
+    state: 'pending', phone_e164: '+12025550101', first_attempt_at: null,
+    provider: null, provider_message_id: null, sent_at: null, detail: null })
+  let sendCount = 0
+  try {
+    const result = await runSmsWorker(admin, {
+      name: 'twilio', senderPhoneE164,
+      send: async () => { sendCount++; return { kind: 'unknown' } },
+    }, new Date('2026-09-26T12:02:00Z'))
+    assert.equal(result.dueSessions, 0)
+    assert.equal(sendCount, 0)
+    assert.equal(rows.sms_outbox[0].state, 'pending')
+    assert.equal(rpcCalls.filter(([name]) => name === 'sms_claim_outbox').length, 0)
   } finally {
     if (prior === undefined) delete process.env.SMS_FEATURE_ENABLED
     else process.env.SMS_FEATURE_ENABLED = prior
