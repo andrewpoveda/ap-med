@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import { onboardingInputStyle, onboardingLabelStyle } from '@/components/styles'
 import { SMS_CONSENT_NOTICE } from '@/lib/sms-consent'
@@ -67,6 +68,10 @@ export function CohortSmsContactFields<T extends CohortSmsContactFormValue>({
         />
         {SMS_CONSENT_NOTICE}
       </label>
+      <p className="mt-3 text-sm text-[#6b6b6b]">
+        Read the <Link href="/privacy" className="underline underline-offset-4">Privacy Policy</Link>
+        {' '}and <Link href="/terms#sms" className="underline underline-offset-4">SMS Terms of Service</Link>.
+      </p>
     </div>
   )
 }

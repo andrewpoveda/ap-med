@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cardStyle, eyebrowStyle, goldButton, inputStyle } from '@/components/styles'
@@ -103,6 +104,10 @@ export default function SmsPreferenceSection({
           />
           <span>{SMS_CONSENT_NOTICE}</span>
         </label>
+        <p className="m-0 text-sm text-[#6b6b6b]">
+          Read the <Link href="/privacy" className="underline underline-offset-4">Privacy Policy</Link>
+          {' '}and <Link href="/terms#sms" className="underline underline-offset-4">SMS Terms of Service</Link>.
+        </p>
         {message && <p className="m-0 text-sm text-[#2f8f5f]" role="status">{message}</p>}
         {error && <p className="m-0 text-sm text-[#a3372b]" role="alert">{error}</p>}
         <button type="submit" disabled={saving} style={{ ...goldButton, opacity: saving ? 0.6 : 1 }}>
