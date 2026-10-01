@@ -1,6 +1,7 @@
 "use client";
 
 import type { SiteContext } from "@/lib/site";
+import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import { usePathname } from "next/navigation";
 
@@ -47,6 +48,10 @@ export default function SiteShell({
             apmedpodcast@gmail.com
           </a>
         </p>
+        <nav aria-label="Legal pages" className="mt-3 flex justify-center gap-5 text-sm text-stone-600">
+          <Link href="/privacy" className="underline underline-offset-4">Privacy Policy</Link>
+          <Link href="/terms" className="underline underline-offset-4">Terms of Service</Link>
+        </nav>
       </footer>
     </>
   );

@@ -44,6 +44,36 @@ test('Sentry error reports discard personal content and credential-bearing conte
   assert.equal(result.exception.values[0].stacktrace.frames[0].filename, 'https://example.org/schedule/[token]')
 })
 
+test('Sentry separates safe error identities without retaining local paths or private messages', () => {
+  const { sanitizeSentryEvent } = loadTs('src/lib/sentry-privacy.ts')
+  const first = sanitizeSentryEvent({
+    transaction: '/admin',
+    exception: { values: [{ type: 'Error', value: 'Could not load complete application counts', stacktrace: { frames: [
+      { filename: 'file:///Users/private-user/site/.next/server/app/admin/page.js?token=secret', lineno: 42 },
+    ] } }] },
+  })
+  const second = sanitizeSentryEvent({
+    transaction: '/dashboard',
+    exception: { values: [{ type: 'Error', value: 'private-person@example.org', stacktrace: { frames: [
+      { filename: '/Users/private-user/site/other.js', lineno: 1 },
+      { filename: 'file:///var/task/.next/server/app/dashboard/page.js', lineno: 10 },
+    ] } }] },
+  })
+  assert.deepEqual(first.fingerprint, ['ap-med-error', '/admin', 'admin-application-counts'])
+  assert.deepEqual(second.fingerprint, ['ap-med-error', '/dashboard', '/.next/server/app/dashboard/page.js:10'])
+  assert.equal(first.exception.values[0].stacktrace.frames[0].filename, '/.next/server/app/admin/page.js')
+  assert.equal(second.exception.values[0].stacktrace.frames[0].filename, undefined)
+  assert.ok(!JSON.stringify([first, second]).includes('private-user'))
+  assert.ok(!JSON.stringify([first, second]).includes('private-person@example.org'))
+  assert.ok(!JSON.stringify([first, second]).includes('secret'))
+  const digestEvent = sanitizeSentryEvent({ transaction: '/admin', fingerprint: ['next-server-render', '123456789'],
+    exception: { values: [{ type: 'Error', value: 'private-person@example.org' }] } })
+  const unsafeFingerprint = sanitizeSentryEvent({ transaction: '/admin', fingerprint: ['next-server-render', 'private-person@example.org'],
+    exception: { values: [{ type: 'Error', value: 'private-person@example.org' }] } })
+  assert.deepEqual(digestEvent.fingerprint, ['ap-med-error', '/admin', 'next-digest:123456789'])
+  assert.deepEqual(unsafeFingerprint.fingerprint, ['ap-med-error', '/admin', 'unknown-error'])
+})
+
 test('Sentry diagnostics omit untrusted environment and transaction values', () => {
   const { sanitizeSentryEvent } = loadTs('src/lib/sentry-privacy.ts')
   const result = sanitizeSentryEvent({
