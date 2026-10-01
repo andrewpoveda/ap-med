@@ -426,6 +426,8 @@ function SiteFooter() {
             links={[
               { href: "/", label: "Student-facing site" },
               { href: "/institutions", label: "For programs" },
+              { href: "/privacy", label: "Privacy Policy" },
+              { href: "/terms", label: "Terms of Service" },
               { href: "mailto:apmedpodcast@gmail.com", label: "apmedpodcast@gmail.com" },
             ]}
           />
