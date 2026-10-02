@@ -18,6 +18,17 @@ function diagnosticUrl(value: unknown): string | undefined {
 
 function diagnosticFilename(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
+  if (value.startsWith('app:')) {
+    // The Next SDK normalizes build frames before beforeSend. Retain its
+    // canonical URI for source maps, allowing only bounded JavaScript build
+    // paths; reject traversal before any URL parser can normalize it away.
+    const filename = value.split(/[?#]/, 1)[0].replace(UUID_SEGMENT, '/[id]')
+    if (filename.length > 240
+      || !/^app:\/\/\/_next\/(?:static|server)\/[\w./()\[\]~-]+\.[cm]?js$/.test(filename)) return undefined
+    const segments = filename.slice('app:///_next/'.length).split('/')
+    return segments.every(segment => segment !== '' && segment !== '.' && segment !== '..')
+      ? filename : undefined
+  }
   try {
     // Server stacks use file:// or absolute filesystem paths. Keep only the
     // checked build/source suffix so host paths and usernames never leave us.
