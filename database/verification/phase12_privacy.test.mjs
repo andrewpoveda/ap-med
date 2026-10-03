@@ -86,3 +86,59 @@ test('Sentry diagnostics omit untrusted environment and transaction values', () 
   assert.equal(result.transaction, undefined)
   assert.equal(result.request, undefined)
 })
+
+test('Sentry keeps normalized Next build frames and their distinct error identities', () => {
+  const { sanitizeSentryEvent } = loadTs('src/lib/sentry-privacy.ts')
+  // Next's default SDK integrations rewrite browser and server build paths to
+  // app:///_next before beforeSend runs; these are the resulting frame shapes.
+  const filenames = [
+    'app:///_next/static/chunks/0lku3m_liqdxj.js',
+    'app:///_next/static/chunks/16d21q~qvpm7d.js',
+    'app:///_next/server/app/admin/page.js',
+    'app:///_next/server/app/admin/cohorts/[id]/page.js',
+  ]
+  const fingerprints = []
+  for (const filename of filenames) {
+    const result = sanitizeSentryEvent({
+      transaction: '/admin',
+      exception: { values: [{ type: 'Error', value: 'private-person@example.org', stacktrace: { frames: [
+        { filename: `${filename}?token=private-token#private-fragment`, lineno: 20, colno: 197375 },
+      ] } }] },
+    })
+    assert.deepEqual(result.exception.values[0].stacktrace.frames[0], { filename, lineno: 20, colno: 197375 })
+    assert.deepEqual(result.fingerprint, ['ap-med-error', '/admin', `${filename}:20`])
+    for (const secret of ['private-person@example.org', 'private-token', 'private-fragment']) {
+      assert.ok(!JSON.stringify(result).includes(secret))
+    }
+    fingerprints.push(result.fingerprint[2])
+  }
+  assert.equal(new Set(fingerprints).size, filenames.length)
+})
+
+test('Sentry rejects untrusted app URLs instead of treating them as build frames', () => {
+  const { sanitizeSentryEvent } = loadTs('src/lib/sentry-privacy.ts')
+  const filenames = [
+    'app://private-person:password@host/_next/static/chunks/main.js',
+    'app:///_next/../src/private-file.js',
+    'app:///_next/static/chunks/../private-file.js',
+    'app:///_next/static/chunks/./main.js',
+    'app:///_next/static/chunks//main.js',
+    'app:///_next/static/chunks/%2e%2e/private-file.js',
+    'app:///_next/static/chunks/private-person@example.org.js',
+    'app:///_next/static/chunks/private%40example.org.js',
+    'app:///_next/static/chunks/main.js.map',
+    'app:///_next/static/chunks/main.css',
+    'app:///_next/private-file.js',
+    'app:///src/private-file.js',
+    'app:///_next-other/static/chunks/main.js',
+    `app:///_next/static/chunks/${'a'.repeat(240)}.js`,
+    String.raw`app:///_next/static/chunks/..\private-file.js`,
+  ]
+  for (const filename of filenames) {
+    const result = sanitizeSentryEvent({ transaction: '/admin', exception: { values: [
+      { type: 'Error', stacktrace: { frames: [{ filename, lineno: 1 }] } },
+    ] } })
+    assert.equal(result.exception.values[0].stacktrace.frames[0].filename, undefined, filename)
+    assert.deepEqual(result.fingerprint, ['ap-med-error', '/admin', 'unknown-error'], filename)
+  }
+})
