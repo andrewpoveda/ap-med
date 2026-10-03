@@ -27,6 +27,19 @@ const buttonBase: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+const UTC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatUpdatedAt(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Unknown time'
+
+  // Intl output can differ between server/browser locale-data versions, even
+  // with an explicit locale and timezone. Keep initial text byte-for-byte equal.
+  const hour = date.getUTCHours()
+  const minute = String(date.getUTCMinutes()).padStart(2, '0')
+  return `${UTC_MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}, ${hour % 12 || 12}:${minute} ${hour < 12 ? 'AM' : 'PM'} UTC`
+}
+
 export default function AscensoVisibilityToggle({
   initialVisible,
   initialUpdatedAt,
@@ -191,16 +204,7 @@ export default function AscensoVisibilityToggle({
           style={{ margin: '1rem 0 0', fontSize: '0.8rem' }}
         >
           Last changed{' '}
-          {new Date(updatedAt).toLocaleString('en-US', {
-            // Keep the server and initial browser render identical.
-            timeZone: 'UTC',
-            timeZoneName: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-          })}
+          {formatUpdatedAt(updatedAt)}
         </p>
       )}
     </div>

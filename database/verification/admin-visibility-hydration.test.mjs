@@ -57,3 +57,28 @@ for (const [updatedAt, expected] of [
     assert.ok(serverHtml.includes(expected), 'The timestamp must identify UTC explicitly')
   })
 }
+
+// A fixed timezone does not fix differences between Node and browser locale
+// data. Exercise the real component with divergent Intl-backed date output.
+test('visibility timestamp has identical initial HTML across locale implementations', () => {
+  const updatedAt = '2026-09-12T15:00:00Z'
+  const serverHtml = renderInTimezone('UTC', updatedAt)
+  const original = Date.prototype.toLocaleString
+  try {
+    Date.prototype.toLocaleString = () => 'Sep 12, 2026, 3:00\u202fPM UTC'
+    assert.equal(renderInTimezone('America/New_York', updatedAt), serverHtml)
+  } finally {
+    Date.prototype.toLocaleString = original
+  }
+})
+
+for (const [updatedAt, expected] of [
+  ['2026-01-01T00:05:00Z', 'Jan 1, 2026, 12:05 AM UTC'],
+  ['2026-12-31T12:00:00Z', 'Dec 31, 2026, 12:00 PM UTC'],
+  ['2026-10-01T23:05:00-04:00', 'Oct 2, 2026, 3:05 AM UTC'],
+  ['invalid', 'Unknown time'],
+]) {
+  test(`visibility timestamp formats UTC boundaries safely: ${updatedAt}`, () => {
+    assert.ok(renderInTimezone('UTC', updatedAt).includes(expected))
+  })
+}
