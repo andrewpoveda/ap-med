@@ -146,6 +146,123 @@ for (const role of ['mentor', 'mentee']) {
   })
 }
 
+test('cohort intake records only server-approved SMS consent evidence', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] })
+  const response = await intakeRoute(db).POST(request({
+    ...applicationBody('mentee'),
+    phone_number: '(201) 555-0123',
+    sms_consent: true,
+    sms_consent_notice: 'forged disclosure',
+    sms_consented_at: '2000-01-01T00:00:00.000Z',
+  }))
+  assert.equal(response.status, 200)
+  const answers = db.tables.cohort_applications[0].answers
+  const { SMS_CONSENT_NOTICE, SMS_CONSENT_NOTICE_VERSION } = loadTs('src/lib/sms-consent.ts')
+  assert.equal(answers.sms_phone_e164, '+12015550123')
+  assert.equal(answers.sms_consent, true)
+  assert.equal(answers.sms_consent_notice, SMS_CONSENT_NOTICE)
+  assert.equal(answers.sms_consent_notice_version, SMS_CONSENT_NOTICE_VERSION)
+  assert.ok(!Number.isNaN(Date.parse(answers.sms_consented_at)))
+  assert.notEqual(answers.sms_consented_at, '2000-01-01T00:00:00.000Z')
+  assert.equal('phone_number' in answers, false)
+})
+
+test('cohort intake rejects SMS opt-in without a valid phone', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] })
+  const route = intakeRoute(db)
+  for (const phone_number of ['', '+44 20 7946 0958', '201-555-CALL']) {
+    const response = await route.POST(request({ ...applicationBody('mentee'), phone_number, sms_consent: true }))
+    assert.equal(response.status, 400)
+    assert.equal((await response.json()).code, 'invalid_submission')
+  }
+  assert.deepEqual(db.tables.cohort_applications ?? [], [])
+})
+
+test('cohort intake ignores forged phone and consent fields when collection is off', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'off' } }] })
+  const response = await intakeRoute(db).POST(request({
+    ...applicationBody('mentee'),
+    phone_number: '(201) 555-0123',
+    sms_consent: true,
+    sms_consent_notice: 'forged disclosure',
+  }))
+  assert.equal(response.status, 200)
+  const answers = db.tables.cohort_applications[0].answers
+  assert.equal(Object.keys(answers).some(key => key.startsWith('sms_')), false)
+})
+
+test('cohort intake with no or unknown collection setting keeps existing applications phone-free', async () => {
+  for (const config of [undefined, null, {}, { sms_phone_collection: 'unexpected' }]) {
+    const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config }] })
+    const response = await intakeRoute(db).POST(request({
+      ...applicationBody('mentee'), phone_number: 'invalid', sms_consent: 'forged',
+    }))
+    assert.equal(response.status, 200)
+    const answers = db.tables.cohort_applications[0].answers
+    assert.equal(Object.keys(answers).some(key => key.startsWith('sms_')), false)
+  }
+})
+
+test('optional cohort phone collection accepts an application without a phone', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] })
+  const response = await intakeRoute(db).POST(request(applicationBody('mentee')))
+  assert.equal(response.status, 200)
+  assert.equal(db.tables.cohort_applications[0].answers.sms_phone_e164, null)
+  assert.equal(db.tables.cohort_applications[0].answers.sms_consent, false)
+})
+
+test('required cohort phone collection requires a valid phone but never SMS consent', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'required' } }] })
+  const route = intakeRoute(db)
+  for (const phone_number of [undefined, '', 'not a phone']) {
+    const response = await route.POST(request({ ...applicationBody('mentee'), phone_number, sms_consent: false }))
+    assert.equal(response.status, 400)
+    const body = await response.json()
+    assert.equal(body.code, 'invalid_submission')
+    if (!phone_number) assert.match(body.error, /reload this page/)
+  }
+  assert.deepEqual(db.tables.cohort_applications ?? [], [])
+
+  const response = await route.POST(request({ ...applicationBody('mentee'), phone_number: '2015550123' }))
+  assert.equal(response.status, 200)
+  const answers = db.tables.cohort_applications[0].answers
+  assert.equal(answers.sms_phone_e164, '+12015550123')
+  assert.equal(answers.sms_consent, false)
+  assert.equal(answers.sms_consented_at, null)
+})
+
+test('intake explains a required-phone setting change during insert', async () => {
+  for (const [message, status, code] of [
+    ['Phone collection settings changed; reload and enter a valid phone number', 400, 'invalid_submission'],
+    ['Applications closed', 403, 'applications_closed'],
+  ]) {
+    const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] })
+    const originalFrom = db.from.bind(db)
+    db.from = (table) => {
+      const query = originalFrom(table)
+      if (table === 'cohort_applications') {
+        query.insert = () => Promise.resolve({ data: null, error: { code: '23514', message } })
+      }
+      return query
+    }
+    const response = await intakeRoute(db).POST(request(applicationBody('mentee')))
+    assert.equal(response.status, status)
+    const body = await response.json()
+    assert.equal(body.code, code)
+    if (code === 'invalid_submission') assert.match(body.error, /Reload this page/)
+    assert.deepEqual(db.tables.cohort_applications ?? [], [])
+  }
+})
+
+test('cohort configuration read errors never accept an application or SMS contact', async () => {
+  const db = database({ cohorts: [{ id: cohortId, status: 'applications_open', config: { sms_phone_collection: 'optional' } }] }, { failRead: true })
+  const response = await intakeRoute(db).POST(request({
+    ...applicationBody('mentee'), phone_number: '2015550123', sms_consent: true,
+  }))
+  assert.equal(response.status, 404)
+  assert.deepEqual(db.tables.cohort_applications ?? [], [])
+})
+
 test('intake retains Turnstile, validation, destination and closed-cohort gates', async () => {
   const db = database({ cohorts: [{ id: cohortId, status: 'closed' }] })
   assert.equal((await intakeRoute(db, false).POST(request(applicationBody('mentee')))).status, 400)

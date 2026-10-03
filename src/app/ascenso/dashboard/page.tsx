@@ -21,6 +21,8 @@ import { getMeetingLogsForMatches, getLoggableSessionsForMember, type MeetingLog
 import { getGoalsForMatches, type GoalView } from '@/lib/goals'
 import { getBookingInfoForMember, type MatchBookingInfo } from '@/lib/cohort-sessions'
 import { getMemberSurveys, type MemberSurveyView } from '@/lib/surveys'
+import { getMemberMeetingCheckins, type MemberMeetingCheckin } from '@/lib/meeting-checkins'
+import { getMemberSmsPreference, isCohortMeetingCheckinsEnabled, type MemberSmsPreference } from '@/lib/cohort-sms'
 import { getUpcomingSessionsForMentee, type MenteeUpcomingSession } from '@/lib/sessions'
 import SignOutButton from '@/app/dashboard/SignOutButton'
 import CohortMemberPanel from '@/app/dashboard/CohortMemberPanel'
@@ -29,6 +31,8 @@ import GoalSection from '@/app/dashboard/GoalSection'
 import CohortBookingSection, { type BookingMatch } from '@/app/dashboard/CohortBookingSection'
 import MenteeSessionsList from '@/app/dashboard/MenteeSessionsList'
 import SurveySection from '@/app/dashboard/SurveySection'
+import MeetingCheckinSection from '@/app/dashboard/MeetingCheckinSection'
+import SmsPreferenceSection from '@/app/dashboard/SmsPreferenceSection'
 import {
   CohortRelationshipTools,
   CohortRelationshipWorkspace,
@@ -218,6 +222,14 @@ export default async function AscensoDashboardPage({
     partnerName: m.partnerName,
   }))
   const loggableSessions = await getLoggableSessionsForMember(admin, ref)
+  const [meetingCheckinsEnabled, smsPreference]: [boolean, MemberSmsPreference | null] = await Promise.all([
+    isCohortMeetingCheckinsEnabled(admin, ref.cohortId),
+    getMemberSmsPreference(admin, ref),
+  ])
+  const smsEnabled = process.env.SMS_FEATURE_ENABLED === 'true' && meetingCheckinsEnabled
+  const meetingCheckins: MemberMeetingCheckin[] = meetingCheckinsEnabled
+    ? await getMemberMeetingCheckins(admin, ref)
+    : []
 
   const bookingMatches: BookingMatch[] = matches
     .map((m) => {
@@ -247,6 +259,9 @@ export default async function AscensoDashboardPage({
           />
 
           {openSurveys.length > 0 && <SurveySection surveys={openSurveys} />}
+          {(smsEnabled || smsPreference?.phoneE164) &&
+            <SmsPreferenceSection preference={smsPreference} sendingEnabled={smsEnabled} />}
+          {meetingCheckinsEnabled && <MeetingCheckinSection checkins={meetingCheckins} />}
 
           {matchOptions.length > 0 && (
             <CohortRelationshipTools>

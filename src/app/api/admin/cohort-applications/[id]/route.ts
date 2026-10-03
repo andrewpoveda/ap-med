@@ -5,6 +5,7 @@ import { resolveAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { sendCohortDeliveries } from '@/lib/cohort-delivery'
 import { normalizeEmail } from '@/lib/email-identity'
+import { completeApplicationSmsHandoff, hasApplicationSmsContact } from '@/lib/cohort-application-sms'
 import { cap, LIMITS } from '@/lib/validate'
 import type { CohortApplication } from '@/types/cohort'
 
@@ -40,7 +41,7 @@ export async function PATCH(
 
     const action = String(body.action ?? '')
     const status = STATUS_BY_ACTION[action]
-    if (!status) {
+    if (!status && action !== 'retry_sms_handoff') {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
     const notes = cap(body.notes, LIMITS.text).trim()
@@ -62,6 +63,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
+    if (action === 'retry_sms_handoff') {
+      if (app.status !== 'approved' || !hasApplicationSmsContact(app.answers)) {
+        return NextResponse.json({ error: 'No approved SMS handoff to retry' }, { status: 409 })
+      }
+      if (app.sms_handoff_state === 'complete') {
+        return NextResponse.json({ success: true, status: 'approved' })
+      }
+      const warning = await completeApplicationSmsHandoff(admin, app, adminUser.id)
+      return NextResponse.json({ success: true, status: 'approved',
+        ...(warning ? { warning } : {}) })
+    }
+
     const { data: savedStatus, error: reviewError } = await admin.rpc('ascenso_review_application', {
       p_id: app.id, p_actor: adminUser.id, p_status: status,
       p_notes: notes, p_email: normalizeEmail(app.email),
@@ -70,9 +83,17 @@ export async function PATCH(
       return NextResponse.json({ error: reviewError.code === '23514'
         ? reviewError.message : 'Could not save the review; refresh and try again' }, { status: 409 })
     }
+    let smsWarning: string | null = null
+    if (savedStatus === 'approved') {
+      smsWarning = await completeApplicationSmsHandoff(admin, app, adminUser.id)
+    }
     const sent = await sendCohortDeliveries(admin, app.id, app.cohort_id)
+    const warnings = [
+      smsWarning,
+      !sent ? 'Decision saved. Email acceptance is incomplete; use delivery recovery below.' : null,
+    ].filter((warning): warning is string => warning !== null)
     return NextResponse.json({ success: true, status: savedStatus,
-      ...(!sent ? { warning: 'Decision saved. Email acceptance is incomplete; use delivery recovery below.' } : {}) })
+      ...(warnings.length ? { warning: warnings.join(' ') } : {}) })
   } catch (err) {
     console.error('Application review crashed:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

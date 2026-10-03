@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminSession, canAccessCohort } from '@/lib/admin'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { hasApplicationSmsContact } from '@/lib/cohort-application-sms'
 import {
   APPLICATION_ROLES,
   APPLICATION_STATUSES,
@@ -130,7 +131,7 @@ export default async function CohortApplicationsPage({
   let query = admin
     .from('cohort_applications')
     .select(
-      'id, created_at, cohort_id, role, track, full_name, email, status, member_id, answers, reviewed_by, reviewed_at, review_notes, previous_submission, updated_at',
+      'id, created_at, cohort_id, role, track, full_name, email, status, member_id, answers, reviewed_by, reviewed_at, review_notes, previous_submission, updated_at, sms_handoff_state',
     )
     .eq('cohort_id', cohortId)
     .order('created_at', { ascending: false })
@@ -246,6 +247,12 @@ export default async function CohortApplicationsPage({
                     </span>
                   </>
                 )}
+                {app.status === 'approved' && hasApplicationSmsContact(app.answers) &&
+                  app.sms_handoff_state !== 'complete' && (
+                    <span style={{ color: '#8a6d1f', fontWeight: 600 }}>
+                      {' · '}SMS phone enrollment needs review
+                    </span>
+                  )}
               </p>
             </Link>
           ))}

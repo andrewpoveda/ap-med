@@ -8,6 +8,11 @@ import { isHttpUrl } from '@/lib/url'
 import { getAscensoCohortId } from '@/lib/site'
 import { isAscensoVisible } from '@/lib/app-settings'
 import { normalizeEmail } from '@/lib/email-identity'
+import {
+  cohortSmsCollectionAnswers,
+  getCohortSmsCollectionMode,
+  validateCohortSmsCollectionInput,
+} from '@/lib/cohort-sms-collection'
 import { ASCENSO_V1 } from '@/lib/program-definition'
 import { SPECIALTIES } from '@/data/specialties'
 import {
@@ -246,7 +251,7 @@ export async function POST(request: Request) {
   // The configured cohort must still exist and be accepting applications.
   const { data: cohort, error: cohortError } = await supabaseAdmin
     .from('cohorts')
-    .select('id, status')
+    .select('id, status, config')
     .eq('id', cohortId)
     .single()
 
@@ -260,6 +265,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: 'Applications are closed for this cohort', code: 'applications_closed' },
       { status: 403 }
+    )
+  }
+
+  // Never trust the form's mode: admins can change cohort policy while an
+  // applicant has the page open, and crafted clients can send hidden fields.
+  const smsContact = validateCohortSmsCollectionInput(
+    getCohortSmsCollectionMode(cohort.config),
+    data.phone_number,
+    data.sms_consent,
+  )
+  if (!smsContact.ok) {
+    return NextResponse.json(
+      { error: smsContact.error, code: 'invalid_submission' },
+      { status: 400 },
     )
   }
 
@@ -279,6 +298,7 @@ export async function POST(request: Request) {
     motivation,
     experience_goals: experienceGoals,
     linkedin_url: linkedinUrl,
+    ...cohortSmsCollectionAnswers(smsContact.value),
     can_commit: data.can_commit === true,
     identity,
     help_with_other: helpWithOther,
@@ -318,7 +338,15 @@ export async function POST(request: Request) {
   ])
 
   if (error) {
-    if (error.code === '23514') return NextResponse.json({ error: 'Applications are closed for this cohort', code: 'applications_closed' }, { status: 403 })
+    if (error.code === '23514') {
+      if (error.message === 'Phone collection settings changed; reload and enter a valid phone number') {
+        return NextResponse.json(
+          { error: 'Phone collection settings changed. Reload this page, then enter your phone number to continue.', code: 'invalid_submission' },
+          { status: 400 },
+        )
+      }
+      return NextResponse.json({ error: 'Applications are closed for this cohort', code: 'applications_closed' }, { status: 403 })
+    }
     // Knowing an email is not proof of ownership. Never read or replace the
     // existing application, regardless of its review status.
     if (error.code === '23505') {

@@ -179,3 +179,38 @@ will block migration and must be reviewed without silently deleting history.
 `sh database/verification/verify_phase3.sh` validates this chain in a disposable
 PostgreSQL 17 database, including the Phase 2 SQL regression suite. It neither
 reads credentials nor connects to a configured hosted project.
+
+## Cohort SMS V1 migrations
+
+The active chain adds the SMS foundation in
+`../supabase/migrations/20260926201229_sms_foundation.sql`, transactional send
+and inbound RPCs in `20260927023120_sms_atomic_processing.sql`, then reply and
+reminder safety guards in `20260927140504_sms_reply_and_reminder_safety.sql`.
+`20260927192336_cohort_sms_phone_collection_setting.sql` follows with a
+service-role-only, version-guarded RPC for the existing `cohorts.config`
+setting `sms_phone_collection`. It creates no new table or column and does not
+set a collection mode for any cohort.
+`20260927193648_cohort_sms_application_collection_guard.sql` enforces that
+setting when an application is inserted, including during a concurrent setting
+change. `20260927193855_sms_stop_consent_order_guard.sql` serializes dashboard
+opt-ins with STOP/START and rejects stale consent requests.
+`20260928010200_sms_application_handoff_status.sql` keeps approval-time phone
+handoff status visible and retryable. `20260928010400_sms_unsent_claim_release.sql`
+returns a claim to pending when the eligibility read fails before a provider
+call. `20260928010500_sms_preference_compare_and_save.sql` rejects stale member
+preference writes. `20260928010600_sms_intent_replacement.sql` permits a new
+intent only after an earlier one was definitively unsent and superseded.
+Apply them in that order only after reviewing the hosted migration ledger and
+before deploying dependent application code. The cohort SMS flag defaults off;
+none of these migrations enables sending or configures a provider. No hosted
+database was changed while preparing them.
+
+The tables use RLS with no `anon` or `authenticated` access. The server uses
+explicit `service_role` grants and `SECURITY INVOKER` RPCs. A reply is saved
+in the same `meeting_checkins` row that the authenticated web form uses.
+`sh database/verification/verify_sms_atomic.sh` verifies the full migration
+chain, guarded phone collection and opt-in, approval handoff recovery, and
+synthetic send, reply, STOP, START, preference races, and reschedule cases in a
+disposable PostgreSQL 17 cluster. CI runs this suite after the existing phase
+checks. The complete provider setup and rollout
+sequence are in `../docs/architecture/cohort-sms-v1.md`.

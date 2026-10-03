@@ -100,6 +100,21 @@ export default function SubmissionFields({
         </Field>
       )}
       {email !== undefined && <Field label="Email">{email}</Field>}
+      <Field label="Mobile phone for SMS">{asText(answers.sms_phone_e164)}</Field>
+      <Field label="SMS consent">
+        {answers.sms_consent === true ? (
+          <>
+            <p style={{ margin: 0 }}>Given on {asText(answers.sms_consented_at)}.</p>
+            <p style={{ margin: '0.35rem 0 0' }}>
+              Notice {asText(answers.sms_consent_notice_version)}: {asText(answers.sms_consent_notice)}
+            </p>
+          </>
+        ) : answers.sms_consent === false ? (
+          'Not given'
+        ) : (
+          'Not requested on this application'
+        )}
+      </Field>
       <Field label="Institution">{asText(answers.institution)}</Field>
       <Field label="Current position">{asText(answers.current_position)}</Field>
       <Field label="Current location">{asText(answers.current_location)}</Field>
